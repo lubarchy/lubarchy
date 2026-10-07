@@ -53,11 +53,15 @@ An item is checked only when evidence exists and the CTO has reviewed it.
 | --- | --- | --- |
 | M0-A | Read-only preflight and Debian ISO trust verification | PASS |
 | M0-B | Explicit local repository binding | PASS |
-| M0-C | Repository/governance baseline | IN PROGRESS |
+| M0-C | Repository/governance baseline | PASS |
+| M0-D | Clean Debian 13 builder environment | IN PROGRESS |
 
-`M0-C — repository/governance baseline: IN PROGRESS`
+- M0-C — repository/governance baseline: **PASS** (CTO-reviewed), commit
+  `c0a665985f54de33d813ea1bf62794e7170299be`.
+- M0-D — clean Debian builder: **IN PROGRESS**. Current task: establish and
+  qualify the clean Debian 13 builder VM defined in [build.md](build.md).
 
-M0-C status is updated only after its execution has been validated and
+A step's status is updated only after its execution has been validated and
 reviewed by the CTO.
 
 ### Verified builder source
@@ -70,9 +74,10 @@ reviewed by the CTO.
 
 ### Repository reference
 
-- Expected starting commit for M0-C:
-  `f10f25607ecddcface2fed3768f76605a01f5174` ("Initial commit", contains
-  `LICENSE` only)
+- Initial GitHub commit: `f10f25607ecddcface2fed3768f76605a01f5174`
+  ("Initial commit", contains `LICENSE` only).
+- Governance baseline (M0-C): `c0a665985f54de33d813ea1bf62794e7170299be`
+  (local; not yet pushed).
 
 ## Intentionally undecided
 
@@ -119,8 +124,8 @@ not be treated as decided:
 
 ## Immediate next action
 
-After M0-C: **establish the clean Debian builder environment, subject to CTO
-review of M0-C.**
+Current: **establish the clean Debian builder environment (M0-D)**, as defined
+in [build.md](build.md).
 
 ## PASS rule
 

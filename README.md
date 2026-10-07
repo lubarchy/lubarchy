@@ -64,6 +64,7 @@ UX, delivery speed.
 
 - [Project state](docs/project-state.md)
 - [Architecture](docs/architecture.md)
+- [Build environment](docs/build.md)
 - [Decision register](docs/decisions.md)
 - [ADR process](docs/decisions/README.md)
 - [Security](docs/security.md)
