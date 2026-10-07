@@ -1,0 +1,23 @@
+# Editor / OS noise
+.DS_Store
+*~
+*.swp
+*.swo
+
+# Local environment / secrets
+.env
+.env.*
+!.env.example
+
+# Large generated images / VM artifacts
+*.iso
+*.img
+*.raw
+*.qcow2
+
+# Local generated output
+/build/
+/dist/
+/out/
+/tmp/
+/.cache/
