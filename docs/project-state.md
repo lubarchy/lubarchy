@@ -41,7 +41,7 @@ configuration before adding desktop or installer complexity.
 - [x] Checksum and package manifest (M0-F; initial artifact metadata)
 - [x] Successful UEFI QEMU/KVM boot (M0-G; optical/El Torito EFI)
 - [x] Automated boot smoke test (M0-G; `tests/iso-boot-smoke.sh`)
-- [ ] USB/removable-media (hybrid) boot qualified
+- [x] Virtual UEFI removable-media/hybrid qualification (M0-H; OVMF USB mass-storage, not physical hardware)
 - [ ] Clean rebuild succeeds
 - [ ] Lint/CI baseline passes
 - [ ] Build documentation accepted
@@ -59,6 +59,7 @@ An item is checked only when evidence exists and the CTO has reviewed it.
 | M0-E | live-build tooling and source-controlled configuration | PASS |
 | M0-F | First minimal ISO build and artifact capture | PASS |
 | M0-G | UEFI optical boot qualification and serial smoke baseline | PASS |
+| M0-H | Hybrid removable-media and unattended UEFI qualification | PASS |
 
 - M0-C — repository/governance baseline: **PASS** (CTO-reviewed), commit
   `c0a665985f54de33d813ea1bf62794e7170299be`.
@@ -74,7 +75,14 @@ An item is checked only when evidence exists and the CTO has reviewed it.
   checksummed and retained outside Git (see [build.md](build.md)).
 - M0-G — boot qualification: **PASS**. The M0-F ISO passed the isolated UEFI
   optical boot test and the automated serial live-payload smoke test
-  (`tests/iso-boot-smoke.sh`). **USB/removable-media boot: NOT QUALIFIED.**
+  (`tests/iso-boot-smoke.sh`). USB/removable-media boot of that ISO: not
+  qualified (no hybrid system area).
+- M0-H — hybrid and unattended boot: **PASS**. A new ISO built from
+  `fc4c03470fbca0376d52cd87dec95a51da3e97cf` (`grub-pc grub-efi` for the
+  live-build hybrid system area, 5-second GRUB timeout) passed the hybrid
+  structure check, unattended UEFI optical boot, UEFI removable-media boot
+  from virtual USB mass-storage, and the serial smoke test. **Physical USB
+  real-hardware boot: NOT YET QUALIFIED.**
 
 A step's status is updated only after its execution has been validated and
 reviewed by the CTO.
@@ -112,8 +120,9 @@ not be treated as decided:
 ## Not implemented
 
 - CI
-- USB/removable-media (hybrid) boot qualification
+- Repository lint and shellcheck gates
 - Clean rebuild/reproducibility comparison
+- Physical USB boot on real hardware (real-hardware qualification)
 - LUBARCHY package repository
 - Desktop stack
 - Hardware detector/resolver
@@ -137,9 +146,9 @@ not be treated as decided:
 
 ## Immediate next action
 
-Investigate and qualify the M0 ISO removable-media/hybrid boot structure, then
-perform an independent clean rebuild/reproducibility comparison before M0
-closure.
+Perform an independent clean rebuild from the exact qualified M0-H source
+commit, compare artifacts and reproducibility-relevant metadata, establish
+repository lint/shellcheck/CI gates, and review final M0 acceptance.
 
 ## PASS rule
 

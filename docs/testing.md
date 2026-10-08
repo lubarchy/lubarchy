@@ -68,17 +68,19 @@ A clean rebuild must succeed from the same commit.
 | `live-build` configuration validation | `tests/live-build-config.sh` (M0-E) |
 | ISO build | Manual, from the committed configuration (M0-F) |
 | Checksum/manifest | Produced with the first build (M0-F) |
-| UEFI VM boot test | UEFI optical boot test, operator-run (M0-G) |
+| UEFI VM boot test | UEFI optical boot test, operator-run, unattended since M0-H |
 | Boot smoke test | `tests/iso-boot-smoke.sh` (M0-G) |
-| USB/removable-media boot | Not qualified |
+| Hybrid ISO structure | `tests/iso-hybrid-structure.sh` (M0-H) |
+| UEFI removable-media boot | Virtual USB mass-storage boot test, operator-run (M0-H) |
+| Physical USB boot | Not qualified (real-hardware qualification) |
 | Clean rebuild comparison | Not implemented |
 
 No gate runs in CI yet.
 
 ## M0 boot testing
 
-M0 boot qualification uses two separate tests. Both must pass, and neither
-replaces the other.
+M0 boot qualification uses four separate tests. Each proves something the
+others do not, and none replaces another.
 
 ### UEFI optical boot test
 
@@ -91,10 +93,49 @@ It runs in a fresh, disposable libvirt VM: Q35, OVMF without Secure Boot and
 with a fresh NVRAM, 2 vCPU, 2048 MiB RAM, no disk, no network, and the ISO
 attached as a read-only CD-ROM (a byte-verified temporary copy, so the
 retained artifact is never handed to libvirt). The default Live entry must
-reach a console shell within 240 seconds. Evidence is captured as screenshots
-and an in-guest check of the live medium mount, kernel command line, systemd
-state and block devices. The VM, its NVRAM and the temporary ISO copy are
-removed afterwards.
+reach a console shell without any keyboard input: since M0-H the GRUB menu
+boots the default entry after 5 seconds, and the test requires the console
+within 120 seconds with zero input (M0-G, before the timeout existed, allowed
+one Enter and 240 seconds). Evidence is captured as screenshots and an
+in-guest check of the live medium mount, kernel command line, systemd state
+and block devices.
+
+It does not prove removable-media boot, BIOS boot or boot on real hardware.
+
+### Hybrid ISO structure check
+
+```sh
+tests/iso-hybrid-structure.sh --iso ISO --sha256 SHA256 [--report FILE]
+```
+
+Read-only, no root. After verifying the SHA-256 it uses `xorriso` to check
+that the ISO is readable as ISO 9660, keeps a UEFI El Torito boot image, and
+has an MBR system area with the `0x55AA` signature, a GPT (header at LBA 1)
+and an MBR or GPT partition that maps the EFI boot image. It fails on an
+empty system area (as in the M0-F ISO).
+
+It proves structure only, not that any firmware or USB device boots the image.
+
+### UEFI removable-media (virtual USB) boot test
+
+Proves:
+
+OVMF → USB mass-storage → EFI removable loader → GRUB (5-second default) →
+kernel/initrd → live-boot → live filesystem → userspace
+
+Same VM class as the optical test, but the ISO bytes are exposed only as a
+read-only, removable USB mass-storage disk on a `qemu-xhci` controller, with
+no CD-ROM, no other disk and no network. The image is a byte-verified
+temporary copy and is never partitioned or modified. The test boots with zero
+input and checks in the guest that the live medium is the USB disk (`lsblk`
+transport `usb`, removable, read-only) and that no optical device exists.
+
+It proves UEFI removable-media boot under OVMF only. It does not prove boot
+from a physical USB device on real hardware, which belongs to real-hardware
+qualification.
+
+In both VM tests the VM, its NVRAM and the temporary ISO copy are removed
+afterwards.
 
 ### Automated serial live-payload smoke test
 

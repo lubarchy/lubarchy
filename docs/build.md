@@ -313,7 +313,8 @@ These are regenerated on every run and are not committed.
 | Debian Installer | `none` |
 | Firmware in binary / chroot | disabled / disabled |
 | Source image | disabled |
-| Boot loader | `grub-efi` only (no BIOS boot loader) |
+| Boot loaders | `grub-pc grub-efi` since M0-H (M0-E/F: `grub-efi` only); UEFI via `grub-efi` is the boot path, `grub-pc` provides the hybrid system area |
+| GRUB menu | `config/bootloaders/grub-pc/config.cfg`: installed template plus `timeout_style=menu`, `timeout=5` (since M0-H) |
 | UEFI Secure Boot | `disable` |
 | Memtest / zsync / interactive | none / disabled / disabled |
 | Kernel flavour / UTC time | `amd64` / enabled |
@@ -335,7 +336,9 @@ tests/live-build-config.sh
 
 The gate checks auto-script syntax, generates the configuration through
 `auto/config`, runs `lb config noauto --validate`, and asserts 42 values from
-`lb config noauto --dump` plus the absence of contrib/non-free areas. It
+`lb config noauto --dump` plus the absence of contrib/non-free areas. Since
+M0-H it also checks that the project GRUB `config.cfg` equals the installed
+live-build template except for the menu timeout lines. It
 refuses any `lb build`, needs no root, does not touch libvirt, and removes
 only the files it generated, including on failure.
 
@@ -450,10 +453,93 @@ Findings:
 - The image has no serial console configuration (GRUB uses `gfxterm`; no
   `console=ttyS0`); the serial smoke test adds it on the command line only.
 
-**USB/removable-media boot: NOT QUALIFIED.** The ISO has no MBR boot signature,
-no GPT header and an empty system area; with `grub-efi` as the only boot
-loader it provides El Torito EFI boot for optical media only. Whether it boots
-when written to a USB device is not established, and it must not be described
-as USB-bootable. This remains an open M0 item.
+**USB/removable-media boot of the M0-F ISO: NOT QUALIFIED.** That ISO has no
+MBR boot signature, no GPT header and an empty system area; with `grub-efi` as
+the only boot loader it provides El Torito EFI boot for optical media only. It
+must not be described as USB-bootable. Both findings were addressed by a new
+artifact in M0-H (below); the M0-F ISO itself is unchanged.
 
-Also not yet established: a reproducible clean rebuild.
+## Hybrid removable-media and unattended UEFI qualification (M0-H)
+
+### Why `grub-pc` is configured
+
+The installed live-build (`1:20250505+deb13u1`) splits `--bootloaders` into a
+BIOS role (`LB_BOOTLOADER_BIOS`) and an EFI role (`LB_BOOTLOADER_EFI`);
+`grub-pc grub-efi` is a documented combination. Its `binary_iso` stage writes
+the hybrid system area only when the image type is `iso-hybrid` **and** a BIOS
+boot loader is set: for `grub-pc` it adds `--grub2-mbr boot_hybrid.img
+-efi-boot-part --efi-boot-image`, which together with the `grub-efi` options
+(`-e boot/grub/efi.img -isohybrid-gpt-basdat`) produces an MBR, a GPT and an
+EFI system partition mapped to the EFI boot image. With `grub-efi` alone (M0-F)
+no system area is written.
+
+`grub-pc` is therefore present **only as live-build's hybrid system-area
+mechanism for the M0 pipeline artifact.** UEFI via `grub-efi` remains the M0
+boot path; BIOS boot is not an M0 requirement and was not tested. This does not
+select the LUBARCHY product boot architecture: P-001 (boot architecture) and
+P-006 (Secure Boot) remain open. No installed live-build code was changed and
+the ISO was not post-processed. The GRUB PC build tools (`grub-pc-bin`) come
+from Debian trixie `main` and are installed by live-build into its build chroot
+only; they are not part of the live filesystem.
+
+### GRUB menu timeout
+
+`build/live/config/bootloaders/grub-pc/config.cfg` is the installed live-build
+template plus two lines, so the default entry boots after 5 seconds unless a
+key is pressed:
+
+```text
+set default=0
+set timeout_style=menu
+set timeout=5
+```
+
+Menu entries, kernel parameters, theme and console settings are unchanged; no
+serial console was added to the image.
+
+### Artifact
+
+| Item | Value |
+| --- | --- |
+| Source commit | `fc4c03470fbca0376d52cd87dec95a51da3e97cf` (tree `38cf7547544f603735047e77558b674ec6efc7ae`) |
+| Build (UTC) | 2026-10-08T21:15:37Z to 21:23:31Z, exit 0; no `E:` lines or APT authentication errors |
+| ISO | `lubarchy-m0-amd64.hybrid.iso`, 335235072 bytes |
+| SHA-256 | `0a643e2e440885d2f2c17c4b71e2d4574dfb3f12cd379e9bccbdcbbf7548bf58` |
+| SHA-512 | `8caec01edf811a10238710fb5c6eae00643c3059f1a3013727c4ea3e3355361b5aa0a87031878a5cfe14e40e19019ddbb2c0973e859df056696d89cc1f553ed7` |
+| Packages | 180; live filesystem manifest identical to M0-F |
+| Package sources | `trixie`, `trixie-security`, `trixie-updates` `main` only; fetched only from `deb.debian.org` and `security.debian.org` |
+
+Build evidence and qualification evidence are retained outside Git with
+SHA-256 and SHA-512 manifests.
+
+### Static structure
+
+`tests/iso-hybrid-structure.sh`: **PASS**.
+
+- El Torito: BIOS entry (`/boot/grub/grub_eltorito`) and UEFI entry
+  (`/boot/grub/efi.img`).
+- System area: `MBR protective-msdos-label grub2-mbr GPT`; MBR boot signature
+  `0x55AA`; protective MBR partition (type `0xEE`).
+- GPT: EFI System Partition (type `C12A7328-F81F-11D2-BA4B-00A0C93EC93B`)
+  mapped exactly to `/boot/grub/efi.img`, plus two gap partitions.
+- ISO 9660 remains readable; no installer payload.
+- BIOS boot material (`grub_eltorito`, `/boot/grub/i386-pc/`) is present but
+  was not tested.
+
+### Boot qualification
+
+| Test | Result |
+| --- | --- |
+| UEFI optical boot, unattended (Q35, OVMF without Secure Boot, 2 vCPU, 2048 MiB, no disk, no network, read-only CD-ROM) | **PASS**: GRUB counted down from 5 s with no input and the default entry reached the console shell about 14 s after power-on |
+| UEFI removable-media boot (same VM class, the ISO bytes as a read-only USB mass-storage disk on `qemu-xhci`, no CD-ROM, no disk, no network) | **PASS**: same unattended countdown; console shell about 16 s after power-on; live medium `/dev/sda` (`TRAN usb`, `RM 1`, `RO 1`), no `sr0`; systemd `running` |
+| Automated serial live-payload smoke (`tests/iso-boot-smoke.sh`) | **PASS** in 8 s |
+
+Both VM tests used byte-verified temporary copies of the ISO; the retained
+artifacts were never handed to libvirt.
+
+- **UEFI optical boot: QUALIFIED**
+- **UEFI removable-media boot (OVMF USB mass-storage): QUALIFIED**
+- **Physical USB real-hardware boot: NOT YET QUALIFIED.** It belongs to later
+  real-hardware qualification.
+
+Still not established: a reproducible clean rebuild.
