@@ -34,7 +34,7 @@ configuration before adding desktop or installer complexity.
 ### M0 exit checklist
 
 - [ ] Fresh public repository with governance baseline
-- [ ] Clean Debian builder
+- [x] Clean Debian builder (M0-D; see [build.md](build.md))
 - [ ] Documented build prerequisites
 - [ ] Committed `live-build` configuration
 - [ ] Minimal ISO builds
@@ -54,12 +54,13 @@ An item is checked only when evidence exists and the CTO has reviewed it.
 | M0-A | Read-only preflight and Debian ISO trust verification | PASS |
 | M0-B | Explicit local repository binding | PASS |
 | M0-C | Repository/governance baseline | PASS |
-| M0-D | Clean Debian 13 builder environment | IN PROGRESS |
+| M0-D | Clean Debian 13 builder environment | PASS |
 
 - M0-C — repository/governance baseline: **PASS** (CTO-reviewed), commit
   `c0a665985f54de33d813ea1bf62794e7170299be`.
-- M0-D — clean Debian builder: **IN PROGRESS**. Current task: establish and
-  qualify the clean Debian 13 builder VM defined in [build.md](build.md).
+- M0-D — clean Debian builder: **PASS**. `lubarchy-builder` on
+  `qemu:///system` is established and qualified (2026-10-08); measured
+  baseline in [build.md](build.md). `live-build` is not yet installed.
 
 A step's status is updated only after its execution has been validated and
 reviewed by the CTO.
@@ -96,7 +97,6 @@ not be treated as decided:
 
 ## Not implemented
 
-- Debian builder VM
 - `live-build` configuration
 - Minimal LUBARCHY ISO
 - CI
@@ -124,8 +124,8 @@ not be treated as decided:
 
 ## Immediate next action
 
-Current: **establish the clean Debian builder environment (M0-D)**, as defined
-in [build.md](build.md).
+Install and qualify Debian Stable live-build tooling and establish the minimal
+source-controlled live-build configuration.
 
 ## PASS rule
 
