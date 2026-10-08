@@ -37,10 +37,11 @@ configuration before adding desktop or installer complexity.
 - [x] Clean Debian builder (M0-D; see [build.md](build.md))
 - [x] Documented build prerequisites (builder and live-build tooling; see [build.md](build.md))
 - [x] Committed `live-build` configuration (M0-E; validated, not yet built)
-- [x] Minimal ISO builds (M0-F; first build, not yet boot-qualified)
+- [x] Minimal ISO builds (M0-F)
 - [x] Checksum and package manifest (M0-F; initial artifact metadata)
-- [ ] Successful UEFI QEMU/KVM boot
-- [ ] Automated boot smoke test
+- [x] Successful UEFI QEMU/KVM boot (M0-G; optical/El Torito EFI)
+- [x] Automated boot smoke test (M0-G; `tests/iso-boot-smoke.sh`)
+- [ ] USB/removable-media (hybrid) boot qualified
 - [ ] Clean rebuild succeeds
 - [ ] Lint/CI baseline passes
 - [ ] Build documentation accepted
@@ -57,6 +58,7 @@ An item is checked only when evidence exists and the CTO has reviewed it.
 | M0-D | Clean Debian 13 builder environment | PASS |
 | M0-E | live-build tooling and source-controlled configuration | PASS |
 | M0-F | First minimal ISO build and artifact capture | PASS |
+| M0-G | UEFI optical boot qualification and serial smoke baseline | PASS |
 
 - M0-C — repository/governance baseline: **PASS** (CTO-reviewed), commit
   `c0a665985f54de33d813ea1bf62794e7170299be`.
@@ -69,8 +71,10 @@ An item is checked only when evidence exists and the CTO has reviewed it.
   `tests/live-build-config.sh` on the builder.
 - M0-F — first minimal ISO: **PASS**. `lubarchy-m0-amd64.hybrid.iso` was built
   from `a7d1e9c10df6fbe3d2a9a30e6bb3378dcabf1073`, statically inspected,
-  checksummed and retained outside Git (see [build.md](build.md)). It has
-  **not** been booted.
+  checksummed and retained outside Git (see [build.md](build.md)).
+- M0-G — boot qualification: **PASS**. The M0-F ISO passed the isolated UEFI
+  optical boot test and the automated serial live-payload smoke test
+  (`tests/iso-boot-smoke.sh`). **USB/removable-media boot: NOT QUALIFIED.**
 
 A step's status is updated only after its execution has been validated and
 reviewed by the CTO.
@@ -108,7 +112,8 @@ not be treated as decided:
 ## Not implemented
 
 - CI
-- Automated boot smoke test
+- USB/removable-media (hybrid) boot qualification
+- Clean rebuild/reproducibility comparison
 - LUBARCHY package repository
 - Desktop stack
 - Hardware detector/resolver
@@ -132,8 +137,9 @@ not be treated as decided:
 
 ## Immediate next action
 
-Boot the first M0 ISO in a fresh isolated UEFI KVM/QEMU test VM and establish
-the automated serial boot smoke-test baseline.
+Investigate and qualify the M0 ISO removable-media/hybrid boot structure, then
+perform an independent clean rebuild/reproducibility comparison before M0
+closure.
 
 ## PASS rule
 

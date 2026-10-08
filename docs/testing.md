@@ -59,16 +59,72 @@ Build evidence must include:
 
 A clean rebuild must succeed from the same commit.
 
-## M0 future gates
+## M0 gates
 
-- Repository lint
-- shellcheck
-- `live-build` configuration validation
-- ISO build
-- Checksum/manifest
-- UEFI VM boot smoke test
+| Gate | Status |
+| --- | --- |
+| Repository lint | Not implemented |
+| shellcheck | Not implemented |
+| `live-build` configuration validation | `tests/live-build-config.sh` (M0-E) |
+| ISO build | Manual, from the committed configuration (M0-F) |
+| Checksum/manifest | Produced with the first build (M0-F) |
+| UEFI VM boot test | UEFI optical boot test, operator-run (M0-G) |
+| Boot smoke test | `tests/iso-boot-smoke.sh` (M0-G) |
+| USB/removable-media boot | Not qualified |
+| Clean rebuild comparison | Not implemented |
 
-None of these gates is implemented yet.
+No gate runs in CI yet.
+
+## M0 boot testing
+
+M0 boot qualification uses two separate tests. Both must pass, and neither
+replaces the other.
+
+### UEFI optical boot test
+
+Proves the ISO's own boot chain:
+
+OVMF → UEFI optical (El Torito EFI) boot → GRUB EFI → kernel/initrd →
+live-boot → live filesystem → userspace
+
+It runs in a fresh, disposable libvirt VM: Q35, OVMF without Secure Boot and
+with a fresh NVRAM, 2 vCPU, 2048 MiB RAM, no disk, no network, and the ISO
+attached as a read-only CD-ROM (a byte-verified temporary copy, so the
+retained artifact is never handed to libvirt). The default Live entry must
+reach a console shell within 240 seconds. Evidence is captured as screenshots
+and an in-guest check of the live medium mount, kernel command line, systemd
+state and block devices. The VM, its NVRAM and the temporary ISO copy are
+removed afterwards.
+
+### Automated serial live-payload smoke test
+
+Proves the ISO's live payload automatically:
+
+kernel/initrd from the exact ISO → live-boot → the same ISO's SquashFS →
+userspace → serial login prompt
+
+```sh
+tests/iso-boot-smoke.sh --iso ISO --sha256 SHA256 \
+    --kernel VMLINUZ --initrd INITRD --grub-cfg GRUB_CFG [--log FILE] [--timeout SECONDS]
+```
+
+The kernel, initrd and `grub.cfg` are extracted read-only from the same ISO
+(for example with `osirrox -indev ISO -extract ...`). The script:
+
+- verifies the ISO's SHA-256 and requires it to be a read-only regular file;
+- boots under QEMU/KVM with 2 vCPU, 2048 MiB RAM, no disk and no network,
+  with the ISO attached read-only as a CD-ROM;
+- uses the default Live entry's kernel parameters from `grub.cfg` and appends
+  only `console=ttyS0,115200n8 live-config.noautologin systemd.show_status=yes`;
+- passes when the serial console shows the systemd banner of the live root,
+  `multi-user.target` and a ttyS0 login prompt within the timeout (default
+  180 seconds);
+- fails on kernel panic, a missing live medium, an `(initramfs)` shell,
+  SquashFS errors or emergency mode, or on timeout.
+
+**Direct kernel loading is used only to make serial output deterministic. It
+is not evidence for UEFI or GRUB;** that proof comes from the UEFI optical
+boot test above.
 
 ## Failure evidence
 

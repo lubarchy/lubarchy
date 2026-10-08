@@ -408,10 +408,52 @@ orchestration host:
 
 The temporary build workspace on the builder was removed after verification.
 
-### Not yet established
+### Not established in M0-F
 
-- **The ISO has NOT been boot-qualified.** UEFI boot has not been proven and
-  no automated boot smoke test has run.
+- At the end of M0-F the ISO had not been booted; boot qualification
+  followed in M0-G (below).
 - **A reproducible clean rebuild has NOT been proven.**
 - GRUB EFI with Secure Boot disabled remains an M0 pipeline choice, not the
   product boot architecture (P-001, P-006 open).
+
+## Boot qualification of the first ISO (M0-G)
+
+On 2026-10-08 the M0-F ISO (`lubarchy-m0-amd64.hybrid.iso`, SHA-256
+`5aad5602cf6276f1303d4a69199ac3c9fdf39297f603127d5f87d188bb289f60`) was
+re-verified against its retained SHA-256 and SHA-512 manifests and tested
+without modification. Test methods are described in
+[testing.md](testing.md#m0-boot-testing).
+
+| Test | Result |
+| --- | --- |
+| UEFI optical boot (Q35, OVMF without Secure Boot, 2 vCPU, 2048 MiB, no disk, no network, read-only CD-ROM) | **PASS** |
+| Automated serial live-payload smoke (`tests/iso-boot-smoke.sh`) | **PASS** in 8 s (limit 180 s) |
+
+UEFI optical boot: OVMF booted the El Torito EFI entry, the ISO's GRUB EFI
+menu appeared, the default "Live system (amd64)" entry started kernel
+`6.12.111+deb13-amd64`, live-boot mounted the ISO (`/dev/sr0`) as the live
+medium and the SquashFS root, and the console reached the autologin shell
+about 15 seconds after the entry was selected, well within 240 seconds. systemd
+reported `running`; the only block devices were the CD-ROM and the SquashFS
+loop device.
+
+Automated smoke: with the kernel and initrd extracted from the same ISO and
+the ISO attached read-only, the serial console showed the Debian 13 systemd
+banner, `multi-user.target` and a ttyS0 login prompt. Negative checks confirmed
+the test fails on a wrong checksum and on a missing live filesystem.
+
+Findings:
+
+- The GRUB menu has **no timeout**: the default entry is highlighted but GRUB
+  waits for a key press, so unattended UEFI boot stops at the menu. The test
+  selected the default entry with a single Enter.
+- The image has no serial console configuration (GRUB uses `gfxterm`; no
+  `console=ttyS0`); the serial smoke test adds it on the command line only.
+
+**USB/removable-media boot: NOT QUALIFIED.** The ISO has no MBR boot signature,
+no GPT header and an empty system area; with `grub-efi` as the only boot
+loader it provides El Torito EFI boot for optical media only. Whether it boots
+when written to a USB device is not established, and it must not be described
+as USB-bootable. This remains an open M0 item.
+
+Also not yet established: a reproducible clean rebuild.
