@@ -35,8 +35,8 @@ configuration before adding desktop or installer complexity.
 
 - [ ] Fresh public repository with governance baseline
 - [x] Clean Debian builder (M0-D; see [build.md](build.md))
-- [ ] Documented build prerequisites
-- [ ] Committed `live-build` configuration
+- [x] Documented build prerequisites (builder and live-build tooling; see [build.md](build.md))
+- [x] Committed `live-build` configuration (M0-E; validated, not yet built)
 - [ ] Minimal ISO builds
 - [ ] Checksum and package manifest
 - [ ] Successful UEFI QEMU/KVM boot
@@ -55,12 +55,17 @@ An item is checked only when evidence exists and the CTO has reviewed it.
 | M0-B | Explicit local repository binding | PASS |
 | M0-C | Repository/governance baseline | PASS |
 | M0-D | Clean Debian 13 builder environment | PASS |
+| M0-E | live-build tooling and source-controlled configuration | PASS |
 
 - M0-C — repository/governance baseline: **PASS** (CTO-reviewed), commit
   `c0a665985f54de33d813ea1bf62794e7170299be`.
 - M0-D — clean Debian builder: **PASS**. `lubarchy-builder` on
   `qemu:///system` is established and qualified (2026-10-08); measured
-  baseline in [build.md](build.md). `live-build` is not yet installed.
+  baseline in [build.md](build.md).
+- M0-E — live-build tooling and configuration: **PASS**. `live-build
+  1:20250505+deb13u1` from Debian trixie `main` is installed on the builder;
+  the M0 configuration lives in `build/live` and passes
+  `tests/live-build-config.sh` on the builder. No ISO has been built.
 
 A step's status is updated only after its execution has been validated and
 reviewed by the CTO.
@@ -97,7 +102,6 @@ not be treated as decided:
 
 ## Not implemented
 
-- `live-build` configuration
 - Minimal LUBARCHY ISO
 - CI
 - Automated boot smoke test
@@ -124,8 +128,9 @@ not be treated as decided:
 
 ## Immediate next action
 
-Install and qualify Debian Stable live-build tooling and establish the minimal
-source-controlled live-build configuration.
+Build the first minimal LUBARCHY ISO from the validated M0 live-build
+configuration, generate initial artifact metadata/checksums, and inspect the
+build result before VM boot qualification.
 
 ## PASS rule
 

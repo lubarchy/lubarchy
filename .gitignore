@@ -16,8 +16,23 @@
 *.qcow2
 
 # Local generated output
-/build/
 /dist/
 /out/
 /tmp/
 /.cache/
+
+# live-build generated state under build/live (source configuration stays tracked)
+/build/live/config/binary
+/build/live/config/bootstrap
+/build/live/config/chroot
+/build/live/config/common
+/build/live/config/source
+/build/live/build.log
+/build/live/.build/
+/build/live/cache/
+/build/live/chroot/
+/build/live/binary/
+/build/live/source/
+/build/live/chroot.files
+/build/live/chroot.packages.*
+/build/live/lubarchy-m0-*

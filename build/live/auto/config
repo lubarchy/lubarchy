@@ -1,0 +1,47 @@
+#!/bin/sh
+# LUBARCHY M0 live-build configuration (authoritative).
+#
+# M0 pipeline-qualification artifact only: GRUB EFI with Secure Boot disabled
+# and no Debian Installer. These settings do not resolve product decisions
+# P-001 (boot architecture), P-004 (installer) or P-006 (Secure Boot).
+set -eu
+
+lb config noauto \
+	--ignore-system-defaults \
+	--mode debian \
+	--distribution trixie \
+	--architecture amd64 \
+	--system live \
+	--binary-image iso-hybrid \
+	--archive-areas main \
+	--apt-secure true \
+	--apt-source-archives false \
+	--backports false \
+	--security true \
+	--updates true \
+	--debian-installer none \
+	--firmware-binary false \
+	--firmware-chroot false \
+	--source false \
+	--bootloaders grub-efi \
+	--uefi-secure-boot disable \
+	--memtest none \
+	--linux-flavours amd64 \
+	--interactive false \
+	--utc-time true \
+	--zsync false \
+	--mirror-bootstrap https://deb.debian.org/debian/ \
+	--mirror-chroot https://deb.debian.org/debian/ \
+	--mirror-chroot-security https://security.debian.org/debian-security/ \
+	--mirror-binary https://deb.debian.org/debian/ \
+	--mirror-binary-security https://security.debian.org/debian-security/ \
+	--parent-mirror-bootstrap https://deb.debian.org/debian/ \
+	--parent-mirror-chroot https://deb.debian.org/debian/ \
+	--parent-mirror-chroot-security https://security.debian.org/debian-security/ \
+	--parent-mirror-binary https://deb.debian.org/debian/ \
+	--parent-mirror-binary-security https://security.debian.org/debian-security/ \
+	--image-name lubarchy-m0 \
+	--iso-application "LUBARCHY M0" \
+	--iso-publisher "LUBARCHY; https://lubarchy.com" \
+	--iso-volume LUBARCHY_M0 \
+	"${@}"

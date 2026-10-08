@@ -133,7 +133,8 @@ Intentionally installed:
 
 Intentionally **not** installed:
 
-- `live-build` (installed and qualified in a later, separate M0 step)
+- `live-build` (not part of the M0-D baseline; installed in M0-E, see
+  [live-build tooling and configuration](#live-build-tooling-and-configuration-m0-e))
 - desktop environments, Xorg, Wayland compositors, display managers
 - Flatpak, Podman, Docker, development toolchains, LUBARCHY packages
 
@@ -258,3 +259,84 @@ legacy artifact was reused.
   `C.UTF-8` during late configuration.
 - The guest IP address is assigned by DHCP and may change.
 - No snapshot of the baseline exists yet.
+
+## live-build tooling and configuration (M0-E)
+
+### Tooling
+
+| Item | Value |
+| --- | --- |
+| Package | `live-build 1:20250505+deb13u1` (`lb --version`: `20250505+deb13u1`) |
+| Origin | `http://deb.debian.org/debian trixie/main` |
+| Installed with | `apt-get install live-build`, normal Recommends policy |
+| Transaction | 14 new packages, 0 upgraded, 0 removed, no authentication warnings |
+
+New packages: `live-build`, `debootstrap`, `arch-test`, `distro-info`,
+`cryptsetup`, `cryptsetup-bin`, `libcryptsetup12`, `libcurl4t64`,
+`systemd-container`, `libnss-mymachines`, `live-boot-doc`, `live-config-doc`,
+`live-manual-html` (all `trixie/main`) and `rsync` (`trixie-security/main`).
+The builder's APT sources were unchanged and no non-free, contrib or foreign
+package was installed. `live-boot` and `live-config` are not installed on the
+builder; they are only needed inside the image.
+
+### Source-controlled configuration
+
+The image is described in Git under `build/live`, using live-build's
+auto-script model:
+
+| File | Role |
+| --- | --- |
+| `build/live/auto/config` | The single authoritative `lb config noauto` invocation |
+| `build/live/auto/clean` | `lb clean noauto --purge`, then removes the generated `config/{binary,bootstrap,chroot,common,source}` and `build.log` |
+| `build/live/auto/build` | `lb build noauto … \| tee build.log` under Bash `pipefail` |
+| `tests/live-build-config.sh` | Configuration gate (see below) |
+
+Auto scripts make every `lb config` run reproduce the same configuration from
+Git, instead of relying on state left in a working directory. The
+configuration uses `--ignore-system-defaults`, so `/etc/live/build.conf` and
+`/etc/live/build/*` cannot influence it.
+
+`lb config` also generates working files in `build/live` (the variable files
+above, `.build/`, `local/bin`, empty `config/*` directories, default hook
+symlinks under `config/hooks/` and `config/package-lists/live.list.chroot`).
+These are regenerated on every run and are not committed.
+
+### M0 configuration
+
+| Setting | Value |
+| --- | --- |
+| Mode / distribution / architecture | `debian` / `trixie` / `amd64` |
+| System / image type | `live` / `iso-hybrid` |
+| Archive areas | `main` only |
+| Security / updates / backports / proposed-updates | enabled / enabled / disabled / disabled |
+| APT verification / source entries in image | enabled / disabled |
+| Debian Installer | `none` |
+| Firmware in binary / chroot | disabled / disabled |
+| Source image | disabled |
+| Boot loader | `grub-efi` only (no BIOS boot loader) |
+| UEFI Secure Boot | `disable` |
+| Memtest / zsync / interactive | none / disabled / disabled |
+| Kernel flavour / UTC time | `amd64` / enabled |
+| Mirrors | `https://deb.debian.org/debian/`, security `https://security.debian.org/debian-security/` (bootstrap, chroot, binary and parent mirrors) |
+| Image identity | name `lubarchy-m0`, application `LUBARCHY M0`, publisher `LUBARCHY; https://lubarchy.com`, volume `LUBARCHY_M0` |
+
+**GRUB EFI with Secure Boot disabled and the absence of an installer are M0
+pipeline-qualification choices only.** They do not resolve P-001 (boot
+architecture), P-004 (installer technology) or P-006 (Secure Boot); see
+[decisions.md](decisions.md).
+
+### Validation
+
+Run inside the builder from a checkout:
+
+```sh
+tests/live-build-config.sh
+```
+
+The gate checks auto-script syntax, generates the configuration through
+`auto/config`, runs `lb config noauto --validate`, and asserts 42 values from
+`lb config noauto --dump` plus the absence of contrib/non-free areas. It
+refuses any `lb build`, needs no root, does not touch libvirt, and removes
+only the files it generated, including on failure.
+
+**No LUBARCHY ISO has been built in M0-E.**

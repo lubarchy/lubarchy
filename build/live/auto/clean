@@ -1,0 +1,10 @@
+#!/bin/sh
+# LUBARCHY live-build clean: removes build state and generated configuration
+# variable files. Source-controlled config subdirectories (package lists,
+# hooks, includes) are kept.
+set -eu
+
+lb clean noauto --purge "${@}"
+
+rm -f config/binary config/bootstrap config/chroot config/common config/source
+rm -f build.log

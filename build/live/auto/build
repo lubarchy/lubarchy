@@ -1,0 +1,6 @@
+#!/bin/bash
+# LUBARCHY live-build build wrapper. Bash with pipefail so a failing
+# "lb build" cannot be hidden by tee.
+set -euo pipefail
+
+lb build noauto "${@}" 2>&1 | tee build.log
