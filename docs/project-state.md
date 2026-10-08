@@ -37,8 +37,8 @@ configuration before adding desktop or installer complexity.
 - [x] Clean Debian builder (M0-D; see [build.md](build.md))
 - [x] Documented build prerequisites (builder and live-build tooling; see [build.md](build.md))
 - [x] Committed `live-build` configuration (M0-E; validated, not yet built)
-- [ ] Minimal ISO builds
-- [ ] Checksum and package manifest
+- [x] Minimal ISO builds (M0-F; first build, not yet boot-qualified)
+- [x] Checksum and package manifest (M0-F; initial artifact metadata)
 - [ ] Successful UEFI QEMU/KVM boot
 - [ ] Automated boot smoke test
 - [ ] Clean rebuild succeeds
@@ -56,6 +56,7 @@ An item is checked only when evidence exists and the CTO has reviewed it.
 | M0-C | Repository/governance baseline | PASS |
 | M0-D | Clean Debian 13 builder environment | PASS |
 | M0-E | live-build tooling and source-controlled configuration | PASS |
+| M0-F | First minimal ISO build and artifact capture | PASS |
 
 - M0-C — repository/governance baseline: **PASS** (CTO-reviewed), commit
   `c0a665985f54de33d813ea1bf62794e7170299be`.
@@ -65,7 +66,11 @@ An item is checked only when evidence exists and the CTO has reviewed it.
 - M0-E — live-build tooling and configuration: **PASS**. `live-build
   1:20250505+deb13u1` from Debian trixie `main` is installed on the builder;
   the M0 configuration lives in `build/live` and passes
-  `tests/live-build-config.sh` on the builder. No ISO has been built.
+  `tests/live-build-config.sh` on the builder.
+- M0-F — first minimal ISO: **PASS**. `lubarchy-m0-amd64.hybrid.iso` was built
+  from `a7d1e9c10df6fbe3d2a9a30e6bb3378dcabf1073`, statically inspected,
+  checksummed and retained outside Git (see [build.md](build.md)). It has
+  **not** been booted.
 
 A step's status is updated only after its execution has been validated and
 reviewed by the CTO.
@@ -102,7 +107,6 @@ not be treated as decided:
 
 ## Not implemented
 
-- Minimal LUBARCHY ISO
 - CI
 - Automated boot smoke test
 - LUBARCHY package repository
@@ -128,9 +132,8 @@ not be treated as decided:
 
 ## Immediate next action
 
-Build the first minimal LUBARCHY ISO from the validated M0 live-build
-configuration, generate initial artifact metadata/checksums, and inspect the
-build result before VM boot qualification.
+Boot the first M0 ISO in a fresh isolated UEFI KVM/QEMU test VM and establish
+the automated serial boot smoke-test baseline.
 
 ## PASS rule
 

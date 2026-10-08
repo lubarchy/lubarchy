@@ -340,3 +340,78 @@ refuses any `lb build`, needs no root, does not touch libvirt, and removes
 only the files it generated, including on failure.
 
 **No LUBARCHY ISO has been built in M0-E.**
+
+## First M0 ISO build (M0-F)
+
+The first image was built on 2026-10-08 from the exact committed
+configuration, transferred to the builder as a verified Git bundle.
+
+| Item | Value |
+| --- | --- |
+| Source commit | `a7d1e9c10df6fbe3d2a9a30e6bb3378dcabf1073` (tree `57c8cc51d47df0a001775a0765bde043a06ef754`) |
+| Builder tooling | `live-build 1:20250505+deb13u1`, `debootstrap 1.0.141` |
+| Entry point | `sudo ./auto/build` in `build/live`, after `tests/live-build-config.sh` passed |
+| Build time (UTC) | 2026-10-08T11:19:14Z to 11:27:07Z (473 s), exit status 0 |
+| Build log | No `E:` lines; no APT signature or authentication errors |
+| ISO | `lubarchy-m0-amd64.hybrid.iso`, 330346496 bytes |
+| SHA-256 | `5aad5602cf6276f1303d4a69199ac3c9fdf39297f603127d5f87d188bb289f60` |
+| SHA-512 | `7d7d098a3808cd0251a4b3c0ac878fc3e758488b27edd42a58ae64600d99470be987d82dda2812ac7676d1da8618720e61ed52f6e15dcff8de351463510d43e1` |
+| Packages | 180 (kernel `linux-image-6.12.111+deb13-amd64 6.12.111-1`) |
+
+### Static inspection
+
+The ISO was inspected without booting it:
+
+- ISO 9660 with Rock Ridge and Joliet; volume `LUBARCHY_M0`, application
+  `LUBARCHY M0`, publisher `LUBARCHY; https://lubarchy.com`.
+- Live payload: `/live/filesystem.squashfs`, `/live/vmlinuz-6.12.111+deb13-amd64`,
+  `/live/initrd.img-6.12.111+deb13-amd64`, `/live/filesystem.packages`.
+- EFI material: El Torito boot catalog with an EFI (platform `0xEF`) entry,
+  `/EFI/boot/bootx64.efi`, `/boot/grub/efi.img`, `/boot/grub/grub.cfg`,
+  `/boot/grub/x86_64-efi/`.
+- No Debian Installer payload.
+- The image has no MBR boot signature and no GPT header: with `grub-efi` as
+  the only boot loader, it carries El Torito EFI boot only. USB-stick boot is
+  not established.
+- The package manifest embedded in the ISO is identical to live-build's
+  manifest.
+
+### Package-source policy
+
+The live system's APT sources are `trixie`, `trixie-security` and
+`trixie-updates`, component `main`, from `https://deb.debian.org/debian/` and
+`https://security.debian.org/debian-security/`, with `deb-src` entries
+commented out. The build fetched only from those two hosts. No contrib,
+non-free, non-free-firmware, firmware, microcode, desktop, display-manager or
+installer package is present.
+
+### Generated live-build defaults
+
+`lb config` generated 26 default hook symlinks (all into the installed
+live-build package) and `config/package-lists/live.list.chroot` (`live-boot`,
+`live-config`, `live-config-systemd`, `systemd-sysv`), identical to M0-E.
+They were used as transient build state only and were not committed.
+
+### Retained artifacts
+
+Kept outside Git and outside the libvirt storage pools, with `SHA256SUMS` and
+`SHA512SUMS` verified on the builder and again after transfer to the
+orchestration host:
+
+- the ISO;
+- `build.log`, the pre-build gate log and the `auto/config` output;
+- `packages.txt` and live-build's raw manifests (`*.packages`, `*.contents`,
+  `*.files`, `chroot.packages.*`);
+- `iso-contents.txt` and `iso-meta.txt` (static inspection);
+- `config-dump.txt` and `generated-defaults.txt`;
+- `build-info.txt` (provenance).
+
+The temporary build workspace on the builder was removed after verification.
+
+### Not yet established
+
+- **The ISO has NOT been boot-qualified.** UEFI boot has not been proven and
+  no automated boot smoke test has run.
+- **A reproducible clean rebuild has NOT been proven.**
+- GRUB EFI with Secure Boot disabled remains an M0 pipeline choice, not the
+  product boot architecture (P-001, P-006 open).
