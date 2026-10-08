@@ -4,6 +4,10 @@
 # M0 pipeline-qualification artifact only: GRUB EFI with Secure Boot disabled
 # and no Debian Installer. These settings do not resolve product decisions
 # P-001 (boot architecture), P-004 (installer) or P-006 (Secure Boot).
+#
+# grub-pc is included only because live-build's iso-hybrid path writes the
+# MBR system area and the GPT/EFI partition when a BIOS boot loader is set.
+# UEFI via grub-efi is the M0 boot path; BIOS boot is not an M0 requirement.
 set -eu
 
 lb config noauto \
@@ -23,7 +27,7 @@ lb config noauto \
 	--firmware-binary false \
 	--firmware-chroot false \
 	--source false \
-	--bootloaders grub-efi \
+	--bootloaders "grub-pc grub-efi" \
 	--uefi-secure-boot disable \
 	--memtest none \
 	--linux-flavours amd64 \

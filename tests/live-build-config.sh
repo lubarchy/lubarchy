@@ -111,9 +111,9 @@ assert_var LB_DEBIAN_INSTALLER "none"
 assert_var LB_FIRMWARE_BINARY "false"
 assert_var LB_FIRMWARE_CHROOT "false"
 assert_var LB_SOURCE "false"
-assert_var LB_BOOTLOADERS "grub-efi"
+assert_var LB_BOOTLOADERS "grub-pc grub-efi"
+assert_var LB_BOOTLOADER_BIOS "grub-pc"
 assert_var LB_BOOTLOADER_EFI "grub-efi"
-assert_var LB_BOOTLOADER_BIOS ""
 assert_var LB_UEFI_SECURE_BOOT "disable"
 assert_var LB_MEMTEST "none"
 assert_var LB_LINUX_FLAVOURS_WITH_ARCH "amd64"
@@ -140,6 +140,22 @@ if grep -E '^config/[a-z]+: LB_[A-Z_]*ARCHIVE_AREAS=' "${DUMP}" |
 	fail "contrib/non-free archive area configured"
 fi
 echo "ok: no contrib/non-free archive areas"
+
+# Project GRUB menu override: the installed live-build template plus only the
+# menu timeout lines.
+GRUB_CFG="${LIVE_DIR}/config/bootloaders/grub-pc/config.cfg"
+GRUB_TEMPLATE="/usr/share/live/build/bootloaders/grub-pc/config.cfg"
+[ -f "${GRUB_CFG}" ] || fail "missing ${GRUB_CFG#"${REPO_ROOT}"/}"
+for line in "set default=0" "set timeout_style=menu" "set timeout=5"; do
+	[ "$(grep -cxF "${line}" "${GRUB_CFG}")" -eq 1 ] || fail "GRUB config.cfg must contain '${line}' exactly once"
+done
+if [ -f "${GRUB_TEMPLATE}" ]; then
+	grep -vxE 'set timeout_style=menu|set timeout=5' "${GRUB_CFG}" | cmp -s - "${GRUB_TEMPLATE}" ||
+		fail "GRUB config.cfg differs from the installed template beyond the timeout lines"
+	echo "ok: GRUB config.cfg = installed template + 5-second menu timeout"
+else
+	fail "installed GRUB template not found: ${GRUB_TEMPLATE}"
+fi
 
 for d in chroot binary cache; do
 	[ ! -e "${LIVE_DIR}/${d}" ] || fail "build output ${d} exists"
