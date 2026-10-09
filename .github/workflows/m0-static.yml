@@ -67,4 +67,13 @@ jobs:
 
       - name: Run static gates
         shell: bash
-        run: tests/run-static.sh
+        # The job runs as root but the workspace is owned by the runner user;
+        # actions/checkout trusts it only in a temporary HOME. Trust exactly
+        # this workspace for this step's git processes, writing no config file.
+        # GITHUB_WORKSPACE is the in-container path (github.workspace is not).
+        run: |
+          set -euo pipefail
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0=safe.directory
+          export GIT_CONFIG_VALUE_0="${GITHUB_WORKSPACE}"
+          tests/run-static.sh
