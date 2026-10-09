@@ -169,6 +169,33 @@ if grep -E '^config/[a-z]+: LB_[A-Z_]*ARCHIVE_AREAS=' "${DUMP}" |
 fi
 echo "ok: no contrib/non-free archive areas"
 
+# Reproducibility: APT's regenerable binary caches embed wall-clock time.
+# live-build's binary_rootfs passes config/rootfs/excludes to mksquashfs
+# (-wildcards -ef) for SquashFS images built in a chroot, so they are left out
+# of the live root at SquashFS creation time. Nothing else may be excluded.
+assert_var LB_CHROOT_FILESYSTEM "squashfs"
+assert_var LB_BUILD_WITH_CHROOT "true"
+EXCLUDES="${LIVE_DIR}/config/rootfs/excludes"
+if [ ! -f "${EXCLUDES}" ] || [ -L "${EXCLUDES}" ]; then
+	fail "config/rootfs/excludes must be a regular file"
+fi
+git -C "${REPO_ROOT}" ls-files --error-unmatch -- "${EXCLUDES}" > /dev/null 2>&1 ||
+	fail "config/rootfs/excludes is not tracked"
+expected_excludes=$'var/cache/apt/pkgcache.bin\nvar/cache/apt/srcpkgcache.bin'
+[ "$(cat "${EXCLUDES}")" = "${expected_excludes}" ] ||
+	fail "config/rootfs/excludes must list exactly var/cache/apt/pkgcache.bin and var/cache/apt/srcpkgcache.bin"
+if grep -qE '[][*?]|^\.\.\.|^/' "${EXCLUDES}"; then
+	fail "config/rootfs/excludes must not use wildcards, '...' or absolute paths"
+fi
+if grep -qE 'var/lib/apt|var/cache/apt/archives|etc/apt' "${EXCLUDES}"; then
+	fail "config/rootfs/excludes must not exclude APT lists, archives or configuration"
+fi
+if [ -d "${LIVE_DIR}/config/hooks" ] &&
+	git -C "${REPO_ROOT}" grep -lE 'pkgcache|srcpkgcache' -- "${LIVE_DIR}/config/hooks" > /dev/null 2>&1; then
+	fail "APT cache handling belongs in config/rootfs/excludes, not in a chroot hook"
+fi
+echo "ok: config/rootfs/excludes = APT binary caches only (pkgcache.bin, srcpkgcache.bin)"
+
 # Project GRUB menu override: the installed live-build template plus only the
 # menu timeout lines.
 GRUB_CFG="${LIVE_DIR}/config/bootloaders/grub-pc/config.cfg"
