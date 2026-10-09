@@ -42,8 +42,8 @@ configuration before adding desktop or installer complexity.
 - [x] Successful UEFI QEMU/KVM boot (M0-G; optical/El Torito EFI)
 - [x] Automated boot smoke test (M0-G; `tests/iso-boot-smoke.sh`)
 - [x] Virtual UEFI removable-media/hybrid qualification (M0-H; OVMF USB mass-storage, not physical hardware)
-- [ ] Clean rebuild succeeds
-- [ ] Lint/CI baseline passes
+- [x] Clean rebuild succeeds (M0-I; bit-for-bit reproducible under identical Debian repository inputs)
+- [ ] Lint/CI baseline passes (local static gates PASS in M0-I; the CI workflow is defined but not yet run on GitHub)
 - [ ] Build documentation accepted
 
 An item is checked only when evidence exists and the CTO has reviewed it.
@@ -60,6 +60,7 @@ An item is checked only when evidence exists and the CTO has reviewed it.
 | M0-F | First minimal ISO build and artifact capture | PASS |
 | M0-G | UEFI optical boot qualification and serial smoke baseline | PASS |
 | M0-H | Hybrid removable-media and unattended UEFI qualification | PASS |
+| M0-I | Deterministic build gates and clean-rebuild reproducibility | PASS |
 
 - M0-C — repository/governance baseline: **PASS** (CTO-reviewed), commit
   `c0a665985f54de33d813ea1bf62794e7170299be`.
@@ -83,6 +84,21 @@ An item is checked only when evidence exists and the CTO has reviewed it.
   structure check, unattended UEFI optical boot, UEFI removable-media boot
   from virtual USB mass-storage, and the serial smoke test. **Physical USB
   real-hardware boot: NOT YET QUALIFIED.**
+- M0-I — deterministic build and reproducibility: **PASS**. The first A/B
+  rebuild of `47fac2aafd6b8e4d117335b571fdc6f1a42d2046` was NO-GO: APT's
+  `/var/cache/apt/pkgcache.bin` embedded build time. A chroot-hook remedy was
+  investigated and rejected (not deployed). The fix,
+  `build/live/config/rootfs/excludes` (APT binary caches only), was committed
+  as `2a2eda4b1c209be7dd5eb668e46402a181f308f6`. Two independent builds of
+  that commit (SOURCE_DATE_EPOCH `1791538744`, the commit time) produced
+  byte-identical ISOs, SHA-256
+  `d697b42871477c5ac5e5055df3472986a55ca9f6216b5110d1cc2b11a2c33db3`, under
+  identical, signature-verified Debian repository inputs. Both passed the
+  hybrid structure check and the serial smoke test. Repository lint,
+  ShellCheck (0 findings) and the live-build configuration gate PASS. Details
+  are in [build.md](build.md). **The pinned static CI workflow is defined but
+  NOT YET RUN ON GITHUB.** Historical reproducibility against moving mirrors
+  is not established.
 
 A step's status is updated only after its execution has been validated and
 reviewed by the CTO.
@@ -119,9 +135,8 @@ not be treated as decided:
 
 ## Not implemented
 
-- CI
-- Repository lint and shellcheck gates
-- Clean rebuild/reproducibility comparison
+- CI execution (the static workflow is defined but has not run on GitHub)
+- Historical reproducibility (rebuilds against archived repository snapshots)
 - Physical USB boot on real hardware (real-hardware qualification)
 - LUBARCHY package repository
 - Desktop stack
@@ -146,9 +161,9 @@ not be treated as decided:
 
 ## Immediate next action
 
-Perform an independent clean rebuild from the exact qualified M0-H source
-commit, compare artifacts and reproducibility-relevant metadata, establish
-repository lint/shellcheck/CI gates, and review final M0 acceptance.
+Publish the reviewed local baseline to GitHub, execute and verify the pinned
+M0 static CI workflow, perform final repository/documentation review, and
+decide M0 acceptance.
 
 ## PASS rule
 

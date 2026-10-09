@@ -63,8 +63,9 @@ A clean rebuild must succeed from the same commit.
 
 | Gate | Status |
 | --- | --- |
-| Repository lint | Not implemented |
-| shellcheck | Not implemented |
+| Repository lint | `tests/repo-lint.sh` (M0-I) |
+| shellcheck | Every tracked shell script, via `tests/run-static.sh` (M0-I) |
+| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I) |
 | `live-build` configuration validation | `tests/live-build-config.sh` (M0-E) |
 | ISO build | Manual, from the committed configuration (M0-F) |
 | Checksum/manifest | Produced with the first build (M0-F) |
@@ -73,9 +74,37 @@ A clean rebuild must succeed from the same commit.
 | Hybrid ISO structure | `tests/iso-hybrid-structure.sh` (M0-H) |
 | UEFI removable-media boot | Virtual USB mass-storage boot test, operator-run (M0-H) |
 | Physical USB boot | Not qualified (real-hardware qualification) |
-| Clean rebuild comparison | Not implemented |
+| Clean rebuild comparison | Operator-run A/B rebuild with repository-input snapshots (M0-I): bit-for-bit reproducible under identical Debian repository inputs |
 
-No gate runs in CI yet.
+The static gates are defined as a GitHub Actions workflow
+(`.github/workflows/m0-static.yml`, pinned `actions/checkout` commit and pinned
+`debian:trixie` image digest, `contents: read`). **The workflow has not yet
+been executed on GitHub**; the static gates have so far run only locally and on
+the builder.
+
+## Clean rebuild comparison
+
+Proves that the committed source produces the same ISO bytes when the Debian
+repository inputs are the same:
+
+1. Snapshot the signed `InRelease` files of `trixie`, `trixie-updates` and
+   `trixie-security`, verified against `debian-archive-keyring`.
+2. Build A from a fresh clone of the exact commit (`auto/config`, then
+   `auto/build`); `SOURCE_DATE_EPOCH` comes from the commit time.
+3. Snapshot the repository inputs again, run `auto/clean` and delete the
+   workspace.
+4. Snapshot again, then build B from a new fresh clone, then take a final
+   snapshot.
+5. All four snapshots must be identical; otherwise the result is classified
+   as repository input drift, not as non-reproducibility.
+6. Compare size, SHA-256, SHA-512, `cmp`, package manifests, ISO and SquashFS
+   path listings, payload hashes and the xorriso command line; classify every
+   remaining difference.
+
+Both ISOs must also pass the hybrid structure check and the serial smoke test.
+This does not prove historical reproducibility: the Debian mirrors move, and a
+later rebuild is expected to differ. See [build.md](build.md) for the M0-I
+result.
 
 ## M0 boot testing
 
