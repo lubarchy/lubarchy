@@ -45,13 +45,19 @@ while [ $# -gt 0 ]; do
 	*) usage ;;
 	esac
 done
-[ -n "${ISO}" ] && [ -n "${SHA256}" ] && [ -n "${KERNEL}" ] && [ -n "${INITRD}" ] || usage
+if [ -z "${ISO}" ] || [ -z "${SHA256}" ] || [ -z "${KERNEL}" ] || [ -z "${INITRD}" ]; then
+	usage
+fi
 [[ "${TIMEOUT}" =~ ^[0-9]+$ ]] || fail "--timeout must be a number of seconds"
 
-[ -r /dev/kvm ] && [ -w /dev/kvm ] || fail "KVM is not available (/dev/kvm)"
+if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then
+	fail "KVM is not available (/dev/kvm)"
+fi
 QEMU=$(command -v qemu-system-x86_64) || fail "qemu-system-x86_64 not found"
 
-[ -f "${ISO}" ] && [ ! -L "${ISO}" ] || fail "ISO is not a regular file: ${ISO}"
+if [ ! -f "${ISO}" ] || [ -L "${ISO}" ]; then
+	fail "ISO is not a regular file: ${ISO}"
+fi
 [ ! -w "${ISO}" ] || fail "ISO must be a read-only input (remove write permission): ${ISO}"
 for f in "${KERNEL}" "${INITRD}" ${GRUB_CFG:+"${GRUB_CFG}"}; do
 	[ -f "${f}" ] || fail "missing input: ${f}"
@@ -66,6 +72,8 @@ echo "ok: ISO SHA-256 ${actual}"
 if [ -n "${GRUB_CFG}" ]; then
 	params=$(awk '/^menuentry "Live system \(amd64\)"/{f=1} f && $1=="linux"{for(i=3;i<=NF;i++) printf "%s ", $i; exit}' "${GRUB_CFG}")
 	[ -n "${params}" ] || fail "default Live entry not found in ${GRUB_CFG}"
+	# The literal GRUB variable reference is removed, not expanded.
+	# shellcheck disable=SC2016
 	params=${params//'${iso_path}'/}
 else
 	params="boot=live components"

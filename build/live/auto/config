@@ -10,6 +10,10 @@
 # UEFI via grub-efi is the M0 boot path; BIOS boot is not an M0 requirement.
 set -eu
 
+# Deterministic SOURCE_DATE_EPOCH from the checked-out commit.
+# shellcheck source=build/live/auto/build-environment
+. ./auto/build-environment
+
 lb config noauto \
 	--ignore-system-defaults \
 	--mode debian \

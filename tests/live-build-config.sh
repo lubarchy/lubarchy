@@ -22,7 +22,35 @@ for f in config clean; do
 	sh -n "${LIVE_DIR}/auto/${f}" || fail "syntax error in auto/${f}"
 done
 bash -n "${LIVE_DIR}/auto/build" || fail "syntax error in auto/build"
+sh -n "${LIVE_DIR}/auto/build-environment" || fail "syntax error in auto/build-environment"
 echo "ok: auto script syntax"
+
+# Deterministic build epoch (auto/build-environment).
+for f in config build; do
+	grep -qxF '. ./auto/build-environment' "${LIVE_DIR}/auto/${f}" ||
+		fail "auto/${f} does not source auto/build-environment"
+done
+if grep -nwE 'date' "${LIVE_DIR}"/auto/*; then
+	fail "build entry points must not read the wall-clock time"
+fi
+HEAD_EPOCH=$(git -C "${REPO_ROOT}" show -s --format=%ct HEAD) ||
+	fail "not a Git checkout; the deterministic build epoch needs the HEAD commit"
+epoch_of() {
+	(cd "${LIVE_DIR}" && sh -c '. ./auto/build-environment > /dev/null && printf "%s" "${SOURCE_DATE_EPOCH}"')
+}
+derived=$(unset SOURCE_DATE_EPOCH; epoch_of) || fail "auto/build-environment failed"
+[ "${derived}" = "${HEAD_EPOCH}" ] ||
+	fail "derived SOURCE_DATE_EPOCH ${derived} != HEAD commit time ${HEAD_EPOCH}"
+echo "ok: SOURCE_DATE_EPOCH defaults to the HEAD commit time (${HEAD_EPOCH})"
+explicit=$(SOURCE_DATE_EPOCH=1234567890 epoch_of) || fail "valid explicit SOURCE_DATE_EPOCH rejected"
+[ "${explicit}" = "1234567890" ] || fail "explicit SOURCE_DATE_EPOCH not honoured (${explicit})"
+echo "ok: explicit SOURCE_DATE_EPOCH honoured"
+for bad in "" "abc" "-1" "12a" "1.5" " 1"; do
+	if (SOURCE_DATE_EPOCH="${bad}" epoch_of) > /dev/null 2>&1; then
+		fail "invalid SOURCE_DATE_EPOCH '${bad}' was accepted"
+	fi
+done
+echo "ok: invalid SOURCE_DATE_EPOCH values rejected"
 
 for f in binary bootstrap chroot common source; do
 	[ ! -e "${LIVE_DIR}/config/${f}" ] ||

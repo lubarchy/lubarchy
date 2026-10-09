@@ -1,0 +1,43 @@
+# shellcheck shell=sh
+# LUBARCHY deterministic build environment. Sourced by auto/config and
+# auto/build (current directory: build/live); not a live-build auto command.
+#
+# Exports SOURCE_DATE_EPOCH so every live-build stage uses one fixed time.
+# Without it live-build falls back to the current time. Default: the commit
+# timestamp of the checked-out Git HEAD. A caller-supplied value must be a
+# non-negative integer. The current wall-clock time is never used.
+
+_lubarchy_env_fail() {
+	echo "E: LUBARCHY build environment: $*" >&2
+	exit 1
+}
+
+if [ ! -f auto/build-environment ] || [ ! -f auto/config ]; then
+	_lubarchy_env_fail "must be sourced from build/live"
+fi
+_lubarchy_repo=$(cd ../.. && pwd -P)
+# auto/build runs as root in a checkout owned by the build user; trust exactly
+# this repository for these git calls instead of changing any Git config.
+_lubarchy_git() {
+	git -c safe.directory="${_lubarchy_repo}" -C "${_lubarchy_repo}" "$@"
+}
+[ "$(_lubarchy_git rev-parse --show-toplevel 2>/dev/null)" = "${_lubarchy_repo}" ] ||
+	_lubarchy_env_fail "not inside a Git checkout; exact builds need the source commit"
+_lubarchy_git rev-parse --verify --quiet 'HEAD^{commit}' > /dev/null ||
+	_lubarchy_env_fail "Git HEAD does not resolve to a commit"
+_lubarchy_git diff --quiet HEAD -- ||
+	_lubarchy_env_fail "tracked files differ from HEAD; build from an unmodified commit"
+
+if [ -z "${SOURCE_DATE_EPOCH+set}" ]; then
+	SOURCE_DATE_EPOCH=$(_lubarchy_git show -s --format=%ct HEAD) ||
+		_lubarchy_env_fail "cannot read the HEAD commit timestamp"
+fi
+case "${SOURCE_DATE_EPOCH}" in
+"" | *[!0-9]*)
+	_lubarchy_env_fail "SOURCE_DATE_EPOCH must be a non-negative integer, got '${SOURCE_DATE_EPOCH}'"
+	;;
+esac
+export SOURCE_DATE_EPOCH
+echo "I: SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH} (commit $(_lubarchy_git rev-parse HEAD))"
+unset _lubarchy_repo
+unset -f _lubarchy_git _lubarchy_env_fail

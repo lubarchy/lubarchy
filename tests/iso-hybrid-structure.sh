@@ -27,10 +27,15 @@ while [ $# -gt 0 ]; do
 	*) echo "usage: $0 --iso FILE --sha256 HEX [--report FILE]" >&2; exit 2 ;;
 	esac
 done
-[ -n "${ISO}" ] && [ -n "${SHA256}" ] || { echo "usage: $0 --iso FILE --sha256 HEX [--report FILE]" >&2; exit 2; }
+if [ -z "${ISO}" ] || [ -z "${SHA256}" ]; then
+	echo "usage: $0 --iso FILE --sha256 HEX [--report FILE]" >&2
+	exit 2
+fi
 
 command -v xorriso > /dev/null || fail "xorriso not found"
-[ -f "${ISO}" ] && [ ! -L "${ISO}" ] || fail "ISO is not a regular file: ${ISO}"
+if [ ! -f "${ISO}" ] || [ -L "${ISO}" ]; then
+	fail "ISO is not a regular file: ${ISO}"
+fi
 
 actual=$(sha256sum -- "${ISO}" | cut -d' ' -f1)
 [ "${actual}" = "${SHA256}" ] || fail "ISO SHA-256 mismatch: ${actual}"

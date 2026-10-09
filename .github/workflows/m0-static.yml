@@ -1,0 +1,70 @@
+# LUBARCHY M0 static quality gates (repository lint, ShellCheck, live-build
+# configuration). Static checks only: this workflow never builds an ISO, uses
+# no secrets, needs no privileges and publishes nothing.
+name: M0 static gates
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/m0-static.yml"
+      - ".gitignore"
+      - "build/**"
+      - "tests/**"
+      - "docs/**"
+      - "README.md"
+      - "CLAUDE.md"
+  pull_request:
+    paths:
+      - ".github/workflows/m0-static.yml"
+      - ".gitignore"
+      - "build/**"
+      - "tests/**"
+      - "docs/**"
+      - "README.md"
+      - "CLAUDE.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m0-static-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: Static gates (Debian 13 trixie)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    container:
+      # debian:trixie, image index digest resolved 2026-10-09
+      image: debian:trixie@sha256:913f6706df59a68922d1dd08f78c2476560a8d367897200a6005b00e5f67c2d5
+    steps:
+      - name: Verify Debian main-only package sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -h '^Components:' /etc/apt/sources.list.d/*.sources
+          if grep -hE '^Components:.*(contrib|non-free)' /etc/apt/sources.list.d/*.sources; then
+            echo "non-main component configured" >&2
+            exit 1
+          fi
+
+      - name: Install QA dependencies from Debian main
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            git ca-certificates shellcheck live-build
+          shellcheck --version
+          dpkg-query -W live-build shellcheck
+
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run static gates
+        shell: bash
+        run: tests/run-static.sh
