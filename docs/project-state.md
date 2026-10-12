@@ -36,7 +36,7 @@ later installation/configuration → later validation.
 
 | Step | Description | Status |
 | --- | --- | --- |
-| M1-A | Hardware contracts: inventory/rule/plan v1 schemas, rule model, resolution plan, fixture tests | Implemented locally; awaiting CTO review |
+| M1-A | Hardware contracts: inventory/rule/plan v1 schemas, rule model, resolution plan, fixture tests | Published (`91c5407`); GitHub CI green (run #4); awaiting CTO review |
 
 - M1-A — scope: JSON Schema Draft 2020-12 contracts
   `lubarchy.hardware.inventory/v1`, `lubarchy.hardware.rule/v1` and
@@ -232,8 +232,10 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-A (hardware contracts, local commit, not yet pushed or run
-in GitHub CI). M1-B — the live read-only hardware probe — has not started and
+CTO review of M1-A (hardware contracts, published as
+`91c54072cffe8ca84855904cc85ad7ffd7abac73`; GitHub Actions `Static gates`
+run #4, [38275430654](https://github.com/lubarchy/lubarchy/actions/runs/38275430654),
+passed all four gates on that commit; see [testing.md](testing.md)). M1-B — the live read-only hardware probe — has not started and
 waits for a CTO brief.
 
 ## PASS rule
