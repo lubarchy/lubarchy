@@ -36,9 +36,14 @@ later installation/configuration → later validation.
 
 | Step | Description | Status |
 | --- | --- | --- |
-| M1-A | Hardware contracts: inventory/rule/plan v1 schemas, rule model, resolution plan, fixture tests | Published (`91c5407`); GitHub CI green (run #4); awaiting CTO review |
+| M1-A | Hardware contracts: inventory/rule/plan v1 schemas, rule model, resolution plan, fixture tests | PASS (CTO accepted) |
+| M1-B | Live read-only hardware probe producing inventory v1 | Implemented locally; awaiting CTO review |
 
-- M1-A — scope: JSON Schema Draft 2020-12 contracts
+- M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
+  `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
+  `Static gates` run #4
+  ([38275430654](https://github.com/lubarchy/lubarchy/actions/runs/38275430654)),
+  which passed all four gates on that commit. Scope: JSON Schema Draft 2020-12 contracts
   `lubarchy.hardware.inventory/v1`, `lubarchy.hardware.rule/v1` and
   `lubarchy.hardware.plan/v1` under `hardware/schemas/`; selector, priority
   and conflict semantics; source-requirement representation (Debian `main`
@@ -52,8 +57,27 @@ later installation/configuration → later validation.
   documented in [hardware-enablement.md](hardware-enablement.md).
 - M1-A does **not** probe hardware, install or configure drivers or
   firmware, change APT sources or components, change the ISO package set, or
-  add production rules (`hardware/rules/` is empty). Live hardware detection
-  does not exist yet.
+  add production rules (`hardware/rules/` is empty).
+- M1-B — live read-only hardware probe: **implemented locally; awaiting CTO
+  review** (not PASS). `hardware/probe.py` (Python 3 standard library, no
+  root) observes the running system and prints one canonical
+  `lubarchy.hardware.inventory/v1` document: Debian architecture through
+  `dpkg --print-architecture`, the kernel release, allowlisted
+  `/proc/cpuinfo` fields, the firmware mode and the single standard
+  SecureBoot EFI variable, virtualization through `systemd-detect-virt`, and
+  PCI and USB devices from allowlisted sysfs attributes, with each modalias
+  cross-checked against udev's `MODALIAS` property for that device only. The
+  synthetic gate `tests/hardware-probe.py` is gate 5 of `tests/run-static.sh`
+  and of the CI workflow (not yet run on GitHub). Live qualification ran on
+  the builder VM only, unprivileged. Details:
+  [hardware-enablement.md](hardware-enablement.md),
+  [testing.md](testing.md).
+- M1-B does **not** resolve packages, use the test-only resolver, install or
+  configure anything, change APT sources, persist inventories, or run as a
+  service. A valid builder-VM inventory is not real-hardware qualification:
+  no physical Intel, AMD, NVIDIA, laptop, Wi-Fi, Bluetooth or USB hardware
+  has been probed.
+- M1-C has not started.
 
 ## M0 — Minimal reproducible ISO (closed)
 
@@ -209,8 +233,9 @@ not be treated as decided:
 - ISO builds in CI (CI runs static/configuration gates only)
 - LUBARCHY package repository
 - Desktop stack
-- Live hardware probe and production hardware resolver (M1-A defines the
-  contracts and a test-only reference resolver)
+- Production hardware resolver (M1-A defines the contracts and a test-only
+  reference resolver; M1-B adds only the read-only probe)
+- Inventory persistence and diagnostics
 - Production hardware compatibility rules and firmware/package mappings
 - Installer
 - Recovery implementation
@@ -232,11 +257,8 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-A (hardware contracts, published as
-`91c54072cffe8ca84855904cc85ad7ffd7abac73`; GitHub Actions `Static gates`
-run #4, [38275430654](https://github.com/lubarchy/lubarchy/actions/runs/38275430654),
-passed all four gates on that commit; see [testing.md](testing.md)). M1-B — the live read-only hardware probe — has not started and
-waits for a CTO brief.
+CTO review of M1-B (live read-only hardware probe, local commit, not yet
+pushed or run in GitHub CI). M1-C has not started and waits for a CTO brief.
 
 ## PASS rule
 

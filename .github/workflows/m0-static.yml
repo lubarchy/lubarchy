@@ -1,7 +1,9 @@
 # LUBARCHY static quality gates (repository lint, ShellCheck, live-build
-# configuration, hardware contracts). Static checks only: this workflow never
-# builds an ISO, probes no hardware, uses no secrets, needs no privileges and
-# publishes nothing. The file name is kept from M0 to avoid churn.
+# configuration, hardware contracts, hardware probe). Static checks only: this
+# workflow never builds an ISO and never probes the runner's hardware (the
+# probe gate uses synthetic sysfs trees only), uses no secrets, needs no
+# privileges and publishes nothing. The file name is kept from M0 to avoid
+# churn.
 name: Static gates
 
 on:

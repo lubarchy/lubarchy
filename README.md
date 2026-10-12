@@ -19,7 +19,8 @@ recoverable, and built entirely from version-controlled configuration.
 
 **M0 — Minimal reproducible ISO: PASS.** Current milestone: M1 — Hardware
 enablement foundation (in progress: hardware inventory, rule and plan
-contracts defined; no live hardware probing or package installation yet).
+contracts defined, and a read-only hardware probe; no package resolution or
+installation yet).
 
 LUBARCHY is in early bootstrap. **No installable LUBARCHY release exists yet.**
 Nothing described under product goals is available today; see

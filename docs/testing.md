@@ -65,7 +65,7 @@ A clean rebuild must succeed from the same commit.
 | --- | --- |
 | Repository lint | `tests/repo-lint.sh` (M0-I) |
 | shellcheck | Every tracked shell script, via `tests/run-static.sh` (M0-I) |
-| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I); hardware contracts added in M1-A |
+| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I); hardware contracts added in M1-A; hardware probe added in M1-B |
 | GitHub CI | `.github/workflows/m0-static.yml` runs `tests/run-static.sh` on GitHub Actions (green since M0-J) |
 | `live-build` configuration validation | `tests/live-build-config.sh` (M0-E) |
 | ISO build | Manual, from the committed configuration (M0-F) |
@@ -139,6 +139,67 @@ only). It checks:
 Details are in
 [`tests/fixtures/hardware/README.md`](../tests/fixtures/hardware/README.md).
 
+## M1 hardware probe gate
+
+`tests/hardware-probe.py` (gate 5 of `tests/run-static.sh`, since M1-B) tests
+the production probe `hardware/probe.py` against **synthetic** sysfs/procfs
+trees built in a private temporary directory, with a fake command runner. It
+never reads the host's `/sys` or `/proc`, never runs `dpkg`,
+`systemd-detect-virt` or `udevadm`, and never inspects CI runner hardware.
+It needs `python3` and `python3-jsonschema` from Debian `main` and no root.
+
+It checks architecture mapping and fail-closed unsupported architectures;
+missing tools; CPU parsing, omission of values that differ between logical
+CPUs, and microcode normalization; UEFI/BIOS detection and every Secure Boot
+variable case (enabled, disabled, absent, short, long, other value,
+unreadable, and that no other variable is consulted); virtualization order;
+PCI enumeration, ID normalization and malformed values; byte-for-byte
+modalias; driver/module links; bridge, xHCI and USB-hub parent topology;
+root-hub exclusion; active-configuration USB interfaces; locators beyond
+inventory v1; udev MODALIAS agreement, absence and mismatch; that the command
+checker rejects 20 non-approved command shapes (udev export, attribute walk,
+full queries, other properties, trigger/test/control, shells, relative or
+escaping paths); the read allowlists; that planted serial, product,
+manufacturer, descriptor, config and resource values and real sysfs paths
+never reach the output; the inventory-v1 contract and canonical bytes; that
+equivalent trees built in different orders and locations give identical
+output; the CLI contract; and that every value pattern in the probe equals
+the inventory-v1 schema. A source (AST) inspection proves standard-library
+imports only, exactly one `subprocess.run(argv, shell=False)` after the
+command check, read-only `open(..., "rb")`, no environment access, no
+file-write or process APIs other than the CLI's stdout/stderr, and no
+forbidden identity paths or udev operations.
+
+Mutation coverage (M1-B evidence): the gate fails for each injected defect —
+collecting USB `serial`, including USB root hubs, uppercasing PCI IDs, using
+a sysfs path as device identity, unsorted devices, accepting a udev/sysfs
+MODALIAS mismatch, `udevadm --export-db`, `shell=True`, a timestamp field,
+and a `hostname` field.
+
+### Builder-VM live qualification
+
+Operator-run on `lubarchy-builder`, never in CI:
+
+1. Preflight: Debian 13 amd64, `main`-only APT sources, no failed units,
+   and `python3`, `dpkg`, `udevadm`, `systemd-detect-virt` and
+   `python3-jsonschema` present. Nothing is installed.
+2. From a fresh clone of the exact commit, as the unprivileged `builder`
+   user (`id -u` ≠ 0, no sudo), run `hardware/probe.py` at least twice.
+3. Each run must exit 0 with empty stderr; the outputs must be
+   byte-identical canonical JSON with the same SHA-256 and pass inventory-v1
+   schema and semantic validation; no key may be privacy-sensitive.
+4. Sanity for the VM: `amd64`/`x86_64`, at least one PCI device,
+   virtualization `vm`, firmware `uefi`, Secure Boot not `enabled`.
+5. A Python audit hook records every file the probe opens and every command
+   it starts, proving read-only access, the allowlisted sources and that the
+   only udev queries were device-specific `MODALIAS` queries (counts and
+   agreement only; no udev database is captured).
+
+This proves only that the probe produces a valid, deterministic inventory
+for the builder VM. **It is not real-hardware qualification**: it says
+nothing about physical Intel, AMD or NVIDIA hardware, laptops, Wi-Fi,
+Bluetooth, physical USB devices, firmware availability or drivers.
+
 ## GitHub CI
 
 The static gates run as the GitHub Actions workflow
@@ -170,6 +231,9 @@ gate 4) were executed on GitHub by workflow `Static gates`, run ID
 (run #4), on commit `91c54072cffe8ca84855904cc85ad7ffd7abac73`. All four
 gates ran and passed: repository lint, ShellCheck, live-build configuration
 and hardware contracts.
+
+The M1-B change (gate 5, hardware probe, synthetic only) has **not yet run on
+GitHub**; the workflow needed no new dependency.
 
 ## Clean rebuild comparison
 

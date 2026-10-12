@@ -3,11 +3,12 @@
 Requirements for LUBARCHY hardware enablement. Hardware enablement is a
 first-class subsystem (D-008).
 
-**Status (M1-A):** the data and policy contracts — inventory v1, rule v1 and
-plan v1 — are defined and tested against synthetic fixtures. **No live
-hardware probe exists, and nothing installs, enables or configures anything.**
-Live probing, real compatibility mappings, installation, configuration and
-validation are later M1 work.
+**Status (M1-B):** the data and policy contracts — inventory v1, rule v1 and
+plan v1 — are defined and tested (M1-A). A read-only live probe,
+`hardware/probe.py`, turns a running system into an inventory v1 document
+(M1-B, see [Live probe](#live-probe-m1-b)). **Nothing resolves, installs,
+enables or configures anything yet.** Real compatibility mappings, package
+resolution, installation, configuration and validation are later M1 work.
 
 ## Goal
 
@@ -71,12 +72,13 @@ tooling, not the production component.
 Nothing turns an observation directly into a side effect. A plan is not an
 installation transaction: it contains no commands and performs nothing.
 
-### Observation sources (for the future probe)
+### Observation sources
 
 In priority order: `/sys` and udev device data; kernel modalias and the bound
 driver/module; PCI numeric IDs; USB numeric IDs; purpose-built utilities only
 as enrichment or diagnostics. Human-readable names are informational and are
-never used for matching. The probe is not implemented in M1-A.
+never used for matching. The M1-B probe implements the first four; it uses
+no enrichment utility.
 
 ### Inventory v1
 
@@ -254,6 +256,129 @@ normalized inventory, rule set and source policy produce byte-identical plan
 JSON. Collection time and similar evidence belong in a future outer
 diagnostic envelope, outside the deterministic input. No UUID is invented as
 hardware identity.
+
+## Live probe (M1-B)
+
+`hardware/probe.py` is the production probe: running Linux system →
+observed facts → canonical inventory v1. It is observation only. It resolves
+no package, does not use the test-only resolver, installs nothing, enables no
+package source, loads/unloads/binds no driver or module, causes no udev
+event, writes no file, sysfs attribute or EFI variable, changes no power,
+firmware, Secure Boot, disk or network setting, and runs as an ordinary user
+(no root, no sudo). It is not a service and persists nothing; persistence
+belongs to a later diagnostics component.
+
+```sh
+hardware/probe.py > inventory.json
+```
+
+It takes no options. On success it writes exactly one canonical JSON document
+followed by one newline to stdout, leaves stderr empty and exits 0. On
+failure stdout stays empty, stderr gets one line
+`probe: error: <code>: <message>`, and the exit status is 1. The message never
+contains an observed value. Error codes: `unsupported_architecture`,
+`tool_missing`, `tool_failed`, `cpu_unavailable`, `malformed_platform_fact`,
+`malformed_sysfs_fact`, `unsupported_topology`, `duplicate_device_id`,
+`invalid_topology`, `udev_sysfs_mismatch`, `contract_failure`. A missing tool
+stops the probe; it never installs anything.
+
+### Sources
+
+| Fact | Source |
+| --- | --- |
+| Debian architecture | `/usr/bin/dpkg --print-architecture`; only `amd64` is accepted |
+| CPU architecture, kernel release | `os.uname()`; only `x86_64` is accepted |
+| CPU | `/proc/cpuinfo`, fields `vendor_id`, `cpu family`, `model`, `stepping`, `model name`, `microcode` only |
+| Firmware mode | `uefi` if `/sys/firmware/efi` exists, else `bios` |
+| Secure Boot | The single variable `/sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c` |
+| Virtualization | `/usr/bin/systemd-detect-virt --container`, then `--vm` |
+| PCI | `/sys/bus/pci/devices/*`: `vendor`, `device`, `subsystem_vendor`, `subsystem_device`, `class`, `modalias`, and the `driver` and `driver/module` links |
+| USB devices | `/sys/bus/usb/devices/*`: `idVendor`, `idProduct`, `bDeviceClass`, `bDeviceSubClass`, `bDeviceProtocol`, `bConfigurationValue`, and the `driver` link |
+| USB interfaces | Interfaces of the active configuration: `bInterfaceNumber`, `bInterfaceClass`, `bInterfaceSubClass`, `bInterfaceProtocol`, `modalias`, and the `driver` and `driver/module` links |
+| MODALIAS cross-check | `/usr/bin/udevadm info --query=property --property=MODALIAS --value --path=<one device>` |
+
+Commands run only from those absolute paths, without a shell, as fixed argv
+lists, with a 10-second timeout and `LC_ALL=C`; a single checker rejects any
+other command shape before anything is started.
+
+### Privacy access boundary
+
+The probe reads through fixed allowlists: one per sysfs object type and one
+for `/proc/cpuinfo` fields. A read of any other attribute is refused in code,
+and there is no generic "read all properties" or sysfs/udev dump facility. The
+probe never reads `/etc/machine-id`, `/etc/hostname`, `/sys/class/dmi/id`,
+DMI/SMBIOS serials or UUIDs, network interfaces or their addresses, disk or
+NVMe identity, USB `serial`/`manufacturer`/`product` strings, USB
+`descriptors`/`bos_descriptors`, PCI configuration space or BARs, or the
+environment. Only values defined by inventory v1 leave the probe, and the
+inventory schema has no field for any privacy-sensitive identifier.
+
+### CPU
+
+The vendor is required and must be identical on every logical CPU. Family,
+model, stepping, model name and microcode revision are emitted only when every
+logical CPU reports the same well-formed value; otherwise they are left out,
+never guessed. The microcode revision is normalized to `0x` and lowercase hex
+without leading zeros. The model name stays informational.
+
+### Secure Boot and virtualization
+
+Secure Boot is `enabled` or `disabled` only when that exact variable reads as
+4 attribute bytes followed by a data byte of 1 or 0. A BIOS boot, an absent,
+unreadable, short, long or other-valued variable gives `unknown`. No other EFI
+variable is read and efivarfs is never mounted or written.
+
+Virtualization is `container` if `systemd-detect-virt --container` reports
+one, otherwise `vm` if `--vm` reports one, otherwise `none`. The technology
+identifier must fit inventory v1. DMI strings are never used.
+
+### PCI and USB
+
+Each `/sys/bus/pci/devices` entry becomes a device with id
+`pci:<domain:bus:device.function>`. IDs are normalized to fixed-width
+lowercase hex; a missing required attribute or a value that does not have the
+kernel's exact form fails the probe. The modalias is kept byte-for-byte.
+
+USB devices whose name is a topology locator (`<bus>-<port>[.<port>...]`)
+become devices with id `usb:<locator>`. Root hubs (`usbN`) and their
+interfaces are not inventory devices; the PCI host controller represents
+them. Only interfaces named `<device>:<bConfigurationValue>.<n>` — the active
+configuration — are collected, sorted by interface number. An unconfigured
+device has no interfaces. A locator deeper than inventory v1 allows fails the
+probe with `unsupported_topology` instead of being truncated.
+
+Drivers and modules come only from the kernel-managed `driver` and
+`driver/module` symbolic links (their base names, module `-` normalized to
+`_`). They are observations, never configuration.
+
+### Bounded udev use
+
+sysfs is the primary modalias source. For each PCI device or USB interface
+that has one, the probe asks udev for the `MODALIAS` property of that one
+device. If udev returns the same value, it agrees; if it returns nothing (or
+does not know the device), the sysfs value stands; if it returns a different
+value, the probe fails with `udev_sysfs_mismatch`. No other udev property is
+ever requested; database exports, attribute walks, full property queries,
+`trigger`, `test` and `control` are impossible through the command checker.
+
+### Topology
+
+Parent links come from the kernel's device tree: the probe resolves each
+device's real `/sys/devices` path and links it to the nearest ancestor that
+is itself an inventory device (PCI bridge → function, xHCI controller → USB
+device through the root hub, USB hub → child). Real sysfs paths are used only
+for this analysis and are never emitted.
+
+### Output
+
+Devices are sorted by id, USB interfaces by number and module lists are
+sorted. Ids, parents and interface numbers are checked before output, which
+uses the M1-A canonical JSON form. The output carries no timestamp, no random
+identifier and no inventory digest; digests are computed outside the
+inventory, by whoever records it.
+
+A probe run on the builder VM proves only that the probe produces a valid,
+deterministic inventory for that VM. It is not real-hardware qualification.
 
 ## Hardware classes
 
