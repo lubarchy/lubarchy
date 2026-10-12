@@ -218,6 +218,10 @@ probes hardware.**
 | [#2 (37972612802)](https://github.com/lubarchy/lubarchy/actions/runs/37972612802) | `ce2462e4e3a6b1016e5fe5d23e8dfd4d7d1361ba` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings) and the live-build configuration gate passed |
 | [#3 (38206501748)](https://github.com/lubarchy/lubarchy/actions/runs/38206501748) | `41263ec99655e78d114373fecbe14adddcdf1af1` | push | **success**: same three gates passed (M0 acceptance commit) |
 | [#4 (38275430654)](https://github.com/lubarchy/lubarchy/actions/runs/38275430654) | `91c54072cffe8ca84855904cc85ad7ffd7abac73` | push | **success**: first run as `Static gates`; repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration and hardware contracts (29 checks; `python3 3.13.5-1`, `python3-jsonschema 4.19.2-6` from trixie `main`) passed |
+| [#5 (38275836036)](https://github.com/lubarchy/lubarchy/actions/runs/38275836036) | `8cc2f6d816d3c3f4298a54489c09d7f61f69e11b` | push | **success**: all four gates passed (documentation commit) |
+| [#6 (38276073529)](https://github.com/lubarchy/lubarchy/actions/runs/38276073529) | `1bb31567b4b54e551026a244de900ad35840a324` | push | **success**: all four gates passed (documentation commit) |
+| [#7 (38276813287)](https://github.com/lubarchy/lubarchy/actions/runs/38276813287) | `cf1318dafa5afb9e60b697e8220c2bab18041755` | push | **success**: all four gates passed (documentation commit) |
+| [#8 (38289415670)](https://github.com/lubarchy/lubarchy/actions/runs/38289415670) | `4afa53fd14e983552dea1f8553366ddd13a59e6a` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks) and hardware probe (35 synthetic checks) passed |
 
 The fix in `ce2462e` trusts exactly `$GITHUB_WORKSPACE` for the gate step
 through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`; no Git
@@ -232,8 +236,13 @@ gate 4) were executed on GitHub by workflow `Static gates`, run ID
 gates ran and passed: repository lint, ShellCheck, live-build configuration
 and hardware contracts.
 
-The M1-B change (gate 5, hardware probe, synthetic only) has **not yet run on
-GitHub**; the workflow needed no new dependency.
+**M1-B CI qualification:** the M1-B change (gate 5, hardware probe,
+synthetic only; no new dependency) was executed on GitHub by workflow
+`Static gates`, run ID
+[38289415670](https://github.com/lubarchy/lubarchy/actions/runs/38289415670)
+(run #8), on commit `4afa53fd14e983552dea1f8553366ddd13a59e6a`. All five
+gates ran and passed: repository lint, ShellCheck, live-build configuration,
+hardware contracts and hardware probe. CI never probes the runner's hardware.
 
 ## Clean rebuild comparison
 

@@ -37,7 +37,7 @@ later installation/configuration → later validation.
 | Step | Description | Status |
 | --- | --- | --- |
 | M1-A | Hardware contracts: inventory/rule/plan v1 schemas, rule model, resolution plan, fixture tests | PASS (CTO accepted) |
-| M1-B | Live read-only hardware probe producing inventory v1 | Implemented locally; awaiting CTO review |
+| M1-B | Live read-only hardware probe producing inventory v1 | Published (`4afa53f`); GitHub CI green (run #8); awaiting CTO review |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
   `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
@@ -58,8 +58,9 @@ later installation/configuration → later validation.
 - M1-A does **not** probe hardware, install or configure drivers or
   firmware, change APT sources or components, change the ISO package set, or
   add production rules (`hardware/rules/` is empty).
-- M1-B — live read-only hardware probe: **implemented locally; awaiting CTO
-  review** (not PASS). `hardware/probe.py` (Python 3 standard library, no
+- M1-B — live read-only hardware probe: **published; awaiting CTO review**
+  (not PASS). Implementation commit
+  `4afa53fd14e983552dea1f8553366ddd13a59e6a`. `hardware/probe.py` (Python 3 standard library, no
   root) observes the running system and prints one canonical
   `lubarchy.hardware.inventory/v1` document: Debian architecture through
   `dpkg --print-architecture`, the kernel release, allowlisted
@@ -68,7 +69,9 @@ later installation/configuration → later validation.
   PCI and USB devices from allowlisted sysfs attributes, with each modalias
   cross-checked against udev's `MODALIAS` property for that device only. The
   synthetic gate `tests/hardware-probe.py` is gate 5 of `tests/run-static.sh`
-  and of the CI workflow (not yet run on GitHub). Live qualification ran on
+  and of the CI workflow; `Static gates` run #8
+  ([38289415670](https://github.com/lubarchy/lubarchy/actions/runs/38289415670))
+  passed all five gates on that commit. Live qualification ran on
   the builder VM only, unprivileged. Details:
   [hardware-enablement.md](hardware-enablement.md),
   [testing.md](testing.md).
@@ -257,8 +260,10 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-B (live read-only hardware probe, local commit, not yet
-pushed or run in GitHub CI). M1-C has not started and waits for a CTO brief.
+CTO review of M1-B (live read-only hardware probe, published as
+`4afa53fd14e983552dea1f8553366ddd13a59e6a`; `Static gates` run #8 passed all
+five gates on that commit; see [testing.md](testing.md)). M1-C has not
+started and waits for a CTO brief.
 
 ## PASS rule
 
