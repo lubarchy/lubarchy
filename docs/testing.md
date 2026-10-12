@@ -163,9 +163,13 @@ through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`; no Git
 configuration file is written. Later commits are checked by the same workflow
 (push to `main` and pull requests touching the listed paths).
 
-The M1-A workflow changes (the `Static gates` name, `python3` and
-`python3-jsonschema`, the `hardware/**` path filter and gate 4) first ran on
-GitHub in run #4.
+**M1-A CI qualification:** the M1-A workflow changes (the `Static gates`
+name, `python3` and `python3-jsonschema`, the `hardware/**` path filter and
+gate 4) were executed on GitHub by workflow `Static gates`, run ID
+[38275430654](https://github.com/lubarchy/lubarchy/actions/runs/38275430654)
+(run #4), on commit `91c54072cffe8ca84855904cc85ad7ffd7abac73`. All four
+gates ran and passed: repository lint, ShellCheck, live-build configuration
+and hardware contracts.
 
 ## Clean rebuild comparison
 
