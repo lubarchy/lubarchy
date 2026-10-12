@@ -61,6 +61,46 @@ topology or desktop suitability.
 | `class.platform.container` | `virtualization.kind` = `container` | `systemd-detect-virt --container` |
 | `class.platform.bare-metal` | `virtualization.kind` = `none` | Both checks reported `none`; an inventory without a virtualization observation matches nothing |
 
+## Debian packages (M1-D)
+
+Verified on 2026-10-13 against Debian Trixie metadata in an isolated APT
+configuration (official `deb.debian.org` and `security.debian.org`,
+`Signed-By: /usr/share/keyrings/debian-archive-keyring.pgp`, insecure
+repositories disallowed, nothing installed; system APT sources untouched).
+All three `InRelease` files were also verified independently with `sqv`
+against the Debian archive keyring. Their `Components` fields include
+`non-free-firmware` for `trixie`, `trixie-updates` and `trixie-security`,
+matching the Debian 13 release notes (§4.2.8), which show
+`Components: main non-free-firmware` for those suites.
+
+Versions are recorded as observed; rules never pin a version.
+
+### Active mappings
+
+| Rule | Package | Component (Section) | Architecture | Description | Observed version |
+| --- | --- | --- | --- | --- | --- |
+| `package.cpu.intel-microcode` | `intel-microcode` | `non-free-firmware/admin` | amd64 | Processor microcode firmware for Intel CPUs | 3.20251111.1~deb13u1 (`trixie`); 3.20250812.1~deb13u1 (`trixie-security`) |
+| `package.cpu.amd64-microcode` | `amd64-microcode` | `non-free-firmware/admin` | amd64 | Platform firmware and microcode for AMD CPUs and SoCs | 3.20250311.1 (`trixie`) |
+
+### Candidates — NOT ACTIVE (candidate only — no production mapping in M1-D)
+
+| Package | Source package | Section | Description | Observed version |
+| --- | --- | --- | --- | --- |
+| `firmware-intel-graphics` | `firmware-nonfree` | `non-free-firmware/kernel` | Binary firmware for Intel iGPUs and IPUs | 20250410-2 |
+| `firmware-amd-graphics` | `firmware-nonfree` | `non-free-firmware/kernel` | Binary firmware for AMD/ATI graphics and NPU chips | 20250410-2 |
+| `firmware-iwlwifi` | `firmware-nonfree` | `non-free-firmware/kernel` | Binary firmware for Intel Wireless cards | 20250410-2 |
+| `firmware-realtek` | `firmware-nonfree` | `non-free-firmware/kernel` | Binary firmware for Realtek network and audio chips | 20250410-2 |
+| `firmware-atheros` | `firmware-nonfree` | `non-free-firmware/kernel` | Binary firmware for Qualcomm Atheros wireless cards | 20250410-2 |
+| `firmware-brcm80211` | `firmware-nonfree` | `non-free-firmware/kernel` | Binary firmware for Broadcom/Cypress 802.11 wireless cards | 20250410-2 |
+| `bluez-firmware` | `bluez-firmware` | `non-free-firmware/kernel` | Firmware for Bluetooth devices | 1.2-13 |
+| `firmware-nvidia-graphics` | `firmware-nonfree` | `non-free-firmware/kernel` | Binary firmware for Nvidia GPU chips | 20250410-2 |
+| `firmware-nvidia-gsp` | `nvidia-graphics-drivers` | `non-free-firmware/kernel` | NVIDIA GSP firmware | 550.163.01-2 |
+
+`nvidia-driver` is not available from the authorised sources (`main`,
+`non-free-firmware`); it lives in Debian `non-free`, which is not
+authorised. NVIDIA firmware packages existing does not decide the NVIDIA
+driver strategy.
+
 ## Not classified in M1-C
 
 - USB devices (Bluetooth, Wi-Fi and others): no production USB rule yet;
@@ -68,4 +108,5 @@ topology or desktop suitability.
 - Hybrid or multi-GPU systems: rule v1 matches one target per selector and
   cannot express relationships between devices, so there is no
   `gpu.hybrid` rule.
-- Any package, firmware, microcode, profile or source requirement.
+- Any package, firmware, microcode, profile or source requirement (M1-D
+  adds only the two CPU microcode mappings above).

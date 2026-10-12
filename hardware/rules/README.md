@@ -5,7 +5,7 @@ document per file, named `<rule id>.json`, valid against
 [`../schemas/rule-v1.schema.json`](../schemas/rule-v1.schema.json), and
 loaded only by the production resolver (`hardware/resolver.py`).
 
-## M1-C baseline: classification only
+## Classification baseline (M1-C)
 
 | Rule | Matches | Classification |
 | --- | --- | --- |
@@ -22,12 +22,22 @@ loaded only by the production resolver (`hardware/resolver.py`).
 | `class.platform.container` | virtualization kind `container` | `platform.container` |
 | `class.platform.bare-metal` | virtualization kind `none` | `platform.bare-metal` |
 
-Every production rule has priority 100 and **classification effects only**:
-no package, firmware, microcode, profile, warning or package source. The
-resolver refuses a production rule set that contains any other effect, and
-the static gates fail on it. Package and firmware mappings are later work
-(M1-D) and need a CTO source-policy decision first. Identifier provenance is
-in [SOURCES.md](SOURCES.md).
+## Package mappings (M1-D)
+
+| Rule | Matches | Package (component) |
+| --- | --- | --- |
+| `package.cpu.intel-microcode` | CPU vendor `GenuineIntel` | `intel-microcode` (`non-free-firmware`) |
+| `package.cpu.amd64-microcode` | CPU vendor `AuthenticAMD` | `amd64-microcode` (`non-free-firmware`) |
+
+Every production rule has priority 100. Production rules may carry only
+classifications and `require` package effects from an authorised source
+(`main`, `non-free-firmware`; [ADR-0001](../../docs/decisions/0001-non-free-firmware.md)).
+The resolver refuses a production rule set with any other effect (`forbid`,
+profiles, warnings) or source, and the static gates require the production
+package set to be exactly `{intel-microcode, amd64-microcode}`. Packages in a
+plan are proposals; nothing installs them yet. Device firmware packages are
+candidates only (see [SOURCES.md](SOURCES.md)). Identifier and package
+provenance is in [SOURCES.md](SOURCES.md).
 
 ## Trust boundary
 

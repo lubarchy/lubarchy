@@ -1,0 +1,25 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "package.cpu.intel-microcode",
+  "description": "Intel CPU (CPUID vendor GenuineIntel) -> Debian intel-microcode from non-free-firmware (ADR-0001). A proposal only; nothing is installed.",
+  "priority": 100,
+  "match": [
+    {
+      "cpu": {
+        "vendor": [
+          "GenuineIntel"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "packages": [
+      {
+        "name": "intel-microcode",
+        "disposition": "require",
+        "source": "non-free-firmware",
+        "reason": "Debian provides Intel processor microcode updates in the intel-microcode package."
+      }
+    ]
+  }
+}

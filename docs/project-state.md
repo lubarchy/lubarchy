@@ -38,7 +38,8 @@ later installation/configuration → later validation.
 | --- | --- | --- |
 | M1-A | Hardware contracts: inventory/rule/plan v1 schemas, rule model, resolution plan, fixture tests | PASS (CTO accepted) |
 | M1-B | Live read-only hardware probe producing inventory v1 | PASS (CTO accepted) |
-| M1-C | Production resolver and high-confidence classification baseline | Published (`67a659d`); GitHub CI green (run #10); awaiting CTO review |
+| M1-C | Production resolver and high-confidence classification baseline | PASS (CTO accepted) |
+| M1-D | Debian non-free-firmware policy and CPU microcode package mappings | Implemented locally; awaiting CTO review |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
   `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
@@ -86,8 +87,8 @@ later installation/configuration → later validation.
   exit means corroboration is unavailable (not proof that the property is
   absent); a missing executable, timeout or execution failure, or a
   non-empty differing value, fails the probe.
-- M1-C — production resolver and classification baseline: **published;
-  awaiting CTO review** (not PASS). Implementation commit
+- M1-C — production resolver and classification baseline: **PASS** (CTO
+  accepted). Implementation commit
   `67a659d02a845886be43ef71e32193a53786180e`. `hardware/resolver.py` (library)
   and `hardware/resolve.py` (CLI, `--inventory PATH|-`) resolve an inventory
   v1 against the production rules in `hardware/rules/` into a canonical plan
@@ -106,7 +107,22 @@ later installation/configuration → later validation.
 - M1-C does **not** map firmware, microcode or any package, enable another
   Debian component, decide NVIDIA strategy, classify hybrid graphics or USB
   devices, install or configure anything, or persist plans.
-- M1-D has not started.
+- M1-D — Debian `non-free-firmware` policy and CPU microcode mappings:
+  **implemented locally; awaiting CTO review** (not PASS).
+  [ADR-0001](decisions/0001-non-free-firmware.md) (Accepted, D-013) authorises
+  Debian `non-free-firmware` for hardware enablement. The production
+  resolver's source policy is now `main` + `non-free-firmware`; `contrib`,
+  `non-free` and Backports stay unauthorised. Two production package rules
+  map `GenuineIntel` → `intel-microcode` and `AuthenticAMD` →
+  `amd64-microcode`, both `require` from `non-free-firmware`, verified
+  against signature-verified Debian Trixie metadata. The production rule
+  policy now allows classifications and `require` packages from authorised
+  sources only. The M1-C exit-code-5 test gap is closed.
+- M1-D does **not** install anything, change the builder's or the CI
+  container's APT sources (still `main` only), change live-build or the ISO,
+  map any device firmware (graphics, Wi-Fi, Bluetooth, network) or decide
+  NVIDIA driver policy. Packages in a plan are proposals only.
+- M1-E has not started.
 
 ## M0 — Minimal reproducible ISO (closed)
 
@@ -263,8 +279,11 @@ not be treated as decided:
 - LUBARCHY package repository
 - Desktop stack
 - Inventory persistence and diagnostics
-- Package, firmware and microcode mappings and their source policy (the
-  M1-C production rules only classify)
+- Device firmware mappings (graphics, Wi-Fi, Bluetooth, network); M1-D maps
+  only CPU microcode
+- Activating `non-free-firmware` in the ISO/installed-system sources and
+  applying plans (installation)
+- NVIDIA driver strategy
 - Hybrid/multi-GPU composition and USB device classification
 - Installer
 - Recovery implementation
@@ -286,10 +305,9 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-C (production resolver and classification baseline,
-published as `67a659d02a845886be43ef71e32193a53786180e`; `Static gates` run
-#10 passed all six gates on that commit; see [testing.md](testing.md)). M1-D
-has not started and waits for a CTO brief.
+CTO review of M1-D (non-free-firmware policy and CPU microcode mappings,
+local commit, not yet pushed or run in GitHub CI). M1-E has not started and
+waits for a CTO brief.
 
 ## PASS rule
 

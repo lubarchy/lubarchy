@@ -222,9 +222,12 @@ M1-B synthetic sysfs trees. It never reads host hardware. It checks:
   a rule, other file type, upper-case extension, duplicate key, float,
   non-UTF-8, truncated JSON, schema-invalid rule, package/profile/warning
   effect, duplicate rule id;
-- **policy:** exactly the 12 production rules, each one classification and
-  nothing else; production plans carry no package, profile, warning or source
-  and record the `main`-only source policy;
+- **policy:** exactly the 12 classification rules (one classification each)
+  and, since M1-D, the 2 CPU microcode package rules; production effects are
+  only classifications and `require` packages from `non-free-firmware`; the
+  production package set is exactly `{intel-microcode, amd64-microcode}`;
+  plans carry no profile or warning and record the source policy
+  `main` + `non-free-firmware` (M1-C: classification only, `main` only);
 - **semantics:** AND within a selector, OR within a field, ANY selector,
   absent fields never match, priority orders only, all three conflict kinds
   fail closed, unknown hardware gets nothing;
@@ -247,6 +250,57 @@ M1-B synthetic sysfs trees. It never reads host hardware. It checks:
   inventory → production plan, with the expected classifications, unresolved
   devices visible and no package, profile or source.
 
+### Package and source-policy tests (M1-D)
+
+Part of gate 6 (`tests/hardware-resolver.py`); a separate gate would add no
+isolation, because the policy is enforced by the same resolver and rule
+loader. The tests require:
+
+- the resolver source policy to be exactly `main`, `non-free-firmware`, and
+  `contrib`, `non-free`, `backports`, `lubarchy` not to be authorised;
+- `GenuineIntel` → `intel-microcode` and `AuthenticAMD` → `amd64-microcode`,
+  each `require` from `non-free-firmware` with source status `authorised`,
+  while the `cpu.intel` / `cpu.amd` classifications stay unchanged;
+- no microcode for Hygon, Centaur, mis-cased, truncated or unknown vendor
+  strings, and no package for any device;
+- the exact production package set, no package from `main`, no `forbid`,
+  profile or warning; a production rule requesting `contrib`, `non-free`,
+  `backports` or `lubarchy`, or a `forbid` effect, rejects the rule set;
+- a non-production rule requiring `contrib`, `non-free` or `backports` is
+  still reported `policy_review_required` (representation is not
+  authorisation);
+- parity with the M1-A reference resolver under the same, explicitly
+  injected source policy (the reference still accepts any policy);
+- CLI exit 5 (internal contract failure) for four non-plan-v1 results,
+  reached by substituting the resolver function inside the test process
+  only (closes the M1-C test gap; production code has no test hook).
+
+M1-D mutation coverage: the gate fails for Intel mapped to `amd64-microcode`,
+AMD mapped to `intel-microcode`, a mapping source of `main`, `non-free` or
+`backports`, a third package, Hygon treated as AMD, a package for unknown
+CPUs, a `forbid` effect, a profile, an install subprocess, and a source
+policy widened to `contrib`, `non-free` or `backports`.
+
+### Authenticated Debian metadata qualification (M1-D)
+
+Operator-run, never in CI, as an unprivileged user with an isolated APT
+configuration (its own state, cache and deb822 sources under a temporary
+directory; the system's `/etc/apt` is not read for sources and not changed):
+
+1. Sources: `https://deb.debian.org/debian` `trixie trixie-updates` and
+   `https://security.debian.org/debian-security` `trixie-security`,
+   components `main non-free-firmware`,
+   `Signed-By: /usr/share/keyrings/debian-archive-keyring.pgp`;
+   `Acquire::AllowInsecureRepositories` and
+   `AllowDowngradeToInsecureRepositories` false; no `trusted=yes`.
+2. `apt-get update` must succeed with no `W:`, `E:` or `Err:` line.
+3. Each `InRelease` is verified again with `sqv --cleartext` against the
+   archive keyring, its authenticated text compared with the file, and a
+   tampered copy must be rejected.
+4. `apt-cache policy` / `show` record component, section, architecture,
+   description and version of every mapped and candidate package. Nothing is
+   downloaded or installed.
+
 Mutation coverage (M1-C evidence): the gate fails for last-rule-wins,
 AND→OR selector confusion, matching absent fields, loading symlinked rules,
 skipping a malformed rule, allowing package effects in production, a package
@@ -262,12 +316,17 @@ exact commit, as the unprivileged `builder` user, with nothing installed:
 1. Run `hardware/probe.py` and `hardware/resolve.py --inventory` on its
    output, twice, without changing the VM.
 2. Require byte-identical inventories, inventory digests, plans and rule-set
-   digests; valid inventory v1 and plan v1; no conflict; no package, profile
-   or source. The plan may be `partial`.
+   digests; valid inventory v1 and plan v1; no conflict; no profile. The
+   plan may be `partial`.
 3. Require at least `cpu.intel` (while the builder exposes an Intel CPU) and
-   `platform.vm`, plus whatever else the observed facts support.
+   `platform.vm`, plus whatever else the observed facts support. Since M1-D
+   the only package expected is `intel-microcode` from `non-free-firmware`
+   with source status `authorised`, and no `amd64-microcode` (M1-C: no
+   package at all).
 4. Compare package database, APT sources, loaded modules, driver bindings
-   and failed units before and after.
+   and failed units before and after; since M1-D also require that
+   `intel-microcode` is not installed and that the builder's own APT sources
+   are still `main` only (the plan is a proposal, not an installation).
 
 This proves only that the resolver produces a valid, deterministic plan for
 the builder VM; it is not real-hardware qualification.
@@ -325,6 +384,10 @@ synthetic only; no new dependency) was executed on GitHub by workflow
 (run #10), on commit `67a659d02a845886be43ef71e32193a53786180e`. All six
 gates ran and passed: repository lint, ShellCheck, live-build configuration,
 hardware contracts, hardware probe and hardware resolver.
+
+The M1-D change (package/source-policy tests within gate 6; no new
+dependency; the CI container stays Debian `main` only) has **not yet run on
+GitHub**.
 
 ## Clean rebuild comparison
 

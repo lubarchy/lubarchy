@@ -1,0 +1,25 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "package.cpu.amd64-microcode",
+  "description": "AMD CPU (CPUID vendor AuthenticAMD) -> Debian amd64-microcode from non-free-firmware (ADR-0001). A proposal only; nothing is installed.",
+  "priority": 100,
+  "match": [
+    {
+      "cpu": {
+        "vendor": [
+          "AuthenticAMD"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "packages": [
+      {
+        "name": "amd64-microcode",
+        "disposition": "require",
+        "source": "non-free-firmware",
+        "reason": "Debian provides AMD64 processor and platform microcode updates in the amd64-microcode package."
+      }
+    ]
+  }
+}

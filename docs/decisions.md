@@ -68,6 +68,17 @@ architecture remains undecided.
 Repository state, not a manually modified ISO/builder, is the authoritative
 LUBARCHY description.
 
+### D-013 — Debian non-free-firmware authorised for hardware enablement
+
+LUBARCHY authorises Debian's `non-free-firmware` component (suites `trixie`,
+`trixie-updates`, `trixie-security`; official Debian infrastructure and
+archive keyring) for hardware enablement. It does not authorise `contrib`,
+`non-free`, Backports or third-party repositories, and does not decide NVIDIA
+driver policy. Packages are selected only through source-controlled mappings.
+The builder, live-build and CI sources stay `main` only until later
+integration. See
+[ADR-0001](decisions/0001-non-free-firmware.md).
+
 ## Pending decision subjects
 
 These are **not decided**. Each requires an ADR before acceptance.

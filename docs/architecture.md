@@ -69,6 +69,12 @@ otherwise.
 
 Any other external repository requires a security review and a CTO decision.
 
+Debian archive components: `main`, plus `non-free-firmware` for hardware
+enablement ([ADR-0001](decisions/0001-non-free-firmware.md), D-013). `contrib`
+and `non-free` are not authorised. The builder, live-build configuration and
+CI still use `main` only; activating `non-free-firmware` in the ISO or
+installed system is later integration work.
+
 ## ISO architecture
 
 Production images come from version-controlled Debian `live-build`
@@ -99,10 +105,11 @@ Since M1-A the data boundaries are defined as versioned contracts: the
 inventory holds observed, privacy-safe facts only; declarative rules hold
 policy; resolution produces a proposed plan that contains no commands and
 enables no package source. Unknown hardware and rule conflicts fail closed.
-Implemented boundary since M1-C: live read-only probe → inventory v1 →
-production classification resolver → plan v1. Production rules only classify
-hardware. Package and firmware mappings, applying a plan (installation and
-configuration) and validation are **not implemented**. See
+Implemented boundary since M1-D: live read-only probe → inventory v1 →
+production resolver → plan v1. Production rules classify hardware and map
+CPU microcode (`intel-microcode`, `amd64-microcode` from
+`non-free-firmware`) as proposals. Device firmware mappings, applying a plan
+(installation and configuration) and validation are **not implemented**. See
 [hardware-enablement.md](hardware-enablement.md).
 
 ## Installer boundary (future)

@@ -33,13 +33,17 @@ SCHEMA_FILES = {
     "plan": "plan-v1.schema.json",
 }
 
-# Installation policy: Debian main only. Resolution records this policy and
-# reports any other source as 'policy_review_required'; it never widens it.
-AUTHORISED_SOURCES = ("main",)
+# Product source policy (ADR-0001, D-013): Debian main and non-free-firmware,
+# in canonical (sorted) order. Resolution records this policy and reports any
+# other source as 'policy_review_required'; it never widens it, and it never
+# configures APT.
+AUTHORISED_SOURCES = ("main", "non-free-firmware")
 
-# M1-C production rule policy: classification effects only. Rule v1 allows
-# packages, profiles and warnings; production rules may not use them yet.
-PRODUCTION_EFFECTS = frozenset({"classifications"})
+# Production rule policy (M1-D): classifications and package requirements
+# only. Every production package effect must be a 'require' from an
+# authorised source. Rule v1 also allows 'forbid', profiles and warnings;
+# production rules may not use them yet.
+PRODUCTION_EFFECTS = frozenset({"classifications", "packages"})
 
 MAX_DOCUMENT_BYTES = 16 * 1024 * 1024
 MAX_RULE_BYTES = 1024 * 1024
@@ -238,8 +242,20 @@ def rule_errors(rule):
     return sorted(found)
 
 
-def check_rule_set(rules, classification_only=False):
+def _production_policy_violation(rule):
+    if set(rule["effects"]) - PRODUCTION_EFFECTS:
+        return "has effects other than classifications and packages"
+    for package in rule["effects"].get("packages", []):
+        if package["disposition"] != "require":
+            return "has a package effect that is not 'require'"
+        if package["source"] not in AUTHORISED_SOURCES:
+            return "requires a package from an unauthorised source"
+    return None
+
+
+def check_rule_set(rules, production_policy=False):
     """Validate a list of rules as one set; any problem rejects the set.
+    With production_policy the M1-D production rule policy also applies.
     Returns the rules ordered by id."""
     ids = set()
     for rule in rules:
@@ -250,13 +266,13 @@ def check_rule_set(rules, classification_only=False):
         if rid in ids:
             raise ResolverError("rule_set_rejected", f"duplicate rule id {rid}")
         ids.add(rid)
-        if classification_only and set(rule["effects"]) - PRODUCTION_EFFECTS:
-            raise ResolverError("rule_set_rejected",
-                                f"rule {rid} has effects other than classifications")
+        violation = _production_policy_violation(rule) if production_policy else None
+        if violation:
+            raise ResolverError("rule_set_rejected", f"rule {rid} {violation}")
     return sorted(rules, key=lambda r: r["id"])
 
 
-def load_rule_directory(directory, classification_only):
+def load_rule_directory(directory, production_policy):
     """Load '<id>.json' rules from one directory, fail-closed.
 
     Only regular, non-hidden '*.json' files are rules; regular '*.md' files
@@ -290,12 +306,12 @@ def load_rule_directory(directory, classification_only):
         if name != rule["id"] + ".json":
             raise ResolverError("rule_set_rejected", f"{name} does not match its rule id")
         rules.append(rule)
-    return check_rule_set(rules, classification_only)
+    return check_rule_set(rules, production_policy)
 
 
 def load_production_rules():
-    """The production rule set: hardware/rules/, classification-only (M1-C)."""
-    return load_rule_directory(PRODUCTION_RULES_DIR, classification_only=True)
+    """The production rule set: hardware/rules/ under the production policy."""
+    return load_rule_directory(PRODUCTION_RULES_DIR, production_policy=True)
 
 
 def rule_set_digest(rules):

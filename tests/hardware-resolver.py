@@ -71,6 +71,15 @@ EXPECTED_PRODUCTION_RULES = {
     "class.platform.container": "platform.container",
     "class.platform.bare-metal": "platform.bare-metal",
 }
+# M1-D package mappings: the complete production package requirement set.
+EXPECTED_PACKAGE_RULES = {
+    "package.cpu.intel-microcode": ("GenuineIntel", "intel-microcode"),
+    "package.cpu.amd64-microcode": ("AuthenticAMD", "amd64-microcode"),
+}
+# Product source policy (ADR-0001). Stated here independently of the
+# production constant and injected explicitly into the M1-A reference, which
+# keeps accepting arbitrary policies.
+PRODUCT_SOURCE_POLICY = ("main", "non-free-firmware")
 
 
 class Failure(Exception):
@@ -118,11 +127,11 @@ def production_rules():
 
 
 def test_rules():
-    return resolver.load_rule_directory(str(FIXTURES / "rules"), classification_only=False)
+    return resolver.load_rule_directory(str(FIXTURES / "rules"), production_policy=False)
 
 
 def conflict_rules():
-    return resolver.load_rule_directory(str(FIXTURES / "rules-conflict"), classification_only=False)
+    return resolver.load_rule_directory(str(FIXTURES / "rules-conflict"), production_policy=False)
 
 
 def plan_bytes(plan):
@@ -179,7 +188,7 @@ def production_reference_parity():
     n = 0
     for label, inv, rules in _parity_cases():
         mine = plan_bytes(resolver.resolve(inv, rules))
-        theirs = ref.canonical_json(ref.resolve(inv, rules))
+        theirs = ref.canonical_json(ref.resolve(inv, rules, authorised_sources=PRODUCT_SOURCE_POLICY))
         expect(mine == theirs, f"{label}: production plan differs from the M1-A reference")
         n += 1
     rnd = random.Random("lubarchy-m1c-parity")
@@ -190,7 +199,8 @@ def production_reference_parity():
         rnd.shuffle(inv["devices"])
         subset = rnd.sample(all_rules, rnd.randint(1, len(all_rules)))
         subset = [dict(r, priority=rnd.randint(-5, 5)) for r in subset]
-        expect(plan_bytes(resolver.resolve(inv, subset)) == ref.canonical_json(ref.resolve(inv, subset)),
+        expect(plan_bytes(resolver.resolve(inv, subset))
+               == ref.canonical_json(ref.resolve(inv, subset, authorised_sources=PRODUCT_SOURCE_POLICY)),
                "random parity case differs")
         n += 1
     return f"{n} inventory x rule-set cases byte-identical between production and the M1-A reference"
@@ -256,10 +266,11 @@ def _copy_rules(dst):
 
 @check
 def rule_trust_boundary():
-    load = lambda d: resolver.load_rule_directory(str(d), classification_only=True)  # noqa: E731
+    load = lambda d: resolver.load_rule_directory(str(d), production_policy=True)  # noqa: E731
     with scratch() as d:
         good = _copy_rules(d / "good")
-        expect([r["id"] for r in load(good)] == sorted(EXPECTED_PRODUCTION_RULES), "copy of production rules")
+        expect([r["id"] for r in load(good)] == sorted([*EXPECTED_PRODUCTION_RULES, *EXPECTED_PACKAGE_RULES]),
+               "copy of production rules")
         cases = []
 
         def case(label, mutate):
@@ -287,10 +298,20 @@ def rule_trust_boundary():
         case("truncated JSON", lambda t: (t / "class.cpu.amd.json").write_text("{"))
         case("schema-invalid rule", lambda t: (t / "class.cpu.amd.json").write_text(
             (t / "class.cpu.amd.json").read_text().replace('"priority": 100', '"priority": 100, "command": "x"')))
-        case("package effect", lambda t: (t / "class.cpu.amd.json").write_text(json.dumps(dict(
-            ref.load_json(good / "class.cpu.amd.json"), effects={"classifications": ["cpu.amd"], "packages": [
-                {"name": "amd64-microcode", "disposition": "require", "source": "non-free-firmware",
-                 "reason": "x"}]}))))
+        def package_source(source):
+            def mutate(t):
+                doc = ref.load_json(good / "package.cpu.amd64-microcode.json")
+                doc["effects"]["packages"][0]["source"] = source
+                (t / "package.cpu.amd64-microcode.json").write_text(json.dumps(doc))
+            return mutate
+        for source in ("contrib", "non-free", "backports", "lubarchy"):
+            case(f"package from {source}", package_source(source))
+
+        def forbid(t):
+            doc = ref.load_json(good / "package.cpu.amd64-microcode.json")
+            doc["effects"]["packages"] = [{"name": "amd64-microcode", "disposition": "forbid", "reason": "x"}]
+            (t / "package.cpu.amd64-microcode.json").write_text(json.dumps(doc))
+        case("package forbid effect", forbid)
         case("profile effect", lambda t: (t / "class.cpu.amd.json").write_text(json.dumps(dict(
             ref.load_json(good / "class.cpu.amd.json"), effects={"classifications": ["cpu.amd"],
                                                                  "profiles": [{"name": "p", "reason": "x"}]}))))
@@ -311,27 +332,85 @@ def deterministic_rule_loading():
         t.mkdir()
         for p in sorted(PRODUCTION_RULES.iterdir(), reverse=True):
             shutil.copy2(p, t / p.name)
-        b = resolver.load_rule_directory(str(t), classification_only=True)
+        b = resolver.load_rule_directory(str(t), production_policy=True)
     expect(a == b and [r["id"] for r in a] == sorted(r["id"] for r in a), "rule loading order")
     expect(resolver.rule_set_digest(a) == resolver.rule_set_digest(list(reversed(a))), "rule-set digest order")
-    return f"12 rules load in id order regardless of creation order; rule-set digest {resolver.rule_set_digest(a)}"
+    return f"{len(a)} rules load in id order regardless of creation order; rule-set digest {resolver.rule_set_digest(a)}"
 
 
 @check
-def production_rules_are_classification_only():
+def production_rule_policy():
     files = sorted(p.name for p in PRODUCTION_RULES.iterdir())
-    expect(files == sorted([f"{r}.json" for r in EXPECTED_PRODUCTION_RULES] + ["README.md", "SOURCES.md"]),
-           f"unexpected production directory content: {files}")
+    expect(files == sorted([f"{r}.json" for r in [*EXPECTED_PRODUCTION_RULES, *EXPECTED_PACKAGE_RULES]]
+                           + ["README.md", "SOURCES.md"]), f"unexpected production directory content: {files}")
     for rid, cls in EXPECTED_PRODUCTION_RULES.items():
         doc = ref.load_json(PRODUCTION_RULES / f"{rid}.json")
         expect(doc["effects"] == {"classifications": [cls]}, f"{rid}: effects {doc['effects']}")
         expect(doc["priority"] == 100, f"{rid}: priority")
         expect(set(doc) == {"schema", "id", "description", "priority", "match", "effects"}, f"{rid}: fields")
+    packages = set()
+    for rid, (vendor, package) in EXPECTED_PACKAGE_RULES.items():
+        doc = ref.load_json(PRODUCTION_RULES / f"{rid}.json")
+        expect(doc["match"] == [{"cpu": {"vendor": [vendor]}}], f"{rid}: selector {doc['match']}")
+        expect(list(doc["effects"]) == ["packages"] and len(doc["effects"]["packages"]) == 1, f"{rid}: effects")
+        pkg = doc["effects"]["packages"][0]
+        expect(pkg["name"] == package and pkg["disposition"] == "require" and pkg["source"] == "non-free-firmware",
+               f"{rid}: package effect {pkg}")
+        expect(doc["priority"] == 100 and set(doc) == {"schema", "id", "description", "priority", "match", "effects"},
+               f"{rid}: fields")
+    for r in production_rules():
+        for eff in r["effects"]:
+            expect(eff in ("classifications", "packages"), f"{r['id']}: production effect {eff}")
+        for pkg in r["effects"].get("packages", []):
+            packages.add(pkg["name"])
+            expect(pkg["disposition"] == "require", f"{r['id']}: {pkg['disposition']}")
+            expect(pkg["source"] == "non-free-firmware", f"{r['id']}: {pkg['name']} from {pkg['source']}")
+    expect(packages == {"intel-microcode", "amd64-microcode"}, f"production package set {sorted(packages)}")
     plan = produce(fixture("04-intel-nvidia-hybrid"))
-    expect(plan["packages"] == [] and plan["profiles"] == [] and plan["sources"] == [] and plan["warnings"] == [],
-           "production plan proposes effects")
-    expect(plan["source_policy"] == {"authorised": ["main"]}, "source policy")
-    return "12 production rules, each exactly one classification; no package, profile, warning or source"
+    expect(plan["profiles"] == [] and plan["warnings"] == [], "production plan proposes profiles or warnings")
+    expect(plan["source_policy"] == {"authorised": list(PRODUCT_SOURCE_POLICY)}, "source policy")
+    return (f"{len(EXPECTED_PRODUCTION_RULES)} classification rules + 2 package rules; exact package set "
+            "{intel-microcode, amd64-microcode}, both 'require' from non-free-firmware; no profile/warning/forbid")
+
+
+def _packages(plan):
+    return {(p["name"], p["disposition"], p.get("source"), p.get("source_status")) for p in plan["packages"]}
+
+
+@check
+def package_and_source_policy():
+    expect(resolver.AUTHORISED_SOURCES == PRODUCT_SOURCE_POLICY, f"source policy {resolver.AUTHORISED_SOURCES}")
+    for source in ("contrib", "non-free", "backports", "lubarchy"):
+        expect(source not in resolver.AUTHORISED_SOURCES, f"{source} authorised")
+    intel = produce(inventory(vendor="GenuineIntel"))
+    expect(_packages(intel) == {("intel-microcode", "require", "non-free-firmware", "authorised")}, f"intel {intel['packages']}")
+    expect(intel["sources"] == [{"source": "non-free-firmware", "status": "authorised", "packages": ["intel-microcode"]}],
+           f"intel sources {intel['sources']}")
+    expect(classes(intel)["cpu.intel"] == ["cpu"], "Intel classification unchanged")
+    amd = produce(inventory(vendor="AuthenticAMD"))
+    expect(_packages(amd) == {("amd64-microcode", "require", "non-free-firmware", "authorised")}, f"amd {amd['packages']}")
+    expect(classes(amd)["cpu.amd"] == ["cpu"], "AMD classification unchanged")
+    for vendor in ("HygonGenuine", "CentaurHauls", "  Shanghai", "genuineintel", "authenticamd", "AuthenticAM",
+                   "GenuineIotel", "SyntheticCPU"):
+        if vendor != vendor.strip():
+            continue
+        plan = produce(inventory(vendor=vendor))
+        expect(plan["packages"] == [] and plan["sources"] == [], f"{vendor} got {plan['packages']}")
+        expect("cpu" in [u["target"] for u in plan["unresolved"]], f"{vendor} CPU not unresolved")
+    devices = [pci("0000:00:02.0", "8086", "f001", "030000"), pci("0000:02:00.0", "8086", "f007", "028000"),
+               pci("0000:05:00.0", "f0ff", "f0ff", "ff0000")]
+    plan = produce(inventory(devices, vendor="SyntheticCPU"))
+    expect(plan["packages"] == [], "devices produced packages (no device mapping exists in M1-D)")
+    # Representation is not authorisation: a non-production rule requiring
+    # an unauthorised component is still reported for policy review.
+    cpu = [{"cpu": {"vendor": ["GenuineIntel"]}}]
+    for source in ("contrib", "non-free", "backports"):
+        req = {"packages": [{"name": "lubarchy-test-x", "disposition": "require", "source": source, "reason": "r"}]}
+        plan = produce(inventory(), [rule("t.src", cpu, 1, **req)])
+        expect(plan["sources"] == [{"source": source, "status": "policy_review_required", "packages": ["lubarchy-test-x"]}]
+               and plan["status"] == "partial", f"{source} not flagged")
+    return ("policy main + non-free-firmware; Intel -> intel-microcode, AMD -> amd64-microcode (authorised); "
+            "Hygon/Centaur/mis-cased/unknown -> nothing; contrib/non-free/backports -> policy_review_required")
 
 
 # ---------------------------------------------------------------------------
@@ -548,11 +627,28 @@ def cli_contract():
         expect(code == 0 and e == "" and json.loads(o)["status"] == "conflict", "conflict is a produced plan, exit 0")
     finally:
         resolver.load_production_rules = saved
+    # Exit 5 (internal contract failure), reached by substituting the
+    # resolver function inside this test process only; production code has
+    # no hook for it.
+    saved = resolver.resolve
+    try:
+        for broken in ({"schema": "lubarchy.hardware.plan/v1"},
+                       {**produce(fixture("02-amd-cpu-amd-gpu")), "commands": ["apt-get install x"]},
+                       {**produce(fixture("02-amd-cpu-amd-gpu")), "status": "resolved", "conflicts": [
+                           {"kind": "package_source_mismatch", "subject": "x1", "rules": ["t.a"]}]},
+                       {**produce(fixture("02-amd-cpu-amd-gpu")), "inventory_digest": 1.5}):
+            resolver.resolve = lambda inv, rules, broken=broken: copy.deepcopy(broken)
+            code, o, e = run_cli(["--inventory", path])
+            expect(code == 5 and o == b"" and e.startswith("resolve: error: contract_failure:"),
+                   f"contract failure: {code} {o[:40]!r} {e!r}")
+    finally:
+        resolver.resolve = saved
     for argv in ([], ["--inventory"], ["--rules", "x"], ["--inventory", path, "--rules", str(FIXTURES / "rules")],
                  ["--inventory=" + path], ["-i", path], ["--inventory", ""]):
         code, o, e = run_cli(argv)
         expect(code == 64 and o == b"" and e.startswith("usage:"), f"usage {argv}: {code}")
-    return "exit 0 (plan; also for conflict), 2 (invalid plan), 3 (bad input), 4 (bad rules), 64 (usage); stdin '-'"
+    return ("exit 0 (plan; also for conflict), 2 (invalid plan), 3 (bad input), 4 (bad rules), "
+            "5 (contract failure, 4 cases), 64 (usage); stdin '-'")
 
 
 @check
@@ -624,8 +720,9 @@ def resolver_source_has_no_side_effects():
                f"{name}: writes {writes}")
         strings = " ".join(n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str))
         for pattern in (r"\bapt(-get|-cache|itude)?\b", r"\bdpkg\b", r"\bmodprobe\b", r"\budevadm\b", r"/sys/",
-                        r"/proc/", r"dbus", r"/etc/apt", r"sources\.list", r"https?://"):
-            expect(not re.search(pattern, strings), f"{name}: mentions {pattern}")
+                        r"/proc/", r"dbus", r"/etc/apt", r"sources\.list", r"https?://", r"packagekit", r"pkcon",
+                        r"unattended-upgrade", r"\binstall\b.*-y"):
+            expect(not re.search(pattern, strings, re.I), f"{name}: mentions {pattern}")
     return "resolver imports only stdlib + jsonschema; no process, network, APT/dpkg/modprobe/udevadm, sysfs or write"
 
 
@@ -644,15 +741,19 @@ def probe_to_resolver_integration():
     expect(resolver.inventory_errors(inv) == [], "probe inventory invalid")
     expect(resolver.canonical_json(resolver.normalize_inventory(inv)) == inventory_bytes, "inventory not canonical")
     plan = produce(inv)
-    expect(plan_bytes(plan) == ref.canonical_json(ref.resolve(inv, production_rules())), "integration parity")
+    expect(plan_bytes(plan) == ref.canonical_json(ref.resolve(inv, production_rules(),
+                                                             authorised_sources=PRODUCT_SOURCE_POLICY)),
+           "integration parity")
     expect(classes(plan) == {"cpu.intel": ["cpu"], "gpu.nvidia": ["pci:0000:01:00.0"], "platform.vm": ["platform"]},
            f"classifications {classes(plan)}")
     unresolved = [u["target"] for u in plan["unresolved"]]
     expect(unresolved == ["pci:0000:00:00.0", "pci:0000:00:01.0", "pci:0000:00:14.0", "pci:0000:00:1f.3",
                           "usb:1-2", "usb:1-2.1", "usb:1-3"], f"unresolved {unresolved}")
-    expect(plan["status"] == "partial" and plan["packages"] == plan["profiles"] == plan["sources"] == [], "effects")
+    expect(plan["status"] == "partial" and plan["profiles"] == [], "status/profiles")
+    expect(_packages(plan) == {("intel-microcode", "require", "non-free-firmware", "authorised")}, f"{plan['packages']}")
     expect(all(c[0] in (probe.DPKG, probe.DETECT_VIRT, probe.UDEVADM) for c in runner.calls), "unexpected command")
-    return "synthetic sysfs -> probe -> canonical inventory -> production plan: 3 classifications, 7 unresolved, no effects"
+    return ("synthetic sysfs -> probe -> canonical inventory -> production plan: 3 classifications, 7 unresolved, "
+            "intel-microcode proposed (non-free-firmware, authorised)")
 
 
 def main():

@@ -3,15 +3,18 @@
 Requirements for LUBARCHY hardware enablement. Hardware enablement is a
 first-class subsystem (D-008).
 
-**Status (M1-C):** the data and policy contracts — inventory v1, rule v1 and
+**Status (M1-D):** the data and policy contracts — inventory v1, rule v1 and
 plan v1 — are defined and tested (M1-A). A read-only live probe,
 `hardware/probe.py`, turns a running system into an inventory v1 document
 (M1-B, see [Live probe](#live-probe-m1-b)). A production resolver turns that
-inventory and a conservative, classification-only production rule set into a
-plan v1 (M1-C, see [Production resolver](#production-resolver-m1-c)).
-**Nothing proposes a package, installs, enables a source or configures
-anything yet.** Firmware/package mappings, their source policy, installation,
-configuration and validation are later M1 work.
+inventory and a conservative production rule set into a plan v1 (M1-C, see
+[Production resolver](#production-resolver-m1-c)). Debian `non-free-firmware`
+is an accepted hardware-enablement source and the first package mappings —
+Intel and AMD CPU microcode — appear in plans (M1-D, see
+[Package source policy](#package-source-policy-m1-d)). **Packages in a plan
+are proposals only: nothing installs, enables a source or configures
+anything yet.** Device firmware mappings, installation, configuration and
+validation are later M1 work.
 
 ## Goal
 
@@ -204,11 +207,13 @@ A package requirement names the source it needs: `main`,
 (the Debian stable backports suite) or `lubarchy` (a future authenticated
 LUBARCHY repository, P-007). Naming a source never enables it.
 
-Resolution takes the currently authorised sources as input. Today that is
-**Debian `main` only**. A requirement on any other source is reported with
-status `policy_review_required` and keeps the plan `partial`; deciding
-whether to use that source is a CTO policy decision. M1-A changes no APT
-source or component and decides no NVIDIA sourcing.
+Resolution takes the currently authorised sources as input. Since M1-D
+([ADR-0001](decisions/0001-non-free-firmware.md)) that is **Debian `main` and
+`non-free-firmware`**; through M1-C it was `main` only. A requirement on any
+other source is reported with status `policy_review_required` and keeps the
+plan `partial`; deciding whether to use that source is a CTO policy decision.
+Resolution changes no APT source or component and decides no NVIDIA
+sourcing.
 
 ### Plan v1
 
@@ -434,12 +439,15 @@ entry, subdirectory or other file, a rule that is not strict UTF-8 JSON
 an id rejects the **whole** rule set; a bad rule is never skipped. Rules are
 read without following symbolic links and loaded in id order.
 
-### Classification-only baseline
+### Classification baseline
 
-Rule v1 can express packages, profiles, warnings and sources, but the M1-C
-production policy is narrower: production rules may carry **classification
-effects only**, and the resolver rejects a production rule set with any other
-effect. The 12 rules are listed in [`hardware/rules/README.md`](../hardware/rules/README.md)
+Rule v1 can express packages, profiles, warnings and sources, but the
+production policy is narrower. In M1-C production rules carried
+**classification effects only**; since M1-D they may also carry `require`
+package effects from an authorised source (see
+[Package source policy](#package-source-policy-m1-d)). The resolver rejects a
+production rule set with any other effect (`forbid`, profiles, warnings) or
+source. The 12 classification rules are listed in [`hardware/rules/README.md`](../hardware/rules/README.md)
 with provenance in [`hardware/rules/SOURCES.md`](../hardware/rules/SOURCES.md):
 CPU vendor (`GenuineIntel`, `AuthenticAMD`), display controllers (PCI class
 `03`) from vendors `8086`, `1002` and `10de`, Ethernet (`0200`), other
@@ -463,15 +471,70 @@ classifications. Multi-GPU topology, integrated/discrete roles and
 hybrid-laptop classification need a future composition contract or rule
 version.
 
-### Source policy: still `main` only
+## Package source policy (M1-D)
 
-Plans record `source_policy` `authorised: ["main"]`. No production rule
-requests any source. M1-D will separately evaluate Debian firmware and
-microcode requirements — at least `intel-microcode`, `amd64-microcode`,
-`firmware-intel-graphics`, `firmware-amd-graphics`, `firmware-iwlwifi` and
-relevant networking/Bluetooth firmware — and the policy status of Debian
-`non-free-firmware`. NVIDIA proprietary driver policy is a separate decision.
-None of this is encoded or accepted in M1-C.
+[ADR-0001](decisions/0001-non-free-firmware.md) (Accepted; D-013) authorises
+Debian's `non-free-firmware` component for hardware enablement.
+
+| Component / source | Status |
+| --- | --- |
+| `main` | authorised |
+| `non-free-firmware` | authorised (since M1-D) |
+| `contrib` | not authorised |
+| `non-free` | not authorised |
+| `backports` (`trixie-backports`) | not authorised |
+| `lubarchy` (future LUBARCHY repository, P-007) | not authorised |
+| Testing, Unstable, Experimental, third-party repositories | not authorised |
+
+Suites stay Debian Stable `trixie`, `trixie-updates` and `trixie-security`
+from official Debian infrastructure, verified with the Debian archive
+keyring. Plans record `source_policy` `authorised: ["main",
+"non-free-firmware"]`; a requirement from any other source is reported as
+`policy_review_required`.
+
+**Product policy is not system configuration.** The authorised set describes
+what LUBARCHY's hardware enablement may propose. It does not change the
+builder's APT sources, the live-build configuration, the ISO package set or
+the CI container, which all stay `main` only. Activating
+`non-free-firmware` in the produced ISO or installed system is later
+integration work.
+
+### CPU microcode mappings
+
+| Rule | Selector | Package | Component |
+| --- | --- | --- | --- |
+| `package.cpu.intel-microcode` | CPU vendor `GenuineIntel` | `intel-microcode` | `non-free-firmware` |
+| `package.cpu.amd64-microcode` | CPU vendor `AuthenticAMD` | `amd64-microcode` | `non-free-firmware` |
+
+Both are `require` effects with no version: APT resolves the qualified
+Stable version. Package mapping is kept in its own rules, separate from the
+`class.cpu.*` classification rules. Other CPU vendors (for example Hygon,
+Centaur/Zhaoxin) and mis-cased or unknown vendor strings receive no microcode
+package. These are the only two production package mappings; a test requires
+the production package set to be exactly `{intel-microcode,
+amd64-microcode}`.
+
+**A package in a plan is a proposal.** Nothing in LUBARCHY installs it yet:
+the resolver calls no APT, dpkg, unattended-upgrades or PackageKit.
+
+### Firmware candidates (not active)
+
+Verified to exist in Debian Trixie `non-free-firmware` (see
+[`hardware/rules/SOURCES.md`](../hardware/rules/SOURCES.md)) but **candidate
+only — no production mapping in M1-D**: `firmware-intel-graphics`,
+`firmware-amd-graphics`, `firmware-iwlwifi`, `firmware-realtek`,
+`firmware-atheros`, `firmware-brcm80211`, `bluez-firmware`,
+`firmware-nvidia-graphics`, `firmware-nvidia-gsp`. Mapping any of them needs
+device-specific evidence and qualification in a later step.
+
+### NVIDIA boundary
+
+Authorising `non-free-firmware` does **not** authorise Debian `non-free`.
+M1-D therefore neither authorises nor maps `nvidia-driver`,
+`nvidia-kernel-dkms`, `nvidia-open-kernel-dkms` or any other proprietary
+NVIDIA driver-stack package; none of them is available from the authorised
+sources. The existence of NVIDIA firmware packages in `non-free-firmware`
+does not decide the NVIDIA driver strategy, which receives a separate review.
 
 ## Hardware classes
 
@@ -505,7 +568,8 @@ Debian Backports for hardware enablement must be justified and qualified
 ## NVIDIA requirement
 
 NVIDIA is a first-class requirement. NVIDIA support must be qualified for both
-desktop sessions. The driver sourcing approach is not yet defined.
+desktop sessions. The driver sourcing approach is not yet defined (see
+[NVIDIA boundary](#nvidia-boundary)).
 
 ## Desktop fallback
 
