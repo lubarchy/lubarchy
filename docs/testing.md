@@ -294,6 +294,8 @@ probes hardware.**
 | [#6 (38276073529)](https://github.com/lubarchy/lubarchy/actions/runs/38276073529) | `1bb31567b4b54e551026a244de900ad35840a324` | push | **success**: all four gates passed (documentation commit) |
 | [#7 (38276813287)](https://github.com/lubarchy/lubarchy/actions/runs/38276813287) | `cf1318dafa5afb9e60b697e8220c2bab18041755` | push | **success**: all four gates passed (documentation commit) |
 | [#8 (38289415670)](https://github.com/lubarchy/lubarchy/actions/runs/38289415670) | `4afa53fd14e983552dea1f8553366ddd13a59e6a` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks) and hardware probe (35 synthetic checks) passed |
+| [#9 (38289634704)](https://github.com/lubarchy/lubarchy/actions/runs/38289634704) | `7561ac107fd26d77de0275a91be726cb358b2b28` | push | **success**: all five gates passed (documentation commit) |
+| [#10 (38294397684)](https://github.com/lubarchy/lubarchy/actions/runs/38294397684) | `67a659d02a845886be43ef71e32193a53786180e` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks) and hardware resolver (23 checks; 96 production/reference parity cases) passed |
 
 The fix in `ce2462e` trusts exactly `$GITHUB_WORKSPACE` for the gate step
 through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`; no Git
@@ -316,8 +318,13 @@ synthetic only; no new dependency) was executed on GitHub by workflow
 gates ran and passed: repository lint, ShellCheck, live-build configuration,
 hardware contracts and hardware probe. CI never probes the runner's hardware.
 
-The M1-C change (gate 6, hardware resolver, synthetic only; no new
-dependency) has **not yet run on GitHub**.
+**M1-C CI qualification:** the M1-C change (gate 6, hardware resolver,
+synthetic only; no new dependency) was executed on GitHub by workflow
+`Static gates`, run ID
+[38294397684](https://github.com/lubarchy/lubarchy/actions/runs/38294397684)
+(run #10), on commit `67a659d02a845886be43ef71e32193a53786180e`. All six
+gates ran and passed: repository lint, ShellCheck, live-build configuration,
+hardware contracts, hardware probe and hardware resolver.
 
 ## Clean rebuild comparison
 

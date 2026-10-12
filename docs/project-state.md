@@ -38,7 +38,7 @@ later installation/configuration → later validation.
 | --- | --- | --- |
 | M1-A | Hardware contracts: inventory/rule/plan v1 schemas, rule model, resolution plan, fixture tests | PASS (CTO accepted) |
 | M1-B | Live read-only hardware probe producing inventory v1 | PASS (CTO accepted) |
-| M1-C | Production resolver and high-confidence classification baseline | Implemented locally; awaiting CTO review |
+| M1-C | Production resolver and high-confidence classification baseline | Published (`67a659d`); GitHub CI green (run #10); awaiting CTO review |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
   `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
@@ -86,8 +86,9 @@ later installation/configuration → later validation.
   exit means corroboration is unavailable (not proof that the property is
   absent); a missing executable, timeout or execution failure, or a
   non-empty differing value, fails the probe.
-- M1-C — production resolver and classification baseline: **implemented
-  locally; awaiting CTO review** (not PASS). `hardware/resolver.py` (library)
+- M1-C — production resolver and classification baseline: **published;
+  awaiting CTO review** (not PASS). Implementation commit
+  `67a659d02a845886be43ef71e32193a53786180e`. `hardware/resolver.py` (library)
   and `hardware/resolve.py` (CLI, `--inventory PATH|-`) resolve an inventory
   v1 against the production rules in `hardware/rules/` into a canonical plan
   v1, with `python3-jsonschema` (Debian `main`) for validation. The rule
@@ -96,7 +97,9 @@ later installation/configuration → later validation.
   Ethernet, other network controller, NVMe, SATA, VM/container/bare metal)
   and propose no package, profile or source; the source policy stays Debian
   `main` only. The synthetic gate `tests/hardware-resolver.py` (gate 6)
-  checks byte parity with the M1-A reference resolver. Live probe → resolve
+  checks byte parity with the M1-A reference resolver; `Static gates` run #10
+  ([38294397684](https://github.com/lubarchy/lubarchy/actions/runs/38294397684))
+  passed all six gates on that commit. Live probe → resolve
   qualification ran on the builder VM only. Details:
   [hardware-enablement.md](hardware-enablement.md),
   [testing.md](testing.md).
@@ -283,9 +286,10 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-C (production resolver and classification baseline, local
-commit, not yet pushed or run in GitHub CI). M1-D has not started and waits
-for a CTO brief.
+CTO review of M1-C (production resolver and classification baseline,
+published as `67a659d02a845886be43ef71e32193a53786180e`; `Static gates` run
+#10 passed all six gates on that commit; see [testing.md](testing.md)). M1-D
+has not started and waits for a CTO brief.
 
 ## PASS rule
 
