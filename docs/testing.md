@@ -66,6 +66,7 @@ A clean rebuild must succeed from the same commit.
 | Repository lint | `tests/repo-lint.sh` (M0-I) |
 | shellcheck | Every tracked shell script, via `tests/run-static.sh` (M0-I) |
 | Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I) |
+| GitHub CI | `.github/workflows/m0-static.yml` runs `tests/run-static.sh` on GitHub Actions (green since M0-J) |
 | `live-build` configuration validation | `tests/live-build-config.sh` (M0-E) |
 | ISO build | Manual, from the committed configuration (M0-F) |
 | Checksum/manifest | Produced with the first build (M0-F) |
@@ -76,11 +77,24 @@ A clean rebuild must succeed from the same commit.
 | Physical USB boot | Not qualified (real-hardware qualification) |
 | Clean rebuild comparison | Operator-run A/B rebuild with repository-input snapshots (M0-I): bit-for-bit reproducible under identical Debian repository inputs |
 
-The static gates are defined as a GitHub Actions workflow
-(`.github/workflows/m0-static.yml`, pinned `actions/checkout` commit and pinned
-`debian:trixie` image digest, `contents: read`). **The workflow has not yet
-been executed on GitHub**; the static gates have so far run only locally and on
-the builder.
+## GitHub CI
+
+The static gates run as the GitHub Actions workflow `M0 static gates`
+(`.github/workflows/m0-static.yml`): pinned `actions/checkout` commit, pinned
+`debian:trixie` image digest, `contents: read`, no secrets. It installs `git`,
+`ca-certificates`, `shellcheck` and `live-build` from Debian `main` only and
+runs `tests/run-static.sh`. **It is static/configuration CI only: it never
+builds or boots an ISO.**
+
+| Run | Commit | Event | Conclusion |
+| --- | --- | --- | --- |
+| [#1 (37933581297)](https://github.com/lubarchy/lubarchy/actions/runs/37933581297) | `f79c7324b534a37f6ec6c6566cb6615425ad6bce` | push | **failure**: Git rejected the root-run container workspace owned by the runner user ("dubious ownership"), so repository lint stopped |
+| [#2 (37972612802)](https://github.com/lubarchy/lubarchy/actions/runs/37972612802) | `ce2462e4e3a6b1016e5fe5d23e8dfd4d7d1361ba` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings) and the live-build configuration gate passed |
+
+The fix in `ce2462e` trusts exactly `$GITHUB_WORKSPACE` for the gate step
+through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`; no Git
+configuration file is written. Later commits are checked by the same workflow
+(push to `main` and pull requests touching the listed paths).
 
 ## Clean rebuild comparison
 

@@ -17,7 +17,8 @@ recoverable, and built entirely from version-controlled configuration.
 
 ## Status
 
-**Current milestone: M0 — Minimal reproducible ISO**
+**M0 — Minimal reproducible ISO: PASS.** Next milestone: M1 — Hardware
+enablement foundation (not started).
 
 LUBARCHY is in early bootstrap. **No installable LUBARCHY release exists yet.**
 Nothing described under product goals is available today; see
@@ -51,7 +52,7 @@ UX, delivery speed.
 
 ## Milestones
 
-1. M0 — Minimal reproducible ISO *(in progress)*
+1. M0 — Minimal reproducible ISO *(PASS)*
 2. M1 — Hardware enablement foundation
 3. M2 — Hyprland + Plasma desktop
 4. M3 — Beginner installer

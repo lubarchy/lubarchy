@@ -29,22 +29,23 @@ Accepted decisions are listed in [decisions.md](decisions.md).
 **Goal:** prove LUBARCHY can be built cleanly from source-controlled
 configuration before adding desktop or installer complexity.
 
-**M0 status: IN PROGRESS.**
+**M0 status: PASS** (M0-J, 2026-10-12).
 
 ### M0 exit checklist
 
-- [ ] Fresh public repository with governance baseline
+- [x] Fresh public repository with governance baseline (M0-C; published in M0-J)
 - [x] Clean Debian builder (M0-D; see [build.md](build.md))
 - [x] Documented build prerequisites (builder and live-build tooling; see [build.md](build.md))
-- [x] Committed `live-build` configuration (M0-E; validated, not yet built)
+- [x] Committed `live-build` configuration (M0-E; built from M0-F onward)
 - [x] Minimal ISO builds (M0-F)
 - [x] Checksum and package manifest (M0-F; initial artifact metadata)
 - [x] Successful UEFI QEMU/KVM boot (M0-G; optical/El Torito EFI)
 - [x] Automated boot smoke test (M0-G; `tests/iso-boot-smoke.sh`)
 - [x] Virtual UEFI removable-media/hybrid qualification (M0-H; OVMF USB mass-storage, not physical hardware)
 - [x] Clean rebuild succeeds (M0-I; bit-for-bit reproducible under identical Debian repository inputs)
-- [ ] Lint/CI baseline passes (local static gates PASS in M0-I; the CI workflow is defined but not yet run on GitHub)
-- [ ] Build documentation accepted
+- [x] Lint/CI baseline passes (repository lint and ShellCheck since M0-I; GitHub Actions `M0 static gates` green since M0-J)
+- [x] Build documentation accepted (M0-J final review)
+- [x] Traceability from Git commit to artifacts and tests (commit SHAs recorded with every build, test and CI run)
 
 An item is checked only when evidence exists and the CTO has reviewed it.
 
@@ -61,6 +62,7 @@ An item is checked only when evidence exists and the CTO has reviewed it.
 | M0-G | UEFI optical boot qualification and serial smoke baseline | PASS |
 | M0-H | Hybrid removable-media and unattended UEFI qualification | PASS |
 | M0-I | Deterministic build gates and clean-rebuild reproducibility | PASS |
+| M0-J | Publication, real GitHub CI, final review and M0 acceptance | PASS |
 
 - M0-C — repository/governance baseline: **PASS** (CTO-reviewed), commit
   `c0a665985f54de33d813ea1bf62794e7170299be`.
@@ -96,9 +98,23 @@ An item is checked only when evidence exists and the CTO has reviewed it.
   identical, signature-verified Debian repository inputs. Both passed the
   hybrid structure check and the serial smoke test. Repository lint,
   ShellCheck (0 findings) and the live-build configuration gate PASS. Details
-  are in [build.md](build.md). **The pinned static CI workflow is defined but
-  NOT YET RUN ON GITHUB.** Historical reproducibility against moving mirrors
-  is not established.
+  are in [build.md](build.md). At the end of M0-I the pinned static CI
+  workflow had not yet run on GitHub (see M0-J). Historical reproducibility
+  against moving mirrors is not established.
+- M0-J — publication and acceptance: **PASS**. The 12 Debian-generation
+  commits were pushed normally to `main` (`f10f256..f79c732`) after a
+  history-wide secrets and artifact audit. The first GitHub Actions run of
+  `M0 static gates` on `f79c7324b534a37f6ec6c6566cb6615425ad6bce`
+  ([37933581297](https://github.com/lubarchy/lubarchy/actions/runs/37933581297), run #1) **failed** at repository lint: the
+  job runs as root in the `debian:trixie` container while the checkout is
+  owned by the runner user, and Git refused the workspace ("dubious
+  ownership"). The CTO approved a workflow-only fix (per-step
+  `GIT_CONFIG_*` `safe.directory` for exactly `$GITHUB_WORKSPACE`, no config
+  file written), committed as `ce2462e4e3a6b1016e5fe5d23e8dfd4d7d1361ba`.
+  Run #2 ([37972612802](https://github.com/lubarchy/lubarchy/actions/runs/37972612802)) on that commit **succeeded**: repository
+  lint, ShellCheck (9 scripts, 0 findings) and the live-build configuration
+  gate all passed. The final repository and documentation review found no
+  contradiction with accepted architecture and no broken local links.
 
 A step's status is updated only after its execution has been validated and
 reviewed by the CTO.
@@ -116,7 +132,9 @@ reviewed by the CTO.
 - Initial GitHub commit: `f10f25607ecddcface2fed3768f76605a01f5174`
   ("Initial commit", contains `LICENSE` only).
 - Governance baseline (M0-C): `c0a665985f54de33d813ea1bf62794e7170299be`
-  (local; not yet pushed).
+  (published in M0-J).
+- First published Debian-generation head: `f79c7324b534a37f6ec6c6566cb6615425ad6bce`.
+- First green CI commit: `ce2462e4e3a6b1016e5fe5d23e8dfd4d7d1361ba`.
 
 ## Intentionally undecided
 
@@ -133,11 +151,31 @@ not be treated as decided:
 - P-008 — Release cadence/support policy
 - P-009 — Application delivery UX
 
-## Not implemented
+## M0 baseline facts
 
-- CI execution (the static workflow is defined but has not run on GitHub)
-- Historical reproducibility (rebuilds against archived repository snapshots)
-- Physical USB boot on real hardware (real-hardware qualification)
+- Source: `build/live` (live-build `1:20250505+deb13u1`, Debian trixie `main`
+  with security and updates), deterministic `SOURCE_DATE_EPOCH` from the
+  commit time, `config/rootfs/excludes` for the APT binary caches.
+- Reproducibility: two independent builds of
+  `2a2eda4b1c209be7dd5eb668e46402a181f308f6` produced byte-identical ISOs
+  (SHA-256 `d697b42871477c5ac5e5055df3472986a55ca9f6216b5110d1cc2b11a2c33db3`)
+  under identical, signature-verified Debian repository inputs.
+- Boot: UEFI optical and UEFI virtual removable-media (OVMF USB
+  mass-storage) boot qualified; serial smoke and hybrid structure gates pass.
+- Static gates: repository lint, ShellCheck and the live-build configuration
+  gate, locally and in GitHub Actions (static/configuration CI only; CI does
+  not build an ISO).
+- M0 boot choices (GRUB EFI plus `grub-pc` for the hybrid system area,
+  Secure Boot disabled, no installer) are pipeline choices only and do not
+  resolve P-001, P-004 or P-006.
+
+## Not implemented / deferred
+
+- Physical USB boot on real hardware (deferred to later hardware
+  qualification)
+- Historical reproducibility: the Debian mirrors move, so rebuilding later
+  against changed suites is not guaranteed to reproduce an image
+- ISO builds in CI (CI runs static/configuration gates only)
 - LUBARCHY package repository
 - Desktop stack
 - Hardware detector/resolver
@@ -150,7 +188,7 @@ not be treated as decided:
 
 ## Milestone order
 
-1. M0 — Minimal reproducible ISO
+1. M0 — Minimal reproducible ISO (PASS)
 2. M1 — Hardware enablement foundation
 3. M2 — Hyprland + Plasma desktop
 4. M3 — Beginner installer
@@ -161,9 +199,11 @@ not be treated as decided:
 
 ## Immediate next action
 
-Publish the reviewed local baseline to GitHub, execute and verify the pinned
-M0 static CI workflow, perform final repository/documentation review, and
-decide M0 acceptance.
+Next milestone: **M1 — Hardware Enablement Foundation** (not started).
+
+Define the M1 hardware-inventory schema, detection boundaries,
+compatibility-rule model, package/profile resolution contract, and initial
+automated tests before adding desktop or installer layers.
 
 ## PASS rule
 

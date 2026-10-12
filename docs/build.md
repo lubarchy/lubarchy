@@ -279,6 +279,11 @@ The builder's APT sources were unchanged and no non-free, contrib or foreign
 package was installed. `live-boot` and `live-config` are not installed on the
 builder; they are only needed inside the image.
 
+In M0-I, `shellcheck 0.10.0-1` (`trixie/main`, 1 new package, 0 upgraded,
+0 removed, no authentication warnings) was installed on the builder for the
+static gates (`tests/run-static.sh`). The builder's APT sources were again
+unchanged.
+
 ### Source-controlled configuration
 
 The image is described in Git under `build/live`, using live-build's
@@ -679,8 +684,11 @@ Limitations:
   suites change, is expected to produce a different image. Historical
   reproducibility (from archived snapshots) is not established.
 - Both builds ran on the same builder VM with the same toolchain.
-- The pinned static CI workflow (`.github/workflows/m0-static.yml`) is defined
-  but **has not yet been executed on GitHub**.
+- At the time of M0-I the pinned static CI workflow
+  (`.github/workflows/m0-static.yml`) had not been executed on GitHub. It
+  first ran in M0-J and is green since commit
+  `ce2462e4e3a6b1016e5fe5d23e8dfd4d7d1361ba`; see
+  [testing.md](testing.md#github-ci). It does not build an ISO.
 - Physical USB real-hardware boot remains **NOT YET QUALIFIED**.
 
 Evidence (both ISOs, build logs, input snapshots, manifests, the comparison
