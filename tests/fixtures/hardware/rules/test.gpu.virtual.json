@@ -1,0 +1,23 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "test.gpu.virtual",
+  "description": "TEST-ONLY synthetic rule: QEMU standard VGA.",
+  "priority": 200,
+  "match": [
+    {
+      "pci": {
+        "vendor_id": [
+          "1234"
+        ],
+        "class_id": [
+          "03"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "gpu.virtual"
+    ]
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "classifications": [
+    {
+      "name": "cpu.amd",
+      "rules": [
+        "test.cpu.amd"
+      ],
+      "targets": [
+        "cpu"
+      ]
+    },
+    {
+      "name": "network.ethernet",
+      "rules": [
+        "test.network.ethernet"
+      ],
+      "targets": [
+        "pci:0000:02:00.0"
+      ]
+    },
+    {
+      "name": "network.wifi",
+      "rules": [
+        "test.network.wifi"
+      ],
+      "targets": [
+        "pci:0000:03:00.0"
+      ]
+    }
+  ],
+  "conflicts": [],
+  "inventory_digest": "sha256:3b1267324644c8cce71333f940f85e8c8d0c84894a1ba647b3479be4e4865f61",
+  "inventory_schema": "lubarchy.hardware.inventory/v1",
+  "matched_rules": [
+    {
+      "id": "test.network.ethernet",
+      "priority": 150,
+      "targets": [
+        "pci:0000:02:00.0"
+      ]
+    },
+    {
+      "id": "test.network.wifi",
+      "priority": 150,
+      "targets": [
+        "pci:0000:03:00.0"
+      ]
+    },
+    {
+      "id": "test.cpu.amd",
+      "priority": 100,
+      "targets": [
+        "cpu"
+      ]
+    }
+  ],
+  "packages": [
+    {
+      "disposition": "require",
+      "name": "lubarchy-test-firmware-b",
+      "reasons": [
+        {
+          "reason": "Synthetic requirement from main.",
+          "rule": "test.cpu.amd"
+        }
+      ],
+      "source": "main",
+      "source_status": "authorised"
+    },
+    {
+      "disposition": "require",
+      "name": "lubarchy-test-firmware-e",
+      "reasons": [
+        {
+          "reason": "Synthetic Wi-Fi firmware requirement from a non-main component.",
+          "rule": "test.network.wifi"
+        }
+      ],
+      "source": "non-free-firmware",
+      "source_status": "policy_review_required"
+    }
+  ],
+  "profiles": [],
+  "rule_schema": "lubarchy.hardware.rule/v1",
+  "rule_set_digest": "sha256:199c0b8ffceafb6656e48ad416e69b4fe15b4b86a6bc15e88949677da09cdc8b",
+  "schema": "lubarchy.hardware.plan/v1",
+  "source_policy": {
+    "authorised": [
+      "main"
+    ]
+  },
+  "sources": [
+    {
+      "packages": [
+        "lubarchy-test-firmware-b"
+      ],
+      "source": "main",
+      "status": "authorised"
+    },
+    {
+      "packages": [
+        "lubarchy-test-firmware-e"
+      ],
+      "source": "non-free-firmware",
+      "status": "policy_review_required"
+    }
+  ],
+  "status": "partial",
+  "unresolved": [],
+  "warnings": []
+}

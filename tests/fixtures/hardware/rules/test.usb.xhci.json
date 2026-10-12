@@ -1,0 +1,20 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "test.usb.xhci",
+  "description": "TEST-ONLY synthetic rule: xHCI USB host controllers.",
+  "priority": 50,
+  "match": [
+    {
+      "pci": {
+        "class_id": [
+          "0c0330"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "usb.controller"
+    ]
+  }
+}

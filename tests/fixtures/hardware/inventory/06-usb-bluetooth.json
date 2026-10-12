@@ -1,0 +1,74 @@
+{
+  "schema": "lubarchy.hardware.inventory/v1",
+  "system": {
+    "architecture": "amd64",
+    "kernel_release": "6.12.0-fixture-amd64",
+    "boot_firmware": "uefi",
+    "secure_boot": "disabled",
+    "virtualization": {
+      "kind": "none"
+    }
+  },
+  "cpu": {
+    "architecture": "x86_64",
+    "vendor": "GenuineIntel",
+    "family": 6,
+    "model": 250,
+    "stepping": 1,
+    "model_name": "Synthetic Intel fixture CPU",
+    "microcode_revision": "0x1f"
+  },
+  "devices": [
+    {
+      "id": "pci:0000:00:14.0",
+      "bus": "pci",
+      "locator": "0000:00:14.0",
+      "vendor_id": "8086",
+      "device_id": "f008",
+      "subsystem_vendor_id": "8086",
+      "subsystem_device_id": "f108",
+      "class_id": "0c0330",
+      "modalias": "pci:v00008086d0000F008sv00008086sd0000F108bc0Csc03i30",
+      "driver": "xhci_hcd",
+      "modules": [
+        "xhci_pci"
+      ]
+    },
+    {
+      "id": "usb:1-10",
+      "bus": "usb",
+      "parent": "pci:0000:00:14.0",
+      "locator": "1-10",
+      "vendor_id": "8087",
+      "product_id": "f009",
+      "device_class": "e0",
+      "device_subclass": "01",
+      "device_protocol": "01",
+      "driver": "usb",
+      "interfaces": [
+        {
+          "number": "00",
+          "class": "e0",
+          "subclass": "01",
+          "protocol": "01",
+          "modalias": "usb:v8087pF009d0000dcE0dsc01dp01icE0isc01ip01in00",
+          "driver": "btusb",
+          "modules": [
+            "btusb"
+          ]
+        },
+        {
+          "number": "01",
+          "class": "e0",
+          "subclass": "01",
+          "protocol": "01",
+          "modalias": "usb:v8087pF009d0000dcE0dsc01dp01icE0isc01ip01in01",
+          "driver": "btusb",
+          "modules": [
+            "btusb"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "test.gpu.nvidia",
+  "description": "TEST-ONLY synthetic rule: NVIDIA VGA and 3D controllers.",
+  "priority": 200,
+  "match": [
+    {
+      "pci": {
+        "vendor_id": [
+          "10de"
+        ],
+        "class_id": [
+          "0300",
+          "0302"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "gpu.nvidia"
+    ],
+    "packages": [
+      {
+        "name": "lubarchy-test-firmware-d",
+        "disposition": "require",
+        "source": "non-free-firmware",
+        "reason": "Synthetic GPU firmware requirement from a non-main component."
+      }
+    ],
+    "profiles": [
+      {
+        "name": "test-graphics-nvidia",
+        "reason": "Synthetic NVIDIA graphics profile label."
+      }
+    ],
+    "warnings": [
+      {
+        "code": "test.nvidia-policy-pending",
+        "message": "Synthetic test warning: NVIDIA driver sourcing is not decided."
+      }
+    ]
+  }
+}

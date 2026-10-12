@@ -284,6 +284,15 @@ In M0-I, `shellcheck 0.10.0-1` (`trixie/main`, 1 new package, 0 upgraded,
 static gates (`tests/run-static.sh`). The builder's APT sources were again
 unchanged.
 
+In M1-A, `python3-jsonschema 4.19.2-6` was installed on the builder as a QA
+dependency for the hardware contract gate (`tests/hardware-contracts.py`),
+with `--no-install-recommends`: 5 new packages (`python3-jsonschema`,
+`python3-jsonschema-specifications 2023.12.1-2`, `python3-referencing
+0.36.2-1`, `python3-rpds-py 0.21.0-2+b1`, `python3-attr 25.3.0-1`), all
+`trixie/main`, 0 upgraded, 0 removed. `python3` (`3.13.5-1`) was already
+installed. The builder's APT sources were unchanged, and the ISO package set
+is not affected.
+
 ### Source-controlled configuration
 
 The image is described in Git under `build/live`, using live-build's

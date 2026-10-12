@@ -1,0 +1,278 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lubarchy:hardware:rule:v1",
+  "title": "LUBARCHY hardware compatibility rule v1",
+  "description": "One declarative compatibility rule. A rule matches when ANY of its selectors matches; within a selector every supplied field must match (AND); within one field's list any value may match (OR). Rules carry no shell fragments, commands or code: every field is data, and no field is ever executed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "description", "priority", "match", "effects"],
+  "properties": {
+    "schema": {
+      "description": "Rule contract identifier and version.",
+      "const": "lubarchy.hardware.rule/v1"
+    },
+    "id": {
+      "description": "Globally unique rule identifier. A rule file is named '<id>.json'.",
+      "$ref": "#/$defs/name"
+    },
+    "description": {
+      "description": "What the rule covers and why.",
+      "$ref": "#/$defs/text"
+    },
+    "priority": {
+      "description": "Evaluation and reporting order only: higher first, ties broken by ascending id. Priority never lets one rule override another; incompatible effects are a conflict.",
+      "type": "integer",
+      "minimum": -1000,
+      "maximum": 1000
+    },
+    "match": {
+      "description": "Selectors. The rule matches if any selector matches.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/selector" }
+    },
+    "effects": { "$ref": "#/$defs/effects" }
+  },
+  "$defs": {
+    "name": {
+      "description": "Lowercase dotted/hyphenated identifier.",
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-z0-9]+([.-][a-z0-9]+)*$"
+    },
+    "text": {
+      "description": "Single-line human-facing text. Never interpreted or executed.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+    },
+    "hex2List": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[0-9a-f]{2}$" }
+    },
+    "hex4List": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[0-9a-f]{4}$" }
+    },
+    "globList": {
+      "description": "Shell-style glob patterns over the kernel modalias, case-sensitive: '*' any sequence, '?' any one character, '[...]' a character set ('[!...]' negated). No regular expressions.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256,
+        "pattern": "^[!-~]+$"
+      }
+    },
+    "selector": {
+      "description": "Exactly one scope: pci, usb, cpu or platform.",
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "pci": { "$ref": "#/$defs/pciSelector" },
+        "usb": { "$ref": "#/$defs/usbSelector" },
+        "cpu": { "$ref": "#/$defs/cpuSelector" },
+        "platform": { "$ref": "#/$defs/platformSelector" }
+      }
+    },
+    "pciSelector": {
+      "description": "Matches one PCI device. An observed field that is absent never satisfies a condition on it.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "vendor_id": { "$ref": "#/$defs/hex4List" },
+        "device_id": { "$ref": "#/$defs/hex4List" },
+        "subsystem_vendor_id": { "$ref": "#/$defs/hex4List" },
+        "subsystem_device_id": { "$ref": "#/$defs/hex4List" },
+        "class_id": {
+          "description": "Class code prefixes: 2 digits match the base class, 4 the base class and subclass, 6 the full class code.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[0-9a-f]{2}([0-9a-f]{2}){0,2}$" }
+        },
+        "modalias": { "$ref": "#/$defs/globList" }
+      }
+    },
+    "usbSelector": {
+      "description": "Matches one USB device. interface_* and modalias conditions must all be satisfied by the same interface of that device.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "vendor_id": { "$ref": "#/$defs/hex4List" },
+        "product_id": { "$ref": "#/$defs/hex4List" },
+        "device_class": { "$ref": "#/$defs/hex2List" },
+        "device_subclass": { "$ref": "#/$defs/hex2List" },
+        "device_protocol": { "$ref": "#/$defs/hex2List" },
+        "interface_class": { "$ref": "#/$defs/hex2List" },
+        "interface_subclass": { "$ref": "#/$defs/hex2List" },
+        "interface_protocol": { "$ref": "#/$defs/hex2List" },
+        "modalias": { "$ref": "#/$defs/globList" }
+      }
+    },
+    "cpuSelector": {
+      "description": "Matches the inventory's CPU.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "architecture": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["x86_64"] }
+        },
+        "vendor": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[!-~]{1,12}$" }
+        },
+        "family": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 0, "maximum": 65535 }
+        },
+        "model": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "integer", "minimum": 0, "maximum": 65535 }
+        }
+      }
+    },
+    "platformSelector": {
+      "description": "Matches platform facts of the inventory's system section.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "architecture": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["amd64"] }
+        },
+        "boot_firmware": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["uefi", "bios"] }
+        },
+        "virtualization_kind": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["none", "vm", "container"] }
+        },
+        "virtualization_technology": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 32 }
+        }
+      }
+    },
+    "source": {
+      "description": "Package source a requirement needs. 'main', 'contrib', 'non-free' and 'non-free-firmware' are Debian components; 'backports' is the Debian stable backports suite; 'lubarchy' is a future authenticated LUBARCHY repository. Declaring a source never enables it.",
+      "enum": ["main", "non-free-firmware", "contrib", "non-free", "backports", "lubarchy"]
+    },
+    "packageName": {
+      "description": "Debian binary package name.",
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-z0-9][a-z0-9+.-]+$"
+    },
+    "packageEffect": {
+      "description": "A declarative package requirement ('require', with its source) or prohibition ('forbid'). Never an install command.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "disposition", "reason"],
+      "properties": {
+        "name": { "$ref": "#/$defs/packageName" },
+        "disposition": { "enum": ["require", "forbid"] },
+        "source": { "$ref": "#/$defs/source" },
+        "reason": { "$ref": "#/$defs/text" }
+      },
+      "if": {
+        "properties": { "disposition": { "const": "require" } }
+      },
+      "then": { "required": ["source"] },
+      "else": { "not": { "required": ["source"] } }
+    },
+    "profileEffect": {
+      "description": "A symbolic profile label. Profile contents are future work.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "reason"],
+      "properties": {
+        "name": { "$ref": "#/$defs/name" },
+        "reason": { "$ref": "#/$defs/text" },
+        "excludes": {
+          "description": "Profiles that must not be required together with this one.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/name" }
+        }
+      }
+    },
+    "warningEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "description": "Machine-readable warning code.",
+          "$ref": "#/$defs/name"
+        },
+        "message": {
+          "description": "Human-facing explanation.",
+          "$ref": "#/$defs/text"
+        }
+      }
+    },
+    "effects": {
+      "description": "Declarative effects of a matching rule. Rules are additive.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "classifications": {
+          "description": "Hardware classes, e.g. 'gpu.nvidia', 'network.wifi'.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/name" }
+        },
+        "packages": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/packageEffect" }
+        },
+        "profiles": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/profileEffect" }
+        },
+        "warnings": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/warningEffect" }
+        }
+      }
+    }
+  }
+}

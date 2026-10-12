@@ -1,0 +1,74 @@
+{
+    "devices": [
+        {
+            "interfaces": [
+                {
+                    "modules": [
+                        "btusb"
+                    ],
+                    "driver": "btusb",
+                    "modalias": "usb:v8087pF009d0000dcE0dsc01dp01icE0isc01ip01in01",
+                    "protocol": "01",
+                    "subclass": "01",
+                    "class": "e0",
+                    "number": "01"
+                },
+                {
+                    "modules": [
+                        "btusb"
+                    ],
+                    "driver": "btusb",
+                    "modalias": "usb:v8087pF009d0000dcE0dsc01dp01icE0isc01ip01in00",
+                    "protocol": "01",
+                    "subclass": "01",
+                    "class": "e0",
+                    "number": "00"
+                }
+            ],
+            "driver": "usb",
+            "device_protocol": "01",
+            "device_subclass": "01",
+            "device_class": "e0",
+            "product_id": "f009",
+            "vendor_id": "8087",
+            "locator": "1-10",
+            "parent": "pci:0000:00:14.0",
+            "bus": "usb",
+            "id": "usb:1-10"
+        },
+        {
+            "modules": [
+                "xhci_pci"
+            ],
+            "driver": "xhci_hcd",
+            "modalias": "pci:v00008086d0000F008sv00008086sd0000F108bc0Csc03i30",
+            "class_id": "0c0330",
+            "subsystem_device_id": "f108",
+            "subsystem_vendor_id": "8086",
+            "device_id": "f008",
+            "vendor_id": "8086",
+            "locator": "0000:00:14.0",
+            "bus": "pci",
+            "id": "pci:0000:00:14.0"
+        }
+    ],
+    "cpu": {
+        "microcode_revision": "0x1f",
+        "model_name": "Synthetic Intel fixture CPU",
+        "stepping": 1,
+        "model": 250,
+        "family": 6,
+        "vendor": "GenuineIntel",
+        "architecture": "x86_64"
+    },
+    "system": {
+        "virtualization": {
+            "kind": "none"
+        },
+        "secure_boot": "disabled",
+        "boot_firmware": "uefi",
+        "kernel_release": "6.12.0-fixture-amd64",
+        "architecture": "amd64"
+    },
+    "schema": "lubarchy.hardware.inventory/v1"
+}

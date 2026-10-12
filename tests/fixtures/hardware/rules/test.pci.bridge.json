@@ -1,0 +1,20 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "test.pci.bridge",
+  "description": "TEST-ONLY synthetic rule: PCI-to-PCI bridges.",
+  "priority": 10,
+  "match": [
+    {
+      "pci": {
+        "class_id": [
+          "0604"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "pci.bridge"
+    ]
+  }
+}

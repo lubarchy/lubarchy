@@ -1,0 +1,54 @@
+{
+  "classifications": [],
+  "conflicts": [
+    {
+      "kind": "package_required_and_forbidden",
+      "rules": [
+        "test.conflict.forbid-d",
+        "test.conflict.require-d"
+      ],
+      "subject": "lubarchy-test-firmware-d"
+    }
+  ],
+  "inventory_digest": "sha256:94b5c4e150ef4108ac6cbbd00b99d34acb3d7f95905701417aa3c590fe05776c",
+  "inventory_schema": "lubarchy.hardware.inventory/v1",
+  "matched_rules": [
+    {
+      "id": "test.conflict.forbid-d",
+      "priority": 900,
+      "targets": [
+        "pci:0000:01:00.0"
+      ]
+    },
+    {
+      "id": "test.conflict.require-d",
+      "priority": 200,
+      "targets": [
+        "pci:0000:01:00.0"
+      ]
+    }
+  ],
+  "packages": [],
+  "profiles": [],
+  "rule_schema": "lubarchy.hardware.rule/v1",
+  "rule_set_digest": "sha256:d42a09270ab7d33d8b6157a3f1b81c2a5ae0a4d3fb1cfb89a80399dd457c436b",
+  "schema": "lubarchy.hardware.plan/v1",
+  "source_policy": {
+    "authorised": [
+      "main"
+    ]
+  },
+  "sources": [],
+  "status": "conflict",
+  "unresolved": [
+    {
+      "reason": "no_rule_matched",
+      "target": "cpu"
+    },
+    {
+      "reason": "no_rule_matched",
+      "target": "pci:0000:00:01.0"
+    }
+  ],
+  "warnings": []
+}

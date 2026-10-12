@@ -1,0 +1,63 @@
+{
+  "schema": "lubarchy.hardware.inventory/v1",
+  "system": {
+    "architecture": "amd64",
+    "kernel_release": "6.12.0-fixture-amd64",
+    "boot_firmware": "uefi",
+    "secure_boot": "disabled",
+    "virtualization": {
+      "kind": "none"
+    }
+  },
+  "cpu": {
+    "architecture": "x86_64",
+    "vendor": "GenuineIntel",
+    "family": 6,
+    "model": 250,
+    "stepping": 1,
+    "model_name": "Synthetic Intel fixture CPU",
+    "microcode_revision": "0x1f"
+  },
+  "devices": [
+    {
+      "id": "pci:0000:00:01.0",
+      "bus": "pci",
+      "locator": "0000:00:01.0",
+      "vendor_id": "8086",
+      "device_id": "f0b0",
+      "class_id": "060400",
+      "driver": "pcieport"
+    },
+    {
+      "id": "pci:0000:00:02.0",
+      "bus": "pci",
+      "locator": "0000:00:02.0",
+      "vendor_id": "8086",
+      "device_id": "f004",
+      "subsystem_vendor_id": "f0e0",
+      "subsystem_device_id": "f001",
+      "class_id": "030000",
+      "modalias": "pci:v00008086d0000F004sv0000F0E0sd0000F001bc03sc00i00",
+      "driver": "i915",
+      "modules": [
+        "i915"
+      ]
+    },
+    {
+      "id": "pci:0000:01:00.0",
+      "bus": "pci",
+      "parent": "pci:0000:00:01.0",
+      "locator": "0000:01:00.0",
+      "vendor_id": "10de",
+      "device_id": "f005",
+      "subsystem_vendor_id": "f0e0",
+      "subsystem_device_id": "f001",
+      "class_id": "030200",
+      "modalias": "pci:v000010DEd0000F005sv0000F0E0sd0000F001bc03sc02i00",
+      "driver": "nouveau",
+      "modules": [
+        "nouveau"
+      ]
+    }
+  ]
+}

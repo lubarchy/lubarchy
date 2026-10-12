@@ -89,13 +89,18 @@ The generated ISO is an output. It is never the source of truth.
   a configuration where Plasma is safe, the machine must remain usable with
   Plasma.
 
-## Hardware pipeline (future)
+## Hardware pipeline
 
 probe → normalized inventory → compatibility classification →
 package/profile resolution → configuration → validation → persisted
 diagnostic result
 
-See [hardware-enablement.md](hardware-enablement.md).
+Since M1-A the data boundaries are defined as versioned contracts: the
+inventory holds observed, privacy-safe facts only; declarative rules hold
+policy; resolution produces a proposed plan that contains no commands and
+enables no package source. Unknown hardware and rule conflicts fail closed.
+Probing, configuration and validation are not implemented yet. See
+[hardware-enablement.md](hardware-enablement.md).
 
 ## Installer boundary (future)
 

@@ -1,0 +1,139 @@
+{
+  "classifications": [
+    {
+      "name": "cpu.amd",
+      "rules": [
+        "test.cpu.amd"
+      ],
+      "targets": [
+        "cpu"
+      ]
+    },
+    {
+      "name": "gpu.virtual",
+      "rules": [
+        "test.gpu.virtual"
+      ],
+      "targets": [
+        "pci:0000:00:01.0"
+      ]
+    },
+    {
+      "name": "network.ethernet",
+      "rules": [
+        "test.network.ethernet"
+      ],
+      "targets": [
+        "pci:0000:00:02.0"
+      ]
+    },
+    {
+      "name": "platform.vm",
+      "rules": [
+        "test.platform.kvm"
+      ],
+      "targets": [
+        "platform"
+      ]
+    },
+    {
+      "name": "virtio.device",
+      "rules": [
+        "test.virtio"
+      ],
+      "targets": [
+        "pci:0000:00:02.0",
+        "pci:0000:00:03.0"
+      ]
+    }
+  ],
+  "conflicts": [],
+  "inventory_digest": "sha256:c9ec0110fe7ee7cf135ab4fb06f510687a08019c36e9388c7d74c1d484cf68bb",
+  "inventory_schema": "lubarchy.hardware.inventory/v1",
+  "matched_rules": [
+    {
+      "id": "test.gpu.virtual",
+      "priority": 200,
+      "targets": [
+        "pci:0000:00:01.0"
+      ]
+    },
+    {
+      "id": "test.network.ethernet",
+      "priority": 150,
+      "targets": [
+        "pci:0000:00:02.0"
+      ]
+    },
+    {
+      "id": "test.cpu.amd",
+      "priority": 100,
+      "targets": [
+        "cpu"
+      ]
+    },
+    {
+      "id": "test.platform.kvm",
+      "priority": 100,
+      "targets": [
+        "platform"
+      ]
+    },
+    {
+      "id": "test.virtio",
+      "priority": 100,
+      "targets": [
+        "pci:0000:00:02.0",
+        "pci:0000:00:03.0"
+      ]
+    }
+  ],
+  "packages": [
+    {
+      "disposition": "require",
+      "name": "lubarchy-test-firmware-b",
+      "reasons": [
+        {
+          "reason": "Synthetic requirement from main.",
+          "rule": "test.cpu.amd"
+        }
+      ],
+      "source": "main",
+      "source_status": "authorised"
+    },
+    {
+      "disposition": "require",
+      "name": "lubarchy-test-guest-a",
+      "reasons": [
+        {
+          "reason": "Synthetic guest-integration requirement from main.",
+          "rule": "test.platform.kvm"
+        }
+      ],
+      "source": "main",
+      "source_status": "authorised"
+    }
+  ],
+  "profiles": [],
+  "rule_schema": "lubarchy.hardware.rule/v1",
+  "rule_set_digest": "sha256:199c0b8ffceafb6656e48ad416e69b4fe15b4b86a6bc15e88949677da09cdc8b",
+  "schema": "lubarchy.hardware.plan/v1",
+  "source_policy": {
+    "authorised": [
+      "main"
+    ]
+  },
+  "sources": [
+    {
+      "packages": [
+        "lubarchy-test-firmware-b",
+        "lubarchy-test-guest-a"
+      ],
+      "source": "main",
+      "status": "authorised"
+    }
+  ],
+  "status": "resolved",
+  "unresolved": [],
+  "warnings": []
+}

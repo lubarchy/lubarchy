@@ -1,0 +1,37 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "test.gpu.amd",
+  "description": "TEST-ONLY synthetic rule: AMD display controllers.",
+  "priority": 200,
+  "match": [
+    {
+      "pci": {
+        "vendor_id": [
+          "1002"
+        ],
+        "class_id": [
+          "03"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "gpu.amd"
+    ],
+    "packages": [
+      {
+        "name": "lubarchy-test-firmware-c",
+        "disposition": "require",
+        "source": "main",
+        "reason": "Synthetic GPU firmware requirement from main."
+      }
+    ],
+    "profiles": [
+      {
+        "name": "test-graphics-open",
+        "reason": "Synthetic open graphics profile label."
+      }
+    ]
+  }
+}

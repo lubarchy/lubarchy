@@ -42,10 +42,12 @@ never sufficient to establish a significant architecture decision.
 
 ## Current scope
 
-- Current milestone: **M0 — Minimal reproducible ISO.**
+- Current milestone: **M1 — Hardware Enablement Foundation.**
+- M0 — Minimal reproducible ISO is **PASS and closed**; its accepted baseline
+  is not reopened without CTO instruction.
 - Check `docs/project-state.md` for the current step and its status.
-- Do not start later milestones (hardware enablement, desktop, installer,
-  recovery, update system, real-hardware qualification) early.
+- Do not start later milestones (desktop, installer, recovery, update system,
+  real-hardware qualification) or later M1 steps early.
 
 ## Package authority
 

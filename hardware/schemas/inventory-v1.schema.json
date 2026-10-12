@@ -1,0 +1,261 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lubarchy:hardware:inventory:v1",
+  "title": "LUBARCHY normalized hardware inventory v1",
+  "description": "Observation only: normalized facts read from Linux (sysfs, udev, kernel). Contains no policy, no package names, no wall-clock time and no privacy-sensitive identifiers. Undeclared fields are rejected at every level; new facts require a new schema version.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "system", "cpu", "devices"],
+  "properties": {
+    "schema": {
+      "description": "Inventory contract identifier and version.",
+      "const": "lubarchy.hardware.inventory/v1"
+    },
+    "system": { "$ref": "#/$defs/system" },
+    "cpu": { "$ref": "#/$defs/cpu" },
+    "devices": {
+      "description": "Observed PCI and USB devices. Canonical order: ascending by id (Unicode code point order).",
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/pciDevice" },
+          { "$ref": "#/$defs/usbDevice" }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "hex2": {
+      "description": "Two lowercase hexadecimal digits.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{2}$"
+    },
+    "hex4": {
+      "description": "Four lowercase hexadecimal digits.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{4}$"
+    },
+    "hex6": {
+      "description": "Six lowercase hexadecimal digits.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{6}$"
+    },
+    "snapshotId": {
+      "description": "Snapshot-local device identifier: '<bus>:<locator>'. Unique within one inventory only; it is a topology position, not a stable hardware identity across boots or machines, and is never used for compatibility matching.",
+      "type": "string",
+      "pattern": "^(pci:[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\\.[0-7]|usb:[1-9][0-9]{0,2}-[1-9][0-9]{0,2}(\\.[1-9][0-9]{0,2}){0,6})$"
+    },
+    "driver": {
+      "description": "Name of the kernel driver bound to the device or interface, when one is bound.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+    },
+    "modules": {
+      "description": "Kernel module names associated with the bound driver, with '-' normalized to '_'. Canonical order: ascending, unique.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9_]{1,64}$"
+      }
+    },
+    "system": {
+      "description": "Platform facts of the running system.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["architecture", "kernel_release", "secure_boot"],
+      "properties": {
+        "architecture": {
+          "description": "Debian architecture of the running system (as dpkg reports it).",
+          "enum": ["amd64"]
+        },
+        "kernel_release": {
+          "description": "Running kernel release (uname -r).",
+          "type": "string",
+          "pattern": "^[0-9A-Za-z][0-9A-Za-z.+_~-]{0,63}$"
+        },
+        "boot_firmware": {
+          "description": "Firmware interface the system booted through. Absent when not determined.",
+          "enum": ["uefi", "bios"]
+        },
+        "secure_boot": {
+          "description": "Observed Secure Boot state. 'unknown' when it could not be read; observation only, never a policy.",
+          "enum": ["enabled", "disabled", "unknown"]
+        },
+        "virtualization": {
+          "description": "Virtualization observation. Absent when not determined.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": {
+              "description": "'none' for bare metal, 'vm' for a virtual machine, 'container' for a container.",
+              "enum": ["none", "vm", "container"]
+            },
+            "technology": {
+              "description": "Virtualization technology identifier (systemd-detect-virt vocabulary, e.g. 'kvm', 'qemu'). Only present for 'vm' or 'container'.",
+              "type": "string",
+              "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+              "maxLength": 32
+            }
+          },
+          "if": {
+            "properties": { "kind": { "const": "none" } }
+          },
+          "then": {
+            "not": { "required": ["technology"] }
+          }
+        }
+      }
+    },
+    "cpu": {
+      "description": "Processor facts (from /proc/cpuinfo and sysfs). Microcode requirements are policy and never appear here.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["architecture", "vendor"],
+      "properties": {
+        "architecture": {
+          "description": "Processor instruction set architecture (kernel machine name).",
+          "enum": ["x86_64"]
+        },
+        "vendor": {
+          "description": "CPUID vendor identification string with surrounding whitespace removed, e.g. 'GenuineIntel', 'AuthenticAMD'.",
+          "type": "string",
+          "pattern": "^[!-~]{1,12}$"
+        },
+        "family": {
+          "description": "CPU family as a decimal integer.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "model": {
+          "description": "CPU model as a decimal integer.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "stepping": {
+          "description": "CPU stepping as a decimal integer, where available.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "model_name": {
+          "description": "Human-readable model name. Informational only; never used for matching.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[ -~]+$"
+        },
+        "microcode_revision": {
+          "description": "Observed microcode revision: '0x' followed by lowercase hexadecimal without leading zeros.",
+          "type": "string",
+          "pattern": "^0x(0|[1-9a-f][0-9a-f]{0,15})$"
+        }
+      }
+    },
+    "pciDevice": {
+      "description": "A PCI function.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "bus", "locator", "vendor_id", "device_id", "class_id"],
+      "properties": {
+        "id": {
+          "description": "Snapshot-local id: 'pci:' followed by the locator.",
+          "type": "string",
+          "pattern": "^pci:[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\\.[0-7]$"
+        },
+        "bus": { "const": "pci" },
+        "parent": {
+          "description": "Snapshot id of the parent device (e.g. the PCI bridge), when it is part of this inventory.",
+          "$ref": "#/$defs/snapshotId"
+        },
+        "locator": {
+          "description": "PCI domain:bus:device.function. Snapshot-local; must equal the id without its 'pci:' prefix.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\\.[0-7]$"
+        },
+        "vendor_id": { "$ref": "#/$defs/hex4" },
+        "device_id": { "$ref": "#/$defs/hex4" },
+        "subsystem_vendor_id": {
+          "description": "Absent when the kernel does not provide it; never invented as zero.",
+          "$ref": "#/$defs/hex4"
+        },
+        "subsystem_device_id": {
+          "description": "Absent when the kernel does not provide it; never invented as zero.",
+          "$ref": "#/$defs/hex4"
+        },
+        "class_id": {
+          "description": "PCI class code: base class, subclass, programming interface.",
+          "$ref": "#/$defs/hex6"
+        },
+        "modalias": {
+          "description": "Kernel modalias, preserved byte-for-byte as the kernel provides it (uppercase hexadecimal, as kernel module aliases use).",
+          "type": "string",
+          "pattern": "^pci:v[0-9A-F]{8}d[0-9A-F]{8}sv[0-9A-F]{8}sd[0-9A-F]{8}bc[0-9A-F]{2}sc[0-9A-F]{2}i[0-9A-F]{2}$"
+        },
+        "driver": { "$ref": "#/$defs/driver" },
+        "modules": { "$ref": "#/$defs/modules" }
+      }
+    },
+    "usbDevice": {
+      "description": "A USB device (not a root hub; root hubs are represented by their PCI host controller).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "bus", "locator", "vendor_id", "product_id"],
+      "properties": {
+        "id": {
+          "description": "Snapshot-local id: 'usb:' followed by the locator.",
+          "type": "string",
+          "pattern": "^usb:[1-9][0-9]{0,2}-[1-9][0-9]{0,2}(\\.[1-9][0-9]{0,2}){0,6}$"
+        },
+        "bus": { "const": "usb" },
+        "parent": {
+          "description": "Snapshot id of the parent device (host controller or hub), when it is part of this inventory.",
+          "$ref": "#/$defs/snapshotId"
+        },
+        "locator": {
+          "description": "USB topology locator '<bus>-<port>[.<port>...]'. Snapshot-local; must equal the id without its 'usb:' prefix.",
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,2}-[1-9][0-9]{0,2}(\\.[1-9][0-9]{0,2}){0,6}$"
+        },
+        "vendor_id": { "$ref": "#/$defs/hex4" },
+        "product_id": { "$ref": "#/$defs/hex4" },
+        "device_class": { "$ref": "#/$defs/hex2" },
+        "device_subclass": { "$ref": "#/$defs/hex2" },
+        "device_protocol": { "$ref": "#/$defs/hex2" },
+        "driver": { "$ref": "#/$defs/driver" },
+        "interfaces": {
+          "description": "Interfaces of the active configuration. Canonical order: ascending by number, unique numbers.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/usbInterface" }
+        }
+      }
+    },
+    "usbInterface": {
+      "description": "One USB interface.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["number", "class", "subclass", "protocol"],
+      "properties": {
+        "number": {
+          "description": "bInterfaceNumber.",
+          "$ref": "#/$defs/hex2"
+        },
+        "class": { "$ref": "#/$defs/hex2" },
+        "subclass": { "$ref": "#/$defs/hex2" },
+        "protocol": { "$ref": "#/$defs/hex2" },
+        "modalias": {
+          "description": "Kernel interface modalias, preserved byte-for-byte as the kernel provides it.",
+          "type": "string",
+          "pattern": "^usb:v[0-9A-F]{4}p[0-9A-F]{4}d[0-9A-F]{4}dc[0-9A-F]{2}dsc[0-9A-F]{2}dp[0-9A-F]{2}ic[0-9A-F]{2}isc[0-9A-F]{2}ip[0-9A-F]{2}in[0-9A-F]{2}$"
+        },
+        "driver": { "$ref": "#/$defs/driver" },
+        "modules": { "$ref": "#/$defs/modules" }
+      }
+    }
+  }
+}

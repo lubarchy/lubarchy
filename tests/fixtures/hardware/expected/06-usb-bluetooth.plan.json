@@ -1,0 +1,105 @@
+{
+  "classifications": [
+    {
+      "name": "bluetooth.controller",
+      "rules": [
+        "test.bluetooth.usb"
+      ],
+      "targets": [
+        "usb:1-10"
+      ]
+    },
+    {
+      "name": "cpu.intel",
+      "rules": [
+        "test.cpu.intel"
+      ],
+      "targets": [
+        "cpu"
+      ]
+    },
+    {
+      "name": "usb.controller",
+      "rules": [
+        "test.usb.xhci"
+      ],
+      "targets": [
+        "pci:0000:00:14.0"
+      ]
+    }
+  ],
+  "conflicts": [],
+  "inventory_digest": "sha256:b2c6e078fc3da64009811b5381bab07d6edfa6d7fc50e90e58a603c407adf349",
+  "inventory_schema": "lubarchy.hardware.inventory/v1",
+  "matched_rules": [
+    {
+      "id": "test.bluetooth.usb",
+      "priority": 150,
+      "targets": [
+        "usb:1-10"
+      ]
+    },
+    {
+      "id": "test.cpu.intel",
+      "priority": 100,
+      "targets": [
+        "cpu"
+      ]
+    },
+    {
+      "id": "test.usb.xhci",
+      "priority": 50,
+      "targets": [
+        "pci:0000:00:14.0"
+      ]
+    }
+  ],
+  "packages": [
+    {
+      "disposition": "require",
+      "name": "lubarchy-test-firmware-a",
+      "reasons": [
+        {
+          "reason": "Synthetic microcode-like requirement from a non-main component.",
+          "rule": "test.cpu.intel"
+        }
+      ],
+      "source": "non-free-firmware",
+      "source_status": "policy_review_required"
+    },
+    {
+      "disposition": "require",
+      "name": "lubarchy-test-firmware-f",
+      "reasons": [
+        {
+          "reason": "Synthetic Bluetooth firmware requirement from a non-main component.",
+          "rule": "test.bluetooth.usb"
+        }
+      ],
+      "source": "non-free-firmware",
+      "source_status": "policy_review_required"
+    }
+  ],
+  "profiles": [],
+  "rule_schema": "lubarchy.hardware.rule/v1",
+  "rule_set_digest": "sha256:199c0b8ffceafb6656e48ad416e69b4fe15b4b86a6bc15e88949677da09cdc8b",
+  "schema": "lubarchy.hardware.plan/v1",
+  "source_policy": {
+    "authorised": [
+      "main"
+    ]
+  },
+  "sources": [
+    {
+      "packages": [
+        "lubarchy-test-firmware-a",
+        "lubarchy-test-firmware-f"
+      ],
+      "source": "non-free-firmware",
+      "status": "policy_review_required"
+    }
+  ],
+  "status": "partial",
+  "unresolved": [],
+  "warnings": []
+}

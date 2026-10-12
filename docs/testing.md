@@ -65,7 +65,7 @@ A clean rebuild must succeed from the same commit.
 | --- | --- |
 | Repository lint | `tests/repo-lint.sh` (M0-I) |
 | shellcheck | Every tracked shell script, via `tests/run-static.sh` (M0-I) |
-| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I) |
+| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I); hardware contracts added in M1-A |
 | GitHub CI | `.github/workflows/m0-static.yml` runs `tests/run-static.sh` on GitHub Actions (green since M0-J) |
 | `live-build` configuration validation | `tests/live-build-config.sh` (M0-E) |
 | ISO build | Manual, from the committed configuration (M0-F) |
@@ -77,14 +77,79 @@ A clean rebuild must succeed from the same commit.
 | Physical USB boot | Not qualified (real-hardware qualification) |
 | Clean rebuild comparison | Operator-run A/B rebuild with repository-input snapshots (M0-I): bit-for-bit reproducible under identical Debian repository inputs |
 
+## M1 hardware contract gate
+
+`tests/hardware-contracts.py` (gate 4 of `tests/run-static.sh`, since M1-A)
+checks the hardware contracts in
+[hardware-enablement.md](hardware-enablement.md) with the test-only reference
+resolver `tests/hwe_reference.py`. It needs `python3` and
+`python3-jsonschema` from Debian `main` (no pip, no PyPI), runs without root,
+network, libvirt or hardware access, and is deterministic (seeded shuffles
+only). It checks:
+
+- every JSON file under `hardware/` and `tests/fixtures/hardware/` parses
+  strictly (UTF-8, no duplicate keys, integers only);
+- the three schemas validate against the Draft 2020-12 meta-schema, carry
+  their fixed `$id` and identifier, and reject undeclared fields everywhere;
+- the inventory schema declares no privacy-sensitive, policy or time field;
+- valid fixtures pass; malformed inventories (non-normalized hex, missing or
+  out-of-range fields, id/locator mismatch, duplicate ids, dangling parents,
+  non-strict JSON) fail;
+- 26 privacy-sensitive identifiers (serials, UUIDs, WWN, MAC/Bluetooth
+  addresses, machine-id, hostname, username, IP addresses, SSID, secrets)
+  and 8 generic property-dump containers are rejected at every object level
+  of an inventory;
+- selector semantics: AND within a selector, OR within a field's list, ANY
+  selector per rule, absent fields never match, USB interface conditions on
+  one interface, shell-style globs (anchored, case-sensitive, no regex),
+  class-code prefixes, no selection on snapshot locators;
+- rules with commands, scripts, unknown sources, regex fields or malformed
+  selectors are rejected, as are duplicate rule ids and misnamed rule files;
+  test rules are `test.*` with `lubarchy-test-*` packages and
+  `hardware/rules/` holds no rule;
+- unknown hardware is reported as unresolved and gets nothing;
+- priority orders the result but never changes it; required/forbidden
+  packages, source mismatches and profile exclusions fail closed at any
+  priority;
+- a non-`main` source is represented as `policy_review_required` and the
+  reference code imports nothing that could touch the system;
+- every produced plan validates; plans with commands, timestamps or
+  inconsistent status are rejected; an invalid-inventory plan never echoes
+  the rejected value;
+- canonical JSON matches a known-answer SHA-256; inventory digests are stable
+  under 25 seeded shuffles per fixture; plans for every fixture are
+  byte-identical to the expected files and unchanged by reordering the
+  inventory or the rule set.
+
+| Fixture | Coverage |
+| --- | --- |
+| 01 | Intel CPU + Intel integrated GPU |
+| 02 | AMD CPU + AMD GPU |
+| 03 | NVIDIA discrete GPU |
+| 04 | Intel + NVIDIA hybrid-GPU topology |
+| 05 | Ethernet + Wi-Fi |
+| 06 | USB Bluetooth controller |
+| 07 | NVMe storage controller |
+| 08 | Unknown PCI device (and unknown CPU vendor), no rule |
+| 09 | QEMU/KVM-like guest |
+| 10 | Invalid inventories: forbidden field, non-normalized hex |
+| 11 | Conflicting rules |
+| 12 | Determinism: fixture 06 with shuffled ordering |
+
+Details are in
+[`tests/fixtures/hardware/README.md`](../tests/fixtures/hardware/README.md).
+
 ## GitHub CI
 
-The static gates run as the GitHub Actions workflow `M0 static gates`
-(`.github/workflows/m0-static.yml`): pinned `actions/checkout` commit, pinned
-`debian:trixie` image digest, `contents: read`, no secrets. It installs `git`,
-`ca-certificates`, `shellcheck` and `live-build` from Debian `main` only and
-runs `tests/run-static.sh`. **It is static/configuration CI only: it never
-builds or boots an ISO.**
+The static gates run as the GitHub Actions workflow
+`.github/workflows/m0-static.yml` (shown as `M0 static gates` through M0-J and
+renamed `Static gates` in M1-A; the file name is unchanged): pinned
+`actions/checkout` commit, pinned `debian:trixie` image digest,
+`contents: read`, no secrets. It installs `git`, `ca-certificates`,
+`shellcheck`, `live-build`, `python3` and `python3-jsonschema` (the last two
+since M1-A) from Debian `main` only and runs `tests/run-static.sh`. **It is
+static/configuration CI only: it never builds or boots an ISO and never
+probes hardware.**
 
 | Run | Commit | Event | Conclusion |
 | --- | --- | --- | --- |
@@ -95,6 +160,10 @@ The fix in `ce2462e` trusts exactly `$GITHUB_WORKSPACE` for the gate step
 through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`; no Git
 configuration file is written. Later commits are checked by the same workflow
 (push to `main` and pull requests touching the listed paths).
+
+The M1-A workflow changes (the `Static gates` name, `python3` and
+`python3-jsonschema`, the `hardware/**` path filter and gate 4) have **not
+yet run on GitHub**; the runs above predate them.
 
 ## Clean rebuild comparison
 

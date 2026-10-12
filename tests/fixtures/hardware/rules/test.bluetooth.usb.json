@@ -1,0 +1,34 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "test.bluetooth.usb",
+  "description": "TEST-ONLY synthetic rule: USB Bluetooth controllers (wireless controller / RF / Bluetooth interfaces).",
+  "priority": 150,
+  "match": [
+    {
+      "usb": {
+        "interface_class": [
+          "e0"
+        ],
+        "interface_subclass": [
+          "01"
+        ],
+        "interface_protocol": [
+          "01"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "bluetooth.controller"
+    ],
+    "packages": [
+      {
+        "name": "lubarchy-test-firmware-f",
+        "disposition": "require",
+        "source": "non-free-firmware",
+        "reason": "Synthetic Bluetooth firmware requirement from a non-main component."
+      }
+    ]
+  }
+}

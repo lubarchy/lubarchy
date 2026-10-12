@@ -1,0 +1,48 @@
+{
+  "schema": "lubarchy.hardware.inventory/v1",
+  "system": {
+    "architecture": "amd64",
+    "kernel_release": "6.12.0-fixture-amd64",
+    "boot_firmware": "uefi",
+    "secure_boot": "disabled",
+    "virtualization": {
+      "kind": "none"
+    }
+  },
+  "cpu": {
+    "architecture": "x86_64",
+    "vendor": "AuthenticAMD",
+    "family": 25,
+    "model": 250,
+    "stepping": 0,
+    "model_name": "Synthetic AMD fixture CPU",
+    "microcode_revision": "0xa0000f0"
+  },
+  "devices": [
+    {
+      "id": "pci:0000:00:01.1",
+      "bus": "pci",
+      "locator": "0000:00:01.1",
+      "vendor_id": "1022",
+      "device_id": "f0b1",
+      "class_id": "060400",
+      "driver": "pcieport"
+    },
+    {
+      "id": "pci:0000:03:00.0",
+      "bus": "pci",
+      "parent": "pci:0000:00:01.1",
+      "locator": "0000:03:00.0",
+      "vendor_id": "1002",
+      "device_id": "f002",
+      "subsystem_vendor_id": "1002",
+      "subsystem_device_id": "f102",
+      "class_id": "030000",
+      "modalias": "pci:v00001002d0000F002sv00001002sd0000F102bc03sc00i00",
+      "driver": "amdgpu",
+      "modules": [
+        "amdgpu"
+      ]
+    }
+  ]
+}

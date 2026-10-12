@@ -36,3 +36,7 @@
 /build/live/chroot.files
 /build/live/chroot.packages.*
 /build/live/lubarchy-m0-*
+
+# Python bytecode (hardware contract tooling)
+__pycache__/
+*.pyc

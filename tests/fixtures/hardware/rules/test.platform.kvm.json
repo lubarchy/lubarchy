@@ -1,0 +1,32 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "test.platform.kvm",
+  "description": "TEST-ONLY synthetic rule: KVM/QEMU virtual machines.",
+  "priority": 100,
+  "match": [
+    {
+      "platform": {
+        "virtualization_kind": [
+          "vm"
+        ],
+        "virtualization_technology": [
+          "kvm",
+          "qemu"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "platform.vm"
+    ],
+    "packages": [
+      {
+        "name": "lubarchy-test-guest-a",
+        "disposition": "require",
+        "source": "main",
+        "reason": "Synthetic guest-integration requirement from main."
+      }
+    ]
+  }
+}

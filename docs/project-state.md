@@ -24,12 +24,43 @@ terminal work.
 
 Accepted decisions are listed in [decisions.md](decisions.md).
 
-## Current milestone: M0 — Minimal reproducible ISO
+## Current milestone: M1 — Hardware Enablement Foundation
+
+**Goal:** establish the hardware-enablement foundation:
+probe → normalized inventory → compatibility rules → package/profile plan →
+later installation/configuration → later validation.
+
+**M1 status: IN PROGRESS.**
+
+### M1 execution steps
+
+| Step | Description | Status |
+| --- | --- | --- |
+| M1-A | Hardware contracts: inventory/rule/plan v1 schemas, rule model, resolution plan, fixture tests | Implemented locally; awaiting CTO review |
+
+- M1-A — scope: JSON Schema Draft 2020-12 contracts
+  `lubarchy.hardware.inventory/v1`, `lubarchy.hardware.rule/v1` and
+  `lubarchy.hardware.plan/v1` under `hardware/schemas/`; selector, priority
+  and conflict semantics; source-requirement representation (Debian `main`
+  is the only authorised source; anything else is reported as
+  `policy_review_required`); canonical JSON and SHA-256 inventory digests; a
+  test-only reference resolver (`tests/hwe_reference.py`); synthetic fixtures
+  and a TEST-ONLY rule set under `tests/fixtures/hardware/`; the static gate
+  `tests/hardware-contracts.py`, added to `tests/run-static.sh` and to the CI
+  workflow (renamed `Static gates`). `python3-jsonschema` (Debian trixie
+  `main`) was added to the builder as a QA dependency only. Contracts are
+  documented in [hardware-enablement.md](hardware-enablement.md).
+- M1-A does **not** probe hardware, install or configure drivers or
+  firmware, change APT sources or components, change the ISO package set, or
+  add production rules (`hardware/rules/` is empty). Live hardware detection
+  does not exist yet.
+
+## M0 — Minimal reproducible ISO (closed)
 
 **Goal:** prove LUBARCHY can be built cleanly from source-controlled
 configuration before adding desktop or installer complexity.
 
-**M0 status: PASS** (M0-J, 2026-10-12).
+**M0 status: PASS** (M0-J, 2026-10-12). M0 is closed.
 
 ### M0 exit checklist
 
@@ -178,7 +209,9 @@ not be treated as decided:
 - ISO builds in CI (CI runs static/configuration gates only)
 - LUBARCHY package repository
 - Desktop stack
-- Hardware detector/resolver
+- Live hardware probe and production hardware resolver (M1-A defines the
+  contracts and a test-only reference resolver)
+- Production hardware compatibility rules and firmware/package mappings
 - Installer
 - Recovery implementation
 - Update manager
@@ -189,7 +222,7 @@ not be treated as decided:
 ## Milestone order
 
 1. M0 — Minimal reproducible ISO (PASS)
-2. M1 — Hardware enablement foundation
+2. M1 — Hardware enablement foundation (IN PROGRESS)
 3. M2 — Hyprland + Plasma desktop
 4. M3 — Beginner installer
 5. M4 — Recovery and rollback
@@ -199,11 +232,9 @@ not be treated as decided:
 
 ## Immediate next action
 
-Next milestone: **M1 — Hardware Enablement Foundation** (not started).
-
-Define the M1 hardware-inventory schema, detection boundaries,
-compatibility-rule model, package/profile resolution contract, and initial
-automated tests before adding desktop or installer layers.
+CTO review of M1-A (hardware contracts, local commit, not yet pushed or run
+in GitHub CI). M1-B — the live read-only hardware probe — has not started and
+waits for a CTO brief.
 
 ## PASS rule
 

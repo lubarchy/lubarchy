@@ -1,0 +1,67 @@
+{
+  "schema": "lubarchy.hardware.inventory/v1",
+  "system": {
+    "architecture": "amd64",
+    "kernel_release": "6.12.0-fixture-amd64",
+    "boot_firmware": "uefi",
+    "secure_boot": "unknown",
+    "virtualization": {
+      "kind": "vm",
+      "technology": "kvm"
+    }
+  },
+  "cpu": {
+    "architecture": "x86_64",
+    "vendor": "AuthenticAMD",
+    "family": 25,
+    "model": 1,
+    "model_name": "Synthetic QEMU fixture CPU"
+  },
+  "devices": [
+    {
+      "id": "pci:0000:00:01.0",
+      "bus": "pci",
+      "locator": "0000:00:01.0",
+      "vendor_id": "1234",
+      "device_id": "1111",
+      "subsystem_vendor_id": "1af4",
+      "subsystem_device_id": "1100",
+      "class_id": "030000",
+      "modalias": "pci:v00001234d00001111sv00001AF4sd00001100bc03sc00i00",
+      "driver": "bochs-drm",
+      "modules": [
+        "bochs"
+      ]
+    },
+    {
+      "id": "pci:0000:00:02.0",
+      "bus": "pci",
+      "locator": "0000:00:02.0",
+      "vendor_id": "1af4",
+      "device_id": "1041",
+      "subsystem_vendor_id": "1af4",
+      "subsystem_device_id": "1100",
+      "class_id": "020000",
+      "modalias": "pci:v00001AF4d00001041sv00001AF4sd00001100bc02sc00i00",
+      "driver": "virtio-pci",
+      "modules": [
+        "virtio_pci"
+      ]
+    },
+    {
+      "id": "pci:0000:00:03.0",
+      "bus": "pci",
+      "locator": "0000:00:03.0",
+      "vendor_id": "1af4",
+      "device_id": "1042",
+      "subsystem_vendor_id": "1af4",
+      "subsystem_device_id": "1100",
+      "class_id": "010000",
+      "modalias": "pci:v00001AF4d00001042sv00001AF4sd00001100bc01sc00i00",
+      "driver": "virtio-pci",
+      "modules": [
+        "virtio_pci"
+      ]
+    }
+  ]
+}

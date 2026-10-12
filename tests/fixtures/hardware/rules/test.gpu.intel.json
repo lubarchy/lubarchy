@@ -1,0 +1,29 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "test.gpu.intel",
+  "description": "TEST-ONLY synthetic rule: Intel display controllers.",
+  "priority": 200,
+  "match": [
+    {
+      "pci": {
+        "vendor_id": [
+          "8086"
+        ],
+        "class_id": [
+          "03"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "gpu.intel"
+    ],
+    "profiles": [
+      {
+        "name": "test-graphics-open",
+        "reason": "Synthetic open graphics profile label."
+      }
+    ]
+  }
+}

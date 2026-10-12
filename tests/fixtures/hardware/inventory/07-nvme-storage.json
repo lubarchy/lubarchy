@@ -1,0 +1,38 @@
+{
+  "schema": "lubarchy.hardware.inventory/v1",
+  "system": {
+    "architecture": "amd64",
+    "kernel_release": "6.12.0-fixture-amd64",
+    "boot_firmware": "uefi",
+    "secure_boot": "disabled",
+    "virtualization": {
+      "kind": "none"
+    }
+  },
+  "cpu": {
+    "architecture": "x86_64",
+    "vendor": "AuthenticAMD",
+    "family": 25,
+    "model": 250,
+    "stepping": 0,
+    "model_name": "Synthetic AMD fixture CPU",
+    "microcode_revision": "0xa0000f0"
+  },
+  "devices": [
+    {
+      "id": "pci:0000:01:00.0",
+      "bus": "pci",
+      "locator": "0000:01:00.0",
+      "vendor_id": "f0a1",
+      "device_id": "f00a",
+      "subsystem_vendor_id": "f0a1",
+      "subsystem_device_id": "f10a",
+      "class_id": "010802",
+      "modalias": "pci:v0000F0A1d0000F00Asv0000F0A1sd0000F10Abc01sc08i02",
+      "driver": "nvme",
+      "modules": [
+        "nvme"
+      ]
+    }
+  ]
+}

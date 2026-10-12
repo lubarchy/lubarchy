@@ -1,0 +1,20 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "test.network.ethernet",
+  "description": "TEST-ONLY synthetic rule: Ethernet controllers.",
+  "priority": 150,
+  "match": [
+    {
+      "pci": {
+        "class_id": [
+          "0200"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "network.ethernet"
+    ]
+  }
+}

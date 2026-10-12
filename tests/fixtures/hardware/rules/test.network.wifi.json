@@ -1,0 +1,28 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "test.network.wifi",
+  "description": "TEST-ONLY synthetic rule: Wireless network controllers.",
+  "priority": 150,
+  "match": [
+    {
+      "pci": {
+        "class_id": [
+          "0280"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "network.wifi"
+    ],
+    "packages": [
+      {
+        "name": "lubarchy-test-firmware-e",
+        "disposition": "require",
+        "source": "non-free-firmware",
+        "reason": "Synthetic Wi-Fi firmware requirement from a non-main component."
+      }
+    ]
+  }
+}

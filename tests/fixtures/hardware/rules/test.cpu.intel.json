@@ -1,0 +1,31 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "test.cpu.intel",
+  "description": "TEST-ONLY synthetic rule: Intel CPUs.",
+  "priority": 100,
+  "match": [
+    {
+      "cpu": {
+        "architecture": [
+          "x86_64"
+        ],
+        "vendor": [
+          "GenuineIntel"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "cpu.intel"
+    ],
+    "packages": [
+      {
+        "name": "lubarchy-test-firmware-a",
+        "disposition": "require",
+        "source": "non-free-firmware",
+        "reason": "Synthetic microcode-like requirement from a non-main component."
+      }
+    ]
+  }
+}

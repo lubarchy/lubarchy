@@ -1,0 +1,24 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "test.conflict.forbid-d",
+  "description": "TEST-ONLY synthetic rule: Forbids lubarchy-test-firmware-d for NVIDIA devices; its higher priority must not win.",
+  "priority": 900,
+  "match": [
+    {
+      "pci": {
+        "vendor_id": [
+          "10de"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "packages": [
+      {
+        "name": "lubarchy-test-firmware-d",
+        "disposition": "forbid",
+        "reason": "Synthetic prohibition."
+      }
+    ]
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "classifications": [
+    {
+      "name": "cpu.amd",
+      "rules": [
+        "test.cpu.amd"
+      ],
+      "targets": [
+        "cpu"
+      ]
+    },
+    {
+      "name": "storage.nvme",
+      "rules": [
+        "test.storage.nvme"
+      ],
+      "targets": [
+        "pci:0000:01:00.0"
+      ]
+    }
+  ],
+  "conflicts": [],
+  "inventory_digest": "sha256:49cfc28e893295188518cc24a2226fd954e773f980ed6f5035227a9710c60275",
+  "inventory_schema": "lubarchy.hardware.inventory/v1",
+  "matched_rules": [
+    {
+      "id": "test.storage.nvme",
+      "priority": 150,
+      "targets": [
+        "pci:0000:01:00.0"
+      ]
+    },
+    {
+      "id": "test.cpu.amd",
+      "priority": 100,
+      "targets": [
+        "cpu"
+      ]
+    }
+  ],
+  "packages": [
+    {
+      "disposition": "require",
+      "name": "lubarchy-test-firmware-b",
+      "reasons": [
+        {
+          "reason": "Synthetic requirement from main.",
+          "rule": "test.cpu.amd"
+        }
+      ],
+      "source": "main",
+      "source_status": "authorised"
+    }
+  ],
+  "profiles": [],
+  "rule_schema": "lubarchy.hardware.rule/v1",
+  "rule_set_digest": "sha256:199c0b8ffceafb6656e48ad416e69b4fe15b4b86a6bc15e88949677da09cdc8b",
+  "schema": "lubarchy.hardware.plan/v1",
+  "source_policy": {
+    "authorised": [
+      "main"
+    ]
+  },
+  "sources": [
+    {
+      "packages": [
+        "lubarchy-test-firmware-b"
+      ],
+      "source": "main",
+      "status": "authorised"
+    }
+  ],
+  "status": "resolved",
+  "unresolved": [],
+  "warnings": []
+}

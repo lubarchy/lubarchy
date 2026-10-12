@@ -1,0 +1,20 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "test.virtio",
+  "description": "TEST-ONLY synthetic rule: virtio devices.",
+  "priority": 100,
+  "match": [
+    {
+      "pci": {
+        "vendor_id": [
+          "1af4"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "virtio.device"
+    ]
+  }
+}

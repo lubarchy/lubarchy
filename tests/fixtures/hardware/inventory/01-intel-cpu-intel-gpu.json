@@ -1,0 +1,38 @@
+{
+  "schema": "lubarchy.hardware.inventory/v1",
+  "system": {
+    "architecture": "amd64",
+    "kernel_release": "6.12.0-fixture-amd64",
+    "boot_firmware": "uefi",
+    "secure_boot": "disabled",
+    "virtualization": {
+      "kind": "none"
+    }
+  },
+  "cpu": {
+    "architecture": "x86_64",
+    "vendor": "GenuineIntel",
+    "family": 6,
+    "model": 250,
+    "stepping": 1,
+    "model_name": "Synthetic Intel fixture CPU",
+    "microcode_revision": "0x1f"
+  },
+  "devices": [
+    {
+      "id": "pci:0000:00:02.0",
+      "bus": "pci",
+      "locator": "0000:00:02.0",
+      "vendor_id": "8086",
+      "device_id": "f001",
+      "subsystem_vendor_id": "8086",
+      "subsystem_device_id": "f101",
+      "class_id": "030000",
+      "modalias": "pci:v00008086d0000F001sv00008086sd0000F101bc03sc00i00",
+      "driver": "i915",
+      "modules": [
+        "i915"
+      ]
+    }
+  ]
+}

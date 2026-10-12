@@ -1,10 +1,12 @@
 #!/bin/bash
-# LUBARCHY M0 static quality gates, in order:
+# LUBARCHY static quality gates, in order:
 #   1. tests/repo-lint.sh
 #   2. ShellCheck on every project shell script
 #   3. tests/live-build-config.sh
-# Stops at the first failing gate. Never builds an image or touches libvirt;
-# needs git, shellcheck and live-build but not root.
+#   4. tests/hardware-contracts.py (M1 hardware inventory/rule/plan contracts)
+# Stops at the first failing gate. Never builds an image, touches libvirt or
+# probes hardware; needs git, shellcheck, live-build, python3 and
+# python3-jsonschema but not root.
 set -euo pipefail
 
 REPO_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
@@ -53,4 +55,5 @@ shellcheck_scripts() {
 run_gate "repository lint" tests/repo-lint.sh
 run_gate "shellcheck" shellcheck_scripts
 run_gate "live-build configuration" tests/live-build-config.sh
+run_gate "hardware contracts" tests/hardware-contracts.py
 echo "PASS: all static gates"

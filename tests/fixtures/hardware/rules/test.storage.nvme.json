@@ -1,0 +1,27 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "test.storage.nvme",
+  "description": "TEST-ONLY synthetic rule: NVMe controllers, by class code or by modalias.",
+  "priority": 150,
+  "match": [
+    {
+      "pci": {
+        "class_id": [
+          "010802"
+        ]
+      }
+    },
+    {
+      "pci": {
+        "modalias": [
+          "pci:v*d*sv*sd*bc01sc08i02"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "storage.nvme"
+    ]
+  }
+}

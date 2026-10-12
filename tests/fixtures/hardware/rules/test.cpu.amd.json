@@ -1,0 +1,28 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "test.cpu.amd",
+  "description": "TEST-ONLY synthetic rule: AMD CPUs.",
+  "priority": 100,
+  "match": [
+    {
+      "cpu": {
+        "vendor": [
+          "AuthenticAMD"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "cpu.amd"
+    ],
+    "packages": [
+      {
+        "name": "lubarchy-test-firmware-b",
+        "disposition": "require",
+        "source": "main",
+        "reason": "Synthetic requirement from main."
+      }
+    ]
+  }
+}

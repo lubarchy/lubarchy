@@ -1,0 +1,30 @@
+{
+  "classifications": [],
+  "conflicts": [],
+  "inventory_digest": "sha256:87b6aa6bf8ce3596759369e203e667732d18be1476744cd0272132769a2651e4",
+  "inventory_schema": "lubarchy.hardware.inventory/v1",
+  "matched_rules": [],
+  "packages": [],
+  "profiles": [],
+  "rule_schema": "lubarchy.hardware.rule/v1",
+  "rule_set_digest": "sha256:199c0b8ffceafb6656e48ad416e69b4fe15b4b86a6bc15e88949677da09cdc8b",
+  "schema": "lubarchy.hardware.plan/v1",
+  "source_policy": {
+    "authorised": [
+      "main"
+    ]
+  },
+  "sources": [],
+  "status": "partial",
+  "unresolved": [
+    {
+      "reason": "no_rule_matched",
+      "target": "cpu"
+    },
+    {
+      "reason": "no_rule_matched",
+      "target": "pci:0000:05:00.0"
+    }
+  ],
+  "warnings": []
+}

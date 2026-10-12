@@ -1,0 +1,335 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lubarchy:hardware:plan:v1",
+  "title": "LUBARCHY hardware resolution plan v1",
+  "description": "Proposed plan produced from one normalized inventory and one rule set. It is not an installation transaction: it contains no commands, performs nothing and authorises no package source. Identical inventory, rule set and source policy produce byte-identical canonical JSON.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "inventory_schema",
+    "rule_schema",
+    "source_policy",
+    "status",
+    "matched_rules",
+    "classifications",
+    "packages",
+    "profiles",
+    "sources",
+    "warnings",
+    "unresolved",
+    "conflicts"
+  ],
+  "properties": {
+    "schema": {
+      "description": "Plan contract identifier and version.",
+      "const": "lubarchy.hardware.plan/v1"
+    },
+    "inventory_schema": { "const": "lubarchy.hardware.inventory/v1" },
+    "rule_schema": { "const": "lubarchy.hardware.rule/v1" },
+    "inventory_digest": {
+      "description": "SHA-256 of the canonical JSON of the normalized inventory. Absent only when the inventory is invalid.",
+      "$ref": "#/$defs/digest"
+    },
+    "rule_set_digest": {
+      "description": "SHA-256 of the canonical JSON of the rule set (rules ordered by id).",
+      "$ref": "#/$defs/digest"
+    },
+    "source_policy": {
+      "description": "Package sources the installation policy authorises. Recorded, not changed, by resolution.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authorised"],
+      "properties": {
+        "authorised": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/source" }
+        }
+      }
+    },
+    "status": {
+      "description": "'resolved': every target matched a rule, no conflict, every source authorised. 'partial': no conflict, but some target is unresolved or some source needs policy review. 'conflict': matching rules are incompatible; no package, profile or source is proposed. 'invalid': the inventory was rejected; nothing was evaluated.",
+      "enum": ["resolved", "partial", "conflict", "invalid"]
+    },
+    "matched_rules": {
+      "description": "Matching rules in evaluation order (priority descending, then id ascending).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "priority", "targets"],
+        "properties": {
+          "id": { "$ref": "#/$defs/name" },
+          "priority": { "type": "integer", "minimum": -1000, "maximum": 1000 },
+          "targets": { "$ref": "#/$defs/targets" }
+        }
+      }
+    },
+    "classifications": {
+      "description": "Union of classifications of all matching rules, ordered by name.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "rules", "targets"],
+        "properties": {
+          "name": { "$ref": "#/$defs/name" },
+          "rules": { "$ref": "#/$defs/ruleIds" },
+          "targets": { "$ref": "#/$defs/targets" }
+        }
+      }
+    },
+    "packages": {
+      "description": "Proposed package dispositions, ordered by name. Declarative only.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "disposition", "reasons"],
+        "properties": {
+          "name": { "$ref": "#/$defs/packageName" },
+          "disposition": { "enum": ["require", "forbid"] },
+          "source": { "$ref": "#/$defs/source" },
+          "source_status": { "$ref": "#/$defs/sourceStatus" },
+          "reasons": { "$ref": "#/$defs/reasons" }
+        },
+        "if": {
+          "properties": { "disposition": { "const": "require" } }
+        },
+        "then": { "required": ["source", "source_status"] },
+        "else": {
+          "allOf": [
+            { "not": { "required": ["source"] } },
+            { "not": { "required": ["source_status"] } }
+          ]
+        }
+      }
+    },
+    "profiles": {
+      "description": "Proposed symbolic profiles, ordered by name.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "reasons"],
+        "properties": {
+          "name": { "$ref": "#/$defs/name" },
+          "excludes": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/name" }
+          },
+          "reasons": { "$ref": "#/$defs/reasons" }
+        }
+      }
+    },
+    "sources": {
+      "description": "Sources needed by required packages, ordered by source. A source outside the authorised policy is reported as 'policy_review_required' and is never enabled.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source", "status", "packages"],
+        "properties": {
+          "source": { "$ref": "#/$defs/source" },
+          "status": { "$ref": "#/$defs/sourceStatus" },
+          "packages": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/packageName" }
+          }
+        }
+      }
+    },
+    "warnings": {
+      "description": "Warnings of matching rules, in evaluation order.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "rule"],
+        "properties": {
+          "code": { "$ref": "#/$defs/name" },
+          "message": { "$ref": "#/$defs/text" },
+          "rule": { "$ref": "#/$defs/name" }
+        }
+      }
+    },
+    "unresolved": {
+      "description": "Targets (the CPU or a device id) that no rule matched, ordered by target. They stay visible and receive nothing.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target", "reason"],
+        "properties": {
+          "target": { "$ref": "#/$defs/target" },
+          "reason": { "const": "no_rule_matched" }
+        }
+      }
+    },
+    "conflicts": {
+      "description": "Incompatible effects of matching rules, ordered by kind then subject.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "subject", "rules"],
+        "properties": {
+          "kind": {
+            "description": "'package_required_and_forbidden': a package is both required and forbidden. 'package_source_mismatch': a package is required from different sources. 'profile_exclusion': a required profile is excluded by another required profile.",
+            "enum": ["package_required_and_forbidden", "package_source_mismatch", "profile_exclusion"]
+          },
+          "subject": {
+            "description": "The package or excluded profile name.",
+            "$ref": "#/$defs/name"
+          },
+          "rules": {
+            "description": "Every rule contributing to the conflict, in evaluation order.",
+            "$ref": "#/$defs/ruleIds"
+          }
+        }
+      }
+    },
+    "errors": {
+      "description": "Validation errors of an invalid inventory: location and failed check only, never the offending value.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "check"],
+        "properties": {
+          "path": {
+            "description": "JSON Pointer to the rejected location.",
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^(/[A-Za-z0-9_~.-]*)*$"
+          },
+          "check": {
+            "description": "Name of the failed schema keyword or semantic check.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_]{1,64}$"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "invalid" } } },
+      "then": {
+        "required": ["errors"],
+        "not": { "anyOf": [{ "required": ["inventory_digest"] }] },
+        "properties": {
+          "matched_rules": { "maxItems": 0 },
+          "classifications": { "maxItems": 0 },
+          "packages": { "maxItems": 0 },
+          "profiles": { "maxItems": 0 },
+          "sources": { "maxItems": 0 },
+          "warnings": { "maxItems": 0 },
+          "unresolved": { "maxItems": 0 },
+          "conflicts": { "maxItems": 0 }
+        }
+      },
+      "else": {
+        "required": ["inventory_digest", "rule_set_digest"],
+        "not": { "anyOf": [{ "required": ["errors"] }] }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "conflict" } } },
+      "then": {
+        "properties": {
+          "conflicts": { "minItems": 1 },
+          "packages": { "maxItems": 0 },
+          "profiles": { "maxItems": 0 },
+          "sources": { "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "enum": ["resolved", "partial"] } } },
+      "then": {
+        "properties": { "conflicts": { "maxItems": 0 } }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "resolved" } } },
+      "then": {
+        "properties": {
+          "unresolved": { "maxItems": 0 },
+          "sources": {
+            "not": {
+              "contains": {
+                "properties": { "status": { "const": "policy_review_required" } }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "name": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-z0-9]+([.-][a-z0-9]+)*$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[^\\u0000-\\u001f\\u007f]+$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "source": {
+      "enum": ["main", "non-free-firmware", "contrib", "non-free", "backports", "lubarchy"]
+    },
+    "sourceStatus": {
+      "description": "'authorised': the source is within the current installation policy. 'policy_review_required': it is not; a CTO policy decision is needed before anything could use it.",
+      "enum": ["authorised", "policy_review_required"]
+    },
+    "packageName": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-z0-9][a-z0-9+.-]+$"
+    },
+    "target": {
+      "description": "'cpu', 'platform', or a snapshot-local device id.",
+      "type": "string",
+      "pattern": "^(cpu|platform|pci:[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\\.[0-7]|usb:[1-9][0-9]{0,2}-[1-9][0-9]{0,2}(\\.[1-9][0-9]{0,2}){0,6})$"
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/target" }
+    },
+    "ruleIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/name" }
+    },
+    "reasons": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rule", "reason"],
+        "properties": {
+          "rule": { "$ref": "#/$defs/name" },
+          "reason": { "$ref": "#/$defs/text" }
+        }
+      }
+    }
+  }
+}
