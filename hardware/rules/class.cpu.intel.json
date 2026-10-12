@@ -1,0 +1,20 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "class.cpu.intel",
+  "description": "CPU whose CPUID vendor string is GenuineIntel (Intel). Classification only.",
+  "priority": 100,
+  "match": [
+    {
+      "cpu": {
+        "vendor": [
+          "GenuineIntel"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "cpu.intel"
+    ]
+  }
+}

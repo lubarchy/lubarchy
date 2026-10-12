@@ -1,0 +1,23 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "class.gpu.intel",
+  "description": "Display controller (PCI base class 03) from PCI vendor 8086 (Intel). Says nothing about integrated vs discrete, driver or firmware.",
+  "priority": 100,
+  "match": [
+    {
+      "pci": {
+        "vendor_id": [
+          "8086"
+        ],
+        "class_id": [
+          "03"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "gpu.intel"
+    ]
+  }
+}

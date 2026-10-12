@@ -542,9 +542,17 @@ def test_rules_isolated_from_production():
         expect(rule["description"].startswith("TEST-ONLY"), f"{rule['id']}: description must say TEST-ONLY")
         for pkg in rule["effects"].get("packages", []):
             expect(pkg["name"].startswith("lubarchy-test-"), f"{rule['id']}: non-synthetic package {pkg['name']}")
-    production = sorted(p.name for p in PRODUCTION_RULES_DIR.iterdir())
-    expect(production == ["README.md"], f"hardware/rules must hold no rules in M1-A: {production}")
-    return "14 + 2 test rules are TEST-ONLY with synthetic packages; hardware/rules has no rules"
+    # Since M1-C hardware/rules holds production rules (policy checked by
+    # tests/hardware-resolver.py); no test rule may ever appear there.
+    production = ref.load_rule_set(PRODUCTION_RULES_DIR)
+    test_ids = {r["id"] for r in rules + ref.load_rule_set(CONFLICT_RULES_DIR)}
+    for rule in production:
+        expect(not rule["id"].startswith("test.") and rule["id"] not in test_ids,
+               f"test rule {rule['id']} in hardware/rules")
+        expect("TEST-ONLY" not in rule["description"], f"{rule['id']}: TEST-ONLY rule in hardware/rules")
+        for pkg in rule["effects"].get("packages", []):
+            expect(not pkg["name"].startswith("lubarchy-test-"), f"{rule['id']}: synthetic package in hardware/rules")
+    return f"14 + 2 test rules are TEST-ONLY with synthetic packages; none of them among the {len(production)} production rules"
 
 
 # ---------------------------------------------------------------------------

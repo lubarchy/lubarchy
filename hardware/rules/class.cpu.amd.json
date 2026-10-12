@@ -1,0 +1,20 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "class.cpu.amd",
+  "description": "CPU whose CPUID vendor string is AuthenticAMD (AMD). Classification only.",
+  "priority": 100,
+  "match": [
+    {
+      "cpu": {
+        "vendor": [
+          "AuthenticAMD"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "cpu.amd"
+    ]
+  }
+}

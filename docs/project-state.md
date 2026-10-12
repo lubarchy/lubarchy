@@ -37,7 +37,8 @@ later installation/configuration → later validation.
 | Step | Description | Status |
 | --- | --- | --- |
 | M1-A | Hardware contracts: inventory/rule/plan v1 schemas, rule model, resolution plan, fixture tests | PASS (CTO accepted) |
-| M1-B | Live read-only hardware probe producing inventory v1 | Published (`4afa53f`); GitHub CI green (run #8); awaiting CTO review |
+| M1-B | Live read-only hardware probe producing inventory v1 | PASS (CTO accepted) |
+| M1-C | Production resolver and high-confidence classification baseline | Implemented locally; awaiting CTO review |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
   `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
@@ -58,9 +59,8 @@ later installation/configuration → later validation.
 - M1-A does **not** probe hardware, install or configure drivers or
   firmware, change APT sources or components, change the ISO package set, or
   add production rules (`hardware/rules/` is empty).
-- M1-B — live read-only hardware probe: **published; awaiting CTO review**
-  (not PASS). Implementation commit
-  `4afa53fd14e983552dea1f8553366ddd13a59e6a`. `hardware/probe.py` (Python 3 standard library, no
+- M1-B — live read-only hardware probe: **PASS** (CTO accepted).
+  Implementation commit `4afa53fd14e983552dea1f8553366ddd13a59e6a`. `hardware/probe.py` (Python 3 standard library, no
   root) observes the running system and prints one canonical
   `lubarchy.hardware.inventory/v1` document: Debian architecture through
   `dpkg --print-architecture`, the kernel release, allowlisted
@@ -80,7 +80,30 @@ later installation/configuration → later validation.
   service. A valid builder-VM inventory is not real-hardware qualification:
   no physical Intel, AMD, NVIDIA, laptop, Wi-Fi, Bluetooth or USB hardware
   has been probed.
-- M1-C has not started.
+- M1-B udev interpretation (CTO accepted): sysfs is authoritative for the
+  kernel MODALIAS; the per-device `udevadm` lookup is secondary
+  corroboration. A matching value corroborates; an empty value or a non-zero
+  exit means corroboration is unavailable (not proof that the property is
+  absent); a missing executable, timeout or execution failure, or a
+  non-empty differing value, fails the probe.
+- M1-C — production resolver and classification baseline: **implemented
+  locally; awaiting CTO review** (not PASS). `hardware/resolver.py` (library)
+  and `hardware/resolve.py` (CLI, `--inventory PATH|-`) resolve an inventory
+  v1 against the production rules in `hardware/rules/` into a canonical plan
+  v1, with `python3-jsonschema` (Debian `main`) for validation. The rule
+  directory is fixed and fail-closed. The 12 production rules are
+  classification-only (CPU vendor, display controllers from Intel/AMD/NVIDIA,
+  Ethernet, other network controller, NVMe, SATA, VM/container/bare metal)
+  and propose no package, profile or source; the source policy stays Debian
+  `main` only. The synthetic gate `tests/hardware-resolver.py` (gate 6)
+  checks byte parity with the M1-A reference resolver. Live probe → resolve
+  qualification ran on the builder VM only. Details:
+  [hardware-enablement.md](hardware-enablement.md),
+  [testing.md](testing.md).
+- M1-C does **not** map firmware, microcode or any package, enable another
+  Debian component, decide NVIDIA strategy, classify hybrid graphics or USB
+  devices, install or configure anything, or persist plans.
+- M1-D has not started.
 
 ## M0 — Minimal reproducible ISO (closed)
 
@@ -236,10 +259,10 @@ not be treated as decided:
 - ISO builds in CI (CI runs static/configuration gates only)
 - LUBARCHY package repository
 - Desktop stack
-- Production hardware resolver (M1-A defines the contracts and a test-only
-  reference resolver; M1-B adds only the read-only probe)
 - Inventory persistence and diagnostics
-- Production hardware compatibility rules and firmware/package mappings
+- Package, firmware and microcode mappings and their source policy (the
+  M1-C production rules only classify)
+- Hybrid/multi-GPU composition and USB device classification
 - Installer
 - Recovery implementation
 - Update manager
@@ -260,10 +283,9 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-B (live read-only hardware probe, published as
-`4afa53fd14e983552dea1f8553366ddd13a59e6a`; `Static gates` run #8 passed all
-five gates on that commit; see [testing.md](testing.md)). M1-C has not
-started and waits for a CTO brief.
+CTO review of M1-C (production resolver and classification baseline, local
+commit, not yet pushed or run in GitHub CI). M1-D has not started and waits
+for a CTO brief.
 
 ## PASS rule
 

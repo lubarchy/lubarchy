@@ -1,0 +1,20 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "class.storage.sata",
+  "description": "SATA controller (PCI class 01, subclass 06), any programming interface.",
+  "priority": 100,
+  "match": [
+    {
+      "pci": {
+        "class_id": [
+          "0106"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "storage.sata"
+    ]
+  }
+}

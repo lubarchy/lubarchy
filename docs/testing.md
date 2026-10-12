@@ -65,7 +65,7 @@ A clean rebuild must succeed from the same commit.
 | --- | --- |
 | Repository lint | `tests/repo-lint.sh` (M0-I) |
 | shellcheck | Every tracked shell script, via `tests/run-static.sh` (M0-I) |
-| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I); hardware contracts added in M1-A; hardware probe added in M1-B |
+| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I); hardware contracts added in M1-A; hardware probe added in M1-B; hardware resolver added in M1-C |
 | GitHub CI | `.github/workflows/m0-static.yml` runs `tests/run-static.sh` on GitHub Actions (green since M0-J) |
 | `live-build` configuration validation | `tests/live-build-config.sh` (M0-E) |
 | ISO build | Manual, from the committed configuration (M0-F) |
@@ -200,6 +200,78 @@ for the builder VM. **It is not real-hardware qualification**: it says
 nothing about physical Intel, AMD or NVIDIA hardware, laptops, Wi-Fi,
 Bluetooth, physical USB devices, firmware availability or drivers.
 
+## M1 hardware resolver gate
+
+`tests/hardware-resolver.py` (gate 6 of `tests/run-static.sh`, since M1-C)
+tests the production resolver (`hardware/resolver.py`, `hardware/resolve.py`)
+and the production rules (`hardware/rules/`) with synthetic inputs only: the
+M1-A fixtures, generated inventories, temporary rule directories and the
+M1-B synthetic sysfs trees. It never reads host hardware. It checks:
+
+- **parity:** every fixture inventory (valid and invalid) against the test,
+  conflict and production rule sets, plus 60 seeded random rule subsets with
+  random priorities, gives byte-identical canonical plans from the
+  production resolver and the independent M1-A reference resolver; the
+  inventory and rule-set digests agree;
+- **inputs:** valid and invalid inventories (status `invalid`, no rejected
+  values echoed); 10 malformed JSON inputs (truncated, trailing data,
+  non-UTF-8, floats, NaN, Infinity, duplicate keys, deep nesting);
+- **rule trust boundary:** 19 directory states each reject the whole set —
+  file name ≠ id, symlinked rule, symlink to a non-rule, symlinked
+  documentation, hidden rule, hidden file, subdirectory, directory named like
+  a rule, other file type, upper-case extension, duplicate key, float,
+  non-UTF-8, truncated JSON, schema-invalid rule, package/profile/warning
+  effect, duplicate rule id;
+- **policy:** exactly the 12 production rules, each one classification and
+  nothing else; production plans carry no package, profile, warning or source
+  and record the `main`-only source policy;
+- **semantics:** AND within a selector, OR within a field, ANY selector,
+  absent fields never match, priority orders only, all three conflict kinds
+  fail closed, unknown hardware gets nothing;
+- **classifications:** Intel/AMD CPU (other or mis-cased vendors not
+  classified); display class `03` (VGA, XGA, 3D, other) from `8086`, `1002`,
+  `10de`; Intel xHCI/audio, NVIDIA/AMD HDMI audio and QEMU, virtio, AMD-`1022`
+  and Matrox display devices are not `gpu.*`; `0200` Ethernet; `0280` is
+  `network.other` and never Wi-Fi; `010802` NVMe; `0106xx` SATA (but not
+  `010803`, `0201`, `0104`); VM, container and explicit bare metal; no
+  platform class without a virtualization observation; no `gpu.hybrid`;
+- **determinism:** plan bytes, inventory digest and rule-set digest under
+  seeded shuffles of devices and rules, and deterministic rule loading;
+- **CLI:** canonical stdout plus newline, `-` for stdin, exit 0 (also for
+  `conflict`), 2 (invalid plan), 3 (bad input), 4 (bad rules), 64 (usage, for
+  example any `--rules` option); an end-to-end run of the executable;
+- **source safety (AST):** only standard-library modules and `jsonschema`; no
+  process, network, shell, eval, file-write or write-mode open; no APT, dpkg,
+  modprobe, udevadm, sysfs, procfs, D-Bus or URL strings;
+- **integration:** synthetic sysfs → `hardware/probe.py` library → canonical
+  inventory → production plan, with the expected classifications, unresolved
+  devices visible and no package, profile or source.
+
+Mutation coverage (M1-C evidence): the gate fails for last-rule-wins,
+AND→OR selector confusion, matching absent fields, loading symlinked rules,
+skipping a malformed rule, allowing package effects in production, a package
+effect added to a production rule, labelling `0280` as Wi-Fi, a changed
+NVIDIA vendor ID, classifying non-display Intel functions as GPUs, unsorted
+plan output, a `--rules` CLI option, shell execution and an APT invocation.
+
+### Builder-VM probe → resolve qualification
+
+Operator-run on `lubarchy-builder`, never in CI, from a fresh clone of the
+exact commit, as the unprivileged `builder` user, with nothing installed:
+
+1. Run `hardware/probe.py` and `hardware/resolve.py --inventory` on its
+   output, twice, without changing the VM.
+2. Require byte-identical inventories, inventory digests, plans and rule-set
+   digests; valid inventory v1 and plan v1; no conflict; no package, profile
+   or source. The plan may be `partial`.
+3. Require at least `cpu.intel` (while the builder exposes an Intel CPU) and
+   `platform.vm`, plus whatever else the observed facts support.
+4. Compare package database, APT sources, loaded modules, driver bindings
+   and failed units before and after.
+
+This proves only that the resolver produces a valid, deterministic plan for
+the builder VM; it is not real-hardware qualification.
+
 ## GitHub CI
 
 The static gates run as the GitHub Actions workflow
@@ -243,6 +315,9 @@ synthetic only; no new dependency) was executed on GitHub by workflow
 (run #8), on commit `4afa53fd14e983552dea1f8553366ddd13a59e6a`. All five
 gates ran and passed: repository lint, ShellCheck, live-build configuration,
 hardware contracts and hardware probe. CI never probes the runner's hardware.
+
+The M1-C change (gate 6, hardware resolver, synthetic only; no new
+dependency) has **not yet run on GitHub**.
 
 ## Clean rebuild comparison
 

@@ -5,6 +5,7 @@
 #   3. tests/live-build-config.sh
 #   4. tests/hardware-contracts.py (M1 hardware inventory/rule/plan contracts)
 #   5. tests/hardware-probe.py (M1 read-only probe, synthetic sysfs only)
+#   6. tests/hardware-resolver.py (M1 production resolver and rules, synthetic only)
 # Stops at the first failing gate. Never builds an image, touches libvirt or
 # probes the host's hardware; needs git, shellcheck, live-build, python3 and
 # python3-jsonschema but not root.
@@ -58,4 +59,5 @@ run_gate "shellcheck" shellcheck_scripts
 run_gate "live-build configuration" tests/live-build-config.sh
 run_gate "hardware contracts" tests/hardware-contracts.py
 run_gate "hardware probe" tests/hardware-probe.py
+run_gate "hardware resolver" tests/hardware-resolver.py
 echo "PASS: all static gates"

@@ -1,0 +1,20 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "class.platform.container",
+  "description": "systemd-detect-virt observed a container (virtualization kind container).",
+  "priority": 100,
+  "match": [
+    {
+      "platform": {
+        "virtualization_kind": [
+          "container"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "platform.container"
+    ]
+  }
+}

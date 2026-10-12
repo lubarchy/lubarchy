@@ -99,9 +99,11 @@ Since M1-A the data boundaries are defined as versioned contracts: the
 inventory holds observed, privacy-safe facts only; declarative rules hold
 policy; resolution produces a proposed plan that contains no commands and
 enables no package source. Unknown hardware and rule conflicts fail closed.
-Since M1-B a read-only live probe turns the running system into an inventory
-v1 document. Resolution in production, configuration and validation are not
-implemented yet. See [hardware-enablement.md](hardware-enablement.md).
+Implemented boundary since M1-C: live read-only probe → inventory v1 →
+production classification resolver → plan v1. Production rules only classify
+hardware. Package and firmware mappings, applying a plan (installation and
+configuration) and validation are **not implemented**. See
+[hardware-enablement.md](hardware-enablement.md).
 
 ## Installer boundary (future)
 

@@ -1,0 +1,23 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "class.gpu.nvidia",
+  "description": "Display controller (PCI base class 03) from PCI vendor 10de (NVIDIA). Says nothing about integrated vs discrete, generation, driver strategy or firmware.",
+  "priority": 100,
+  "match": [
+    {
+      "pci": {
+        "vendor_id": [
+          "10de"
+        ],
+        "class_id": [
+          "03"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "gpu.nvidia"
+    ]
+  }
+}

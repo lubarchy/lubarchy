@@ -11,15 +11,16 @@ later installation/configuration → later validation
 | [`schemas/inventory-v1.schema.json`](schemas/inventory-v1.schema.json) | `lubarchy.hardware.inventory/v1`: observed, normalized, privacy-safe facts |
 | [`schemas/rule-v1.schema.json`](schemas/rule-v1.schema.json) | `lubarchy.hardware.rule/v1`: one declarative compatibility rule |
 | [`schemas/plan-v1.schema.json`](schemas/plan-v1.schema.json) | `lubarchy.hardware.plan/v1`: a proposed resolution plan |
-| [`rules/`](rules/) | Production rules (none yet) |
+| [`rules/`](rules/) | Production rules (classification-only baseline, M1-C) |
 | [`probe.py`](probe.py) | Read-only live probe: running system → canonical inventory v1 on stdout (M1-B) |
+| [`resolver.py`](resolver.py), [`resolve.py`](resolve.py) | Production resolver library and CLI: inventory v1 + production rules → canonical plan v1 (M1-C) |
 
 All schemas use JSON Schema Draft 2020-12. Each carries its own version and
 changes only by a new schema version, independently of any code.
 
-The probe only observes; nothing here installs packages, enables package
-sources or configures the system. Real compatibility mappings, resolution
-and installation are later M1 work.
+The probe only observes and the resolver only proposes; nothing here
+installs packages, enables package sources or configures the system.
+Firmware/package mappings and installation are later M1 work.
 
 Semantics (matching, priority, conflicts, canonical JSON and digests) are
 documented in [docs/hardware-enablement.md](../docs/hardware-enablement.md)

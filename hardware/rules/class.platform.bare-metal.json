@@ -1,0 +1,20 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "class.platform.bare-metal",
+  "description": "The inventory explicitly records virtualization kind none (neither container nor VM detected). Not inferred from a missing observation.",
+  "priority": 100,
+  "match": [
+    {
+      "platform": {
+        "virtualization_kind": [
+          "none"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "platform.bare-metal"
+    ]
+  }
+}

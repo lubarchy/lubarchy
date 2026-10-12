@@ -1,0 +1,20 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "class.network.ethernet",
+  "description": "Ethernet controller (PCI class 02, subclass 00).",
+  "priority": 100,
+  "match": [
+    {
+      "pci": {
+        "class_id": [
+          "0200"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "network.ethernet"
+    ]
+  }
+}

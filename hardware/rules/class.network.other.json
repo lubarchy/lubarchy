@@ -1,0 +1,20 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "class.network.other",
+  "description": "Other network controller (PCI class 02, subclass 80). Not evidence of Wi-Fi.",
+  "priority": 100,
+  "match": [
+    {
+      "pci": {
+        "class_id": [
+          "0280"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "network.other"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "class.storage.nvme",
+  "description": "NVM Express controller (PCI class 01, subclass 08, programming interface 02).",
+  "priority": 100,
+  "match": [
+    {
+      "pci": {
+        "class_id": [
+          "010802"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "storage.nvme"
+    ]
+  }
+}

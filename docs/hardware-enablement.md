@@ -3,12 +3,15 @@
 Requirements for LUBARCHY hardware enablement. Hardware enablement is a
 first-class subsystem (D-008).
 
-**Status (M1-B):** the data and policy contracts — inventory v1, rule v1 and
+**Status (M1-C):** the data and policy contracts — inventory v1, rule v1 and
 plan v1 — are defined and tested (M1-A). A read-only live probe,
 `hardware/probe.py`, turns a running system into an inventory v1 document
-(M1-B, see [Live probe](#live-probe-m1-b)). **Nothing resolves, installs,
-enables or configures anything yet.** Real compatibility mappings, package
-resolution, installation, configuration and validation are later M1 work.
+(M1-B, see [Live probe](#live-probe-m1-b)). A production resolver turns that
+inventory and a conservative, classification-only production rule set into a
+plan v1 (M1-C, see [Production resolver](#production-resolver-m1-c)).
+**Nothing proposes a package, installs, enables a source or configures
+anything yet.** Firmware/package mappings, their source policy, installation,
+configuration and validation are later M1 work.
 
 ## Goal
 
@@ -353,11 +356,21 @@ Drivers and modules come only from the kernel-managed `driver` and
 
 ### Bounded udev use
 
-sysfs is the primary modalias source. For each PCI device or USB interface
-that has one, the probe asks udev for the `MODALIAS` property of that one
-device. If udev returns the same value, it agrees; if it returns nothing (or
-does not know the device), the sysfs value stands; if it returns a different
-value, the probe fails with `udev_sysfs_mismatch`. No other udev property is
+sysfs is authoritative for the kernel MODALIAS. For each PCI device or USB
+interface that has one, the probe asks udev for the `MODALIAS` property of
+that one device as secondary corroboration (CTO-accepted interpretation):
+
+| `udevadm` result | Meaning | Probe |
+| --- | --- | --- |
+| exit 0, same value | corroborated | continues |
+| exit 0, empty value | corroboration unavailable | continues with the sysfs value |
+| non-zero exit | corroboration unavailable (not proof that the property is absent) | continues with the sysfs value |
+| exit 0, different non-empty value | disagreement | fails: `udev_sysfs_mismatch` |
+| executable missing | — | fails: `tool_missing` |
+| timeout or execution failure | — | fails: `tool_failed` |
+
+The probe's internal counter for the "unavailable" cases is named `absent`;
+it means corroboration unavailable, nothing more. No other udev property is
 ever requested; database exports, attribute walks, full property queries,
 `trigger`, `test` and `control` are impossible through the command checker.
 
@@ -379,6 +392,86 @@ inventory, by whoever records it.
 
 A probe run on the builder VM proves only that the probe produces a valid,
 deterministic inventory for that VM. It is not real-hardware qualification.
+
+## Production resolver (M1-C)
+
+`hardware/resolver.py` (library) and `hardware/resolve.py` (command line)
+implement inventory v1 + production rules → plan v1 with the M1-A semantics.
+The resolver reads only the inventory it is given, the production rules and
+the v1 schemas. It never reads hardware (that is the probe's job), starts no
+process, uses no network, calls no APT, dpkg, modprobe or udevadm, writes no
+file and persists nothing. It uses Python 3 and `python3-jsonschema` from
+Debian `main`; it is not part of the ISO yet. It does not import the test-only
+reference resolver, which stays an independent oracle for tests.
+
+```sh
+hardware/probe.py | hardware/resolve.py --inventory -
+hardware/resolve.py --inventory inventory.json
+```
+
+Output: one canonical plan v1 document and one newline on stdout.
+
+| Exit | Meaning | stdout |
+| --- | --- | --- |
+| 0 | Valid inventory resolved (status `resolved`, `partial` or `conflict` — a conflict is a result, not a crash) | plan |
+| 2 | Inventory rejected (status `invalid`, errors give location and check only) | plan |
+| 3 | Input unreadable, too large or not strict UTF-8 JSON | nothing |
+| 4 | Production rule set rejected | nothing |
+| 5 | Internal contract failure (e.g. the produced plan is not plan v1) | nothing |
+| 64 | Usage error | nothing |
+
+On 0 and 2 stderr is empty; otherwise it holds one line
+`resolve: error: <code>: <message>` with no input values.
+
+### Production rule trust boundary
+
+Production rules come only from `hardware/rules/`; there is deliberately no
+option to use another directory, so a caller cannot replace hardware policy.
+Only regular, non-hidden `*.json` files are rules; regular `*.md` files are
+documentation; subdirectories are never searched. A symbolic link, hidden
+entry, subdirectory or other file, a rule that is not strict UTF-8 JSON
+(duplicate keys, floats), fails rule v1, is not named `<id>.json` or repeats
+an id rejects the **whole** rule set; a bad rule is never skipped. Rules are
+read without following symbolic links and loaded in id order.
+
+### Classification-only baseline
+
+Rule v1 can express packages, profiles, warnings and sources, but the M1-C
+production policy is narrower: production rules may carry **classification
+effects only**, and the resolver rejects a production rule set with any other
+effect. The 12 rules are listed in [`hardware/rules/README.md`](../hardware/rules/README.md)
+with provenance in [`hardware/rules/SOURCES.md`](../hardware/rules/SOURCES.md):
+CPU vendor (`GenuineIntel`, `AuthenticAMD`), display controllers (PCI class
+`03`) from vendors `8086`, `1002` and `10de`, Ethernet (`0200`), other
+network controllers (`0280`, `network.other`, never called Wi-Fi), NVMe
+(`010802`), SATA (`0106`), and VM, container and explicit bare-metal
+platforms.
+
+A classification says what a function is, not what it needs. `gpu.nvidia`
+says nothing about integrated vs discrete roles, generation, driver strategy
+or firmware. Devices without a high-confidence rule — including all USB
+devices in M1-C — stay `unresolved` and receive nothing, so production plans
+are normally `partial`.
+
+### Cross-device composition is not expressed
+
+A rule v1 selector matches one target, and a rule matches when **any**
+selector matches; rule v1 therefore cannot require two devices at once. M1-C
+adds no `gpu.hybrid` rule, does not treat a multi-selector rule as an AND,
+and does not infer hybrid graphics from separate Intel and NVIDIA
+classifications. Multi-GPU topology, integrated/discrete roles and
+hybrid-laptop classification need a future composition contract or rule
+version.
+
+### Source policy: still `main` only
+
+Plans record `source_policy` `authorised: ["main"]`. No production rule
+requests any source. M1-D will separately evaluate Debian firmware and
+microcode requirements — at least `intel-microcode`, `amd64-microcode`,
+`firmware-intel-graphics`, `firmware-amd-graphics`, `firmware-iwlwifi` and
+relevant networking/Bluetooth firmware — and the policy status of Debian
+`non-free-firmware`. NVIDIA proprietary driver policy is a separate decision.
+None of this is encoded or accepted in M1-C.
 
 ## Hardware classes
 

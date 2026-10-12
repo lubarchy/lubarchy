@@ -1,0 +1,20 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "class.platform.vm",
+  "description": "systemd-detect-virt observed a virtual machine (virtualization kind vm).",
+  "priority": 100,
+  "match": [
+    {
+      "platform": {
+        "virtualization_kind": [
+          "vm"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "platform.vm"
+    ]
+  }
+}

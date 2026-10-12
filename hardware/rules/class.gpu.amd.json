@@ -1,0 +1,23 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "class.gpu.amd",
+  "description": "Display controller (PCI base class 03) from PCI vendor 1002 (AMD/ATI graphics). Says nothing about integrated vs discrete, driver or firmware.",
+  "priority": 100,
+  "match": [
+    {
+      "pci": {
+        "vendor_id": [
+          "1002"
+        ],
+        "class_id": [
+          "03"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "gpu.amd"
+    ]
+  }
+}
