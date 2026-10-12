@@ -39,7 +39,7 @@ later installation/configuration → later validation.
 | M1-A | Hardware contracts: inventory/rule/plan v1 schemas, rule model, resolution plan, fixture tests | PASS (CTO accepted) |
 | M1-B | Live read-only hardware probe producing inventory v1 | PASS (CTO accepted) |
 | M1-C | Production resolver and high-confidence classification baseline | PASS (CTO accepted) |
-| M1-D | Debian non-free-firmware policy and CPU microcode package mappings | Implemented locally; awaiting CTO review |
+| M1-D | Debian non-free-firmware policy and CPU microcode package mappings | Published (`4917b47`); GitHub CI green (run #12); awaiting CTO review |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
   `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
@@ -108,7 +108,10 @@ later installation/configuration → later validation.
   Debian component, decide NVIDIA strategy, classify hybrid graphics or USB
   devices, install or configure anything, or persist plans.
 - M1-D — Debian `non-free-firmware` policy and CPU microcode mappings:
-  **implemented locally; awaiting CTO review** (not PASS).
+  **published; awaiting CTO review** (not PASS). Implementation commit
+  `4917b47948f5b3ab19a292a510a979f674e3c654`; `Static gates` run #12
+  ([38321463299](https://github.com/lubarchy/lubarchy/actions/runs/38321463299))
+  passed all six gates on that commit.
   [ADR-0001](decisions/0001-non-free-firmware.md) (Accepted, D-013) authorises
   Debian `non-free-firmware` for hardware enablement. The production
   resolver's source policy is now `main` + `non-free-firmware`; `contrib`,
@@ -306,8 +309,9 @@ not be treated as decided:
 ## Immediate next action
 
 CTO review of M1-D (non-free-firmware policy and CPU microcode mappings,
-local commit, not yet pushed or run in GitHub CI). M1-E has not started and
-waits for a CTO brief.
+published as `4917b47948f5b3ab19a292a510a979f674e3c654`; `Static gates` run
+#12 passed all six gates on that commit; see [testing.md](testing.md)). M1-E
+has not started and waits for a CTO brief.
 
 ## PASS rule
 

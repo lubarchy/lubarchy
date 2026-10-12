@@ -355,6 +355,8 @@ probes hardware.**
 | [#8 (38289415670)](https://github.com/lubarchy/lubarchy/actions/runs/38289415670) | `4afa53fd14e983552dea1f8553366ddd13a59e6a` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks) and hardware probe (35 synthetic checks) passed |
 | [#9 (38289634704)](https://github.com/lubarchy/lubarchy/actions/runs/38289634704) | `7561ac107fd26d77de0275a91be726cb358b2b28` | push | **success**: all five gates passed (documentation commit) |
 | [#10 (38294397684)](https://github.com/lubarchy/lubarchy/actions/runs/38294397684) | `67a659d02a845886be43ef71e32193a53786180e` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks) and hardware resolver (23 checks; 96 production/reference parity cases) passed |
+| [#11 (38294607100)](https://github.com/lubarchy/lubarchy/actions/runs/38294607100) | `c15a0a50f6e0b66d2a4ca163a7e77add3f6107d8` | push | **success**: all six gates passed (documentation commit) |
+| [#12 (38321463299)](https://github.com/lubarchy/lubarchy/actions/runs/38321463299) | `4917b47948f5b3ab19a292a510a979f674e3c654` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks) and hardware resolver (24 checks, including the package/source-policy checks; 96 parity cases) passed; CI container sources `main` only |
 
 The fix in `ce2462e` trusts exactly `$GITHUB_WORKSPACE` for the gate step
 through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`; no Git
@@ -385,9 +387,14 @@ synthetic only; no new dependency) was executed on GitHub by workflow
 gates ran and passed: repository lint, ShellCheck, live-build configuration,
 hardware contracts, hardware probe and hardware resolver.
 
-The M1-D change (package/source-policy tests within gate 6; no new
-dependency; the CI container stays Debian `main` only) has **not yet run on
-GitHub**.
+**M1-D CI qualification:** the M1-D change (package/source-policy tests
+within gate 6; no new dependency) was executed on GitHub by workflow
+`Static gates`, run ID
+[38321463299](https://github.com/lubarchy/lubarchy/actions/runs/38321463299)
+(run #12), on commit `4917b47948f5b3ab19a292a510a979f674e3c654`. All six
+gates ran and passed: repository lint, ShellCheck, live-build configuration,
+hardware contracts, hardware probe and hardware resolver. The CI container's
+own APT sources stayed Debian `main` only.
 
 ## Clean rebuild comparison
 
