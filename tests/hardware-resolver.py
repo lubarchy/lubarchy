@@ -76,6 +76,15 @@ EXPECTED_PACKAGE_RULES = {
     "package.cpu.intel-microcode": ("GenuineIntel", "intel-microcode"),
     "package.cpu.amd64-microcode": ("AuthenticAMD", "amd64-microcode"),
 }
+# M1-E device firmware rules (generated from qualified kernel module aliases;
+# drift is checked by tests/hardware-firmware.py).
+FIRMWARE_PACKAGE_RULES = {
+    "package.firmware.amd-graphics": "firmware-amd-graphics",
+    "package.firmware.brcm80211": "firmware-brcm80211",
+    "package.firmware.intel-graphics": "firmware-intel-graphics",
+    "package.firmware.iwlwifi": "firmware-iwlwifi",
+}
+PRODUCTION_PACKAGES = {"intel-microcode", "amd64-microcode", *FIRMWARE_PACKAGE_RULES.values()}
 # Product source policy (ADR-0001). Stated here independently of the
 # production constant and injected explicitly into the M1-A reference, which
 # keeps accepting arbitrary policies.
@@ -269,7 +278,8 @@ def rule_trust_boundary():
     load = lambda d: resolver.load_rule_directory(str(d), production_policy=True)  # noqa: E731
     with scratch() as d:
         good = _copy_rules(d / "good")
-        expect([r["id"] for r in load(good)] == sorted([*EXPECTED_PRODUCTION_RULES, *EXPECTED_PACKAGE_RULES]),
+        expect([r["id"] for r in load(good)]
+               == sorted([*EXPECTED_PRODUCTION_RULES, *EXPECTED_PACKAGE_RULES, *FIRMWARE_PACKAGE_RULES]),
                "copy of production rules")
         cases = []
 
@@ -341,8 +351,15 @@ def deterministic_rule_loading():
 @check
 def production_rule_policy():
     files = sorted(p.name for p in PRODUCTION_RULES.iterdir())
-    expect(files == sorted([f"{r}.json" for r in [*EXPECTED_PRODUCTION_RULES, *EXPECTED_PACKAGE_RULES]]
+    expect(files == sorted([f"{r}.json" for r in [*EXPECTED_PRODUCTION_RULES, *EXPECTED_PACKAGE_RULES,
+                                                   *FIRMWARE_PACKAGE_RULES]]
                            + ["README.md", "SOURCES.md"]), f"unexpected production directory content: {files}")
+    for rid, package in FIRMWARE_PACKAGE_RULES.items():
+        doc = ref.load_json(PRODUCTION_RULES / f"{rid}.json")
+        expect([p["name"] for p in doc["effects"]["packages"]] == [package], f"{rid}: package")
+        expect(set(doc["effects"]) <= {"classifications", "packages"}, f"{rid}: effects")
+        expect(all(list(sel) in (["pci"], ["usb"]) and list(next(iter(sel.values()))) == ["modalias"]
+                   for sel in doc["match"]), f"{rid}: must match modalias aliases only")
     for rid, cls in EXPECTED_PRODUCTION_RULES.items():
         doc = ref.load_json(PRODUCTION_RULES / f"{rid}.json")
         expect(doc["effects"] == {"classifications": [cls]}, f"{rid}: effects {doc['effects']}")
@@ -365,12 +382,12 @@ def production_rule_policy():
             packages.add(pkg["name"])
             expect(pkg["disposition"] == "require", f"{r['id']}: {pkg['disposition']}")
             expect(pkg["source"] == "non-free-firmware", f"{r['id']}: {pkg['name']} from {pkg['source']}")
-    expect(packages == {"intel-microcode", "amd64-microcode"}, f"production package set {sorted(packages)}")
+    expect(packages == PRODUCTION_PACKAGES, f"production package set {sorted(packages)}")
     plan = produce(fixture("04-intel-nvidia-hybrid"))
     expect(plan["profiles"] == [] and plan["warnings"] == [], "production plan proposes profiles or warnings")
     expect(plan["source_policy"] == {"authorised": list(PRODUCT_SOURCE_POLICY)}, "source policy")
-    return (f"{len(EXPECTED_PRODUCTION_RULES)} classification rules + 2 package rules; exact package set "
-            "{intel-microcode, amd64-microcode}, both 'require' from non-free-firmware; no profile/warning/forbid")
+    return (f"{len(EXPECTED_PRODUCTION_RULES)} classification rules + 2 CPU + 4 firmware package rules; exact package "
+            "set of 6, all 'require' from non-free-firmware; no profile/warning/forbid")
 
 
 def _packages(plan):
@@ -400,7 +417,7 @@ def package_and_source_policy():
     devices = [pci("0000:00:02.0", "8086", "f001", "030000"), pci("0000:02:00.0", "8086", "f007", "028000"),
                pci("0000:05:00.0", "f0ff", "f0ff", "ff0000")]
     plan = produce(inventory(devices, vendor="SyntheticCPU"))
-    expect(plan["packages"] == [], "devices produced packages (no device mapping exists in M1-D)")
+    expect(plan["packages"] == [], "devices without a qualified firmware alias produced packages")
     # Representation is not authorisation: a non-production rule requiring
     # an unauthorised component is still reported for policy review.
     cpu = [{"cpu": {"vendor": ["GenuineIntel"]}}]

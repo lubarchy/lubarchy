@@ -3,7 +3,7 @@
 Requirements for LUBARCHY hardware enablement. Hardware enablement is a
 first-class subsystem (D-008).
 
-**Status (M1-D):** the data and policy contracts — inventory v1, rule v1 and
+**Status (M1-E):** the data and policy contracts — inventory v1, rule v1 and
 plan v1 — are defined and tested (M1-A). A read-only live probe,
 `hardware/probe.py`, turns a running system into an inventory v1 document
 (M1-B, see [Live probe](#live-probe-m1-b)). A production resolver turns that
@@ -11,9 +11,11 @@ inventory and a conservative production rule set into a plan v1 (M1-C, see
 [Production resolver](#production-resolver-m1-c)). Debian `non-free-firmware`
 is an accepted hardware-enablement source and the first package mappings —
 Intel and AMD CPU microcode — appear in plans (M1-D, see
-[Package source policy](#package-source-policy-m1-d)). **Packages in a plan
-are proposals only: nothing installs, enables a source or configures
-anything yet.** Device firmware mappings, installation, configuration and
+[Package source policy](#package-source-policy-m1-d)). Four device firmware
+families are mapped from qualified kernel module aliases (M1-E, see
+[Device firmware mappings](#device-firmware-mappings-m1-e)). **Packages in a
+plan are proposals only: nothing installs, enables a source or configures
+anything yet.** Further firmware families, installation, configuration and
 validation are later M1 work.
 
 ## Goal
@@ -510,9 +512,9 @@ Both are `require` effects with no version: APT resolves the qualified
 Stable version. Package mapping is kept in its own rules, separate from the
 `class.cpu.*` classification rules. Other CPU vendors (for example Hygon,
 Centaur/Zhaoxin) and mis-cased or unknown vendor strings receive no microcode
-package. These are the only two production package mappings; a test requires
-the production package set to be exactly `{intel-microcode,
-amd64-microcode}`.
+package. In M1-D these were the only two production package mappings; since
+M1-E the exact production package set is the six listed under
+[Device firmware mappings](#device-firmware-mappings-m1-e).
 
 **A package in a plan is a proposal.** Nothing in LUBARCHY installs it yet:
 the resolver calls no APT, dpkg, unattended-upgrades or PackageKit.
@@ -521,11 +523,11 @@ the resolver calls no APT, dpkg, unattended-upgrades or PackageKit.
 
 Verified to exist in Debian Trixie `non-free-firmware` (see
 [`hardware/rules/SOURCES.md`](../hardware/rules/SOURCES.md)) but **candidate
-only — no production mapping in M1-D**: `firmware-intel-graphics`,
-`firmware-amd-graphics`, `firmware-iwlwifi`, `firmware-realtek`,
-`firmware-atheros`, `firmware-brcm80211`, `bluez-firmware`,
-`firmware-nvidia-graphics`, `firmware-nvidia-gsp`. Mapping any of them needs
-device-specific evidence and qualification in a later step.
+only — no production mapping**: `firmware-realtek`, `firmware-atheros`,
+`bluez-firmware`, `firmware-nvidia-graphics`, `firmware-nvidia-gsp`. (In
+M1-D the list also held `firmware-intel-graphics`, `firmware-amd-graphics`,
+`firmware-iwlwifi` and `firmware-brcm80211`, which M1-E maps.) Mapping any of
+them needs device-specific evidence and qualification in a later step.
 
 ### NVIDIA boundary
 
@@ -535,6 +537,106 @@ M1-D therefore neither authorises nor maps `nvidia-driver`,
 NVIDIA driver-stack package; none of them is available from the authorised
 sources. The existence of NVIDIA firmware packages in `non-free-firmware`
 does not decide the NVIDIA driver strategy, which receives a separate review.
+M1-E keeps this boundary: no NVIDIA firmware or driver is mapped.
+
+## Device firmware mappings (M1-E)
+
+### Evidence model
+
+A firmware mapping needs evidence for both links:
+
+1. **device → kernel module:** the device's kernel modalias matches a
+   module alias of the qualified Debian kernel (`modules.alias`, corroborated
+   by `modinfo` against the package-owned module files);
+2. **kernel module → Debian package:** the authenticated Debian Trixie
+   package description names that module as supported by the package's
+   firmware.
+
+```text
+device modalias → kernel module alias → kernel module → Debian firmware package (non-free-firmware)
+```
+
+Vendor IDs, class codes, human-readable names and PCI/USB databases alone
+never establish a firmware requirement. Rules match only the kernel's own
+alias patterns, verbatim (case preserved, never widened into vendor-wide
+wildcards).
+
+### Pipeline: qualified once, committed, never generated at runtime
+
+```text
+qualified Debian kernel modules.alias
+  → tools/hwe/qualify-firmware-mappings.py extract
+  → tools/hwe/module-alias-evidence.json (committed, normalized)
+  → tools/hwe/qualify-firmware-mappings.py check-rules / write-rules
+  → hardware/rules/package.firmware.*.json (committed, reviewed)
+  → production resolver
+```
+
+The extractor keeps only the authorised modules' aliases on buses inventory
+v1 represents (`pci:`, `usb:`), sorted bytewise and de-duplicated, with case
+preserved; malformed `modules.alias` lines are rejected. The production
+resolver never reads `/lib/modules`: repository state is the source of
+truth. **After a kernel update the mappings must be requalified** (re-extract
+on the new kernel, review the diff, regenerate and commit); qualification
+provenance is not part of runtime matching.
+
+Qualified kernel: `linux-image-6.12.111+deb13-amd64`, version `6.12.111-1`
+(`uname -r` `6.12.111+deb13-amd64`).
+
+### Active families
+
+| Rule | Kernel modules | Buses | Package (component) | Aliases | Classification |
+| --- | --- | --- | --- | --- | --- |
+| `package.firmware.iwlwifi` | `iwlwifi`, `iwl3945`, `iwl4965` | PCI | `firmware-iwlwifi` (`non-free-firmware`) | 452 | `network.wifi` |
+| `package.firmware.intel-graphics` | `i915`, `xe` | PCI | `firmware-intel-graphics` (`non-free-firmware`) | 373 | — |
+| `package.firmware.amd-graphics` | `amdgpu`, `radeon` | PCI | `firmware-amd-graphics` (`non-free-firmware`) | 861 | — |
+| `package.firmware.brcm80211` | `brcmfmac` | PCI, USB | `firmware-brcm80211` (`non-free-firmware`) | 27 + 9 | `network.wifi` |
+
+Alias counts are per rule after de-duplication: `i915` and `xe` share 107
+aliases and `amdgpu` and `radeon` share 149, always within the same package.
+No concrete modalias can match two different firmware packages (checked by
+the overlap analysis). `amdgpu` includes the kernel's own vendor+class
+aliases for AMD display/processing-accelerator classes; they are kept
+verbatim.
+
+The exact production package set is `intel-microcode`, `amd64-microcode`,
+`firmware-iwlwifi`, `firmware-intel-graphics`, `firmware-amd-graphics`,
+`firmware-brcm80211`. Every firmware requirement is `require` from
+`non-free-firmware` with no version: APT resolves the qualified Stable
+version.
+
+### Wi-Fi and graphics classification
+
+`network.wifi` is emitted only for a target that matches a qualified
+`iwlwifi`-family or `brcmfmac` alias. PCI class `0280` alone is never proof
+of Wi-Fi: such devices keep `network.other`, and a qualified Wi-Fi device
+with class `0280` carries both. Firmware rules add no `gpu.*`
+classification; GPU classes still come only from PCI display class `03`, so
+a firmware requirement and a hardware class remain separate facts.
+
+### Excluded and deferred
+
+- `brcmsmac`: its only module aliases are on the BCMA bus
+  (`bcma:m04BFid0812rev{11,17,18}cl*`), which inventory v1 cannot represent;
+  the same cores are claimed by `b43`, whose firmware comes from `contrib`
+  (not authorised). Mapping it through the BCMA host bridge's PCI IDs would
+  widen scope and create ambiguity, so it is deferred to a future inventory
+  and firmware-policy review (CTO-approved scope refinement during M1-E).
+- SDIO aliases (23 for `brcmfmac`) and non-bus aliases (`iwl4965`): not
+  representable in inventory v1; excluded.
+- IPU/camera devices (also in `firmware-intel-graphics`), AMD NPU
+  (`amdxdna`) and `r128`: not mapped.
+- Deferred families: `firmware-realtek`, `firmware-atheros`,
+  `bluez-firmware`, `firmware-nvidia-graphics`, `firmware-nvidia-gsp`, Intel
+  sound, MediaTek and other Qualcomm firmware.
+
+### What this does not prove
+
+Kernel-alias and package evidence plus synthetic tests do not prove that
+Wi-Fi associates, graphics acceleration works, firmware loads on physical
+devices, suspend/resume works or package installation succeeds. Those need
+later installation and real-hardware validation. Nothing is installed and no
+module is loaded by mapping or qualification.
 
 ## Hardware classes
 

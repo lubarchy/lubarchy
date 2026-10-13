@@ -29,13 +29,33 @@ loaded only by the production resolver (`hardware/resolver.py`).
 | `package.cpu.intel-microcode` | CPU vendor `GenuineIntel` | `intel-microcode` (`non-free-firmware`) |
 | `package.cpu.amd64-microcode` | CPU vendor `AuthenticAMD` | `amd64-microcode` (`non-free-firmware`) |
 
+## Device firmware mappings (M1-E)
+
+| Rule | Matches (kernel module aliases) | Package (component) | Classification |
+| --- | --- | --- | --- |
+| `package.firmware.iwlwifi` | `iwlwifi`, `iwl3945`, `iwl4965` PCI aliases | `firmware-iwlwifi` (`non-free-firmware`) | `network.wifi` |
+| `package.firmware.intel-graphics` | `i915`, `xe` PCI aliases | `firmware-intel-graphics` (`non-free-firmware`) | — |
+| `package.firmware.amd-graphics` | `amdgpu`, `radeon` PCI aliases | `firmware-amd-graphics` (`non-free-firmware`) | — |
+| `package.firmware.brcm80211` | `brcmfmac` PCI and USB aliases | `firmware-brcm80211` (`non-free-firmware`) | `network.wifi` |
+
+These four files are **generated, not hand-edited**: they come from the
+committed kernel alias evidence and `tools/hwe/firmware-mappings.json`
+through `tools/hwe/qualify-firmware-mappings.py write-rules`, and the
+static gate fails if they drift from what that evidence regenerates. Each
+matches only verbatim kernel module aliases (`modalias` selectors); none
+matches a vendor or class alone. After a kernel update they must be
+requalified. `brcmsmac` (BCMA bus), SDIO devices, Realtek, Atheros,
+Bluetooth and NVIDIA are not mapped.
+
 Every production rule has priority 100. Production rules may carry only
 classifications and `require` package effects from an authorised source
 (`main`, `non-free-firmware`; [ADR-0001](../../docs/decisions/0001-non-free-firmware.md)).
 The resolver refuses a production rule set with any other effect (`forbid`,
 profiles, warnings) or source, and the static gates require the production
-package set to be exactly `{intel-microcode, amd64-microcode}`. Packages in a
-plan are proposals; nothing installs them yet. Device firmware packages are
+package set to be exactly `{intel-microcode, amd64-microcode,
+firmware-iwlwifi, firmware-intel-graphics, firmware-amd-graphics,
+firmware-brcm80211}`. Packages in a
+plan are proposals; nothing installs them yet. Other device firmware packages are
 candidates only (see [SOURCES.md](SOURCES.md)). Identifier and package
 provenance is in [SOURCES.md](SOURCES.md).
 

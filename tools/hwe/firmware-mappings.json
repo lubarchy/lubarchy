@@ -1,0 +1,41 @@
+{
+  "description": "M1-E device firmware mapping configuration. Each family maps the PCI/USB module aliases of its kernel modules to one Debian non-free-firmware package. Input to tools/hwe/qualify-firmware-mappings.py; not read at runtime.",
+  "representable_buses": ["pci", "usb"],
+  "families": [
+    {
+      "rule_id": "package.firmware.amd-graphics",
+      "package": "firmware-amd-graphics",
+      "modules": ["amdgpu", "radeon"],
+      "classifications": [],
+      "description": "AMD/ATI graphics functions handled by the amdgpu or radeon kernel modules (matched by their kernel module aliases) -> Debian firmware-amd-graphics from non-free-firmware (ADR-0001). A proposal only; nothing is installed.",
+      "reason": "Debian firmware-amd-graphics provides the binary firmware for AMD/ATI graphics chips supported by the amdgpu and radeon drivers."
+    },
+    {
+      "rule_id": "package.firmware.brcm80211",
+      "package": "firmware-brcm80211",
+      "modules": ["brcmfmac"],
+      "classifications": ["network.wifi"],
+      "description": "Broadcom/Cypress 802.11 devices handled by the brcmfmac kernel module on PCI or USB (matched by its kernel module aliases) -> Debian firmware-brcm80211 from non-free-firmware (ADR-0001). SDIO devices and brcmsmac (BCMA bus) are not representable in inventory v1 and are excluded. A proposal only; nothing is installed.",
+      "reason": "Debian firmware-brcm80211 provides the binary firmware for Broadcom/Cypress 802.11 wireless devices supported by the brcmfmac driver."
+    },
+    {
+      "rule_id": "package.firmware.intel-graphics",
+      "package": "firmware-intel-graphics",
+      "modules": ["i915", "xe"],
+      "classifications": [],
+      "description": "Intel graphics functions handled by the i915 or xe kernel modules (matched by their kernel module aliases) -> Debian firmware-intel-graphics from non-free-firmware (ADR-0001). IPU/camera devices are not mapped. A proposal only; nothing is installed.",
+      "reason": "Debian firmware-intel-graphics provides the binary firmware for Intel graphics supported by the i915 and xe drivers."
+    },
+    {
+      "rule_id": "package.firmware.iwlwifi",
+      "package": "firmware-iwlwifi",
+      "modules": ["iwl3945", "iwl4965", "iwlwifi"],
+      "classifications": ["network.wifi"],
+      "description": "Intel wireless devices handled by the iwlwifi, iwl3945 or iwl4965 kernel modules (matched by their kernel module aliases) -> Debian firmware-iwlwifi from non-free-firmware (ADR-0001). A proposal only; nothing is installed.",
+      "reason": "Debian firmware-iwlwifi provides the binary firmware for Intel wireless cards supported by the iwlwifi, iwl3945 and iwl4965 drivers."
+    }
+  ],
+  "excluded_modules": {
+    "brcmsmac": "Only bcma: aliases; the BCMA bus is not representable in inventory v1, and its BCMA cores are also claimed by b43 (firmware from contrib, not authorised). Deferred to a future inventory/schema and firmware-policy review."
+  }
+}

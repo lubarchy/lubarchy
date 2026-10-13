@@ -65,7 +65,7 @@ A clean rebuild must succeed from the same commit.
 | --- | --- |
 | Repository lint | `tests/repo-lint.sh` (M0-I) |
 | shellcheck | Every tracked shell script, via `tests/run-static.sh` (M0-I) |
-| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I); hardware contracts added in M1-A; hardware probe added in M1-B; hardware resolver added in M1-C |
+| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I); hardware contracts added in M1-A; hardware probe added in M1-B; hardware resolver added in M1-C; hardware firmware added in M1-E |
 | GitHub CI | `.github/workflows/m0-static.yml` runs `tests/run-static.sh` on GitHub Actions (green since M0-J) |
 | `live-build` configuration validation | `tests/live-build-config.sh` (M0-E) |
 | ISO build | Manual, from the committed configuration (M0-F) |
@@ -331,6 +331,75 @@ exact commit, as the unprivileged `builder` user, with nothing installed:
 This proves only that the resolver produces a valid, deterministic plan for
 the builder VM; it is not real-hardware qualification.
 
+## M1 hardware firmware gate
+
+`tests/hardware-firmware.py` (gate 7 of `tests/run-static.sh`, since M1-E) is
+separate from the resolver gate because firmware-evidence integrity,
+regeneration drift and overlap analysis fail independently of resolver
+semantics. It uses only the committed, normalized kernel alias evidence
+(`tools/hwe/module-alias-evidence.json`) and synthetic devices; it never
+reads the CI runner's `/lib/modules`. It checks:
+
+- the evidence is normalized (sorted, unique, PCI/USB only, uppercase hex as
+  the kernel writes it), self-consistent (counts and SHA-256 digests) and
+  tied to `linux-image-6.12.111+deb13-amd64` 6.12.111-1, with the exact
+  per-module alias counts; SDIO, BCMA (`brcmsmac`) and non-bus aliases are
+  recorded as excluded;
+- the four committed `package.firmware.*` rules regenerate byte-for-byte
+  from that evidence and `tools/hwe/firmware-mappings.json`; ten kinds of
+  drift are detected (dropped alias, alias from another module, stale
+  count/digest, changed case, duplicate, SDIO alias, alias for excluded
+  `brcmsmac`, vendor-wide wildcard, hand-edited rule, extra rule file);
+- the `modules.alias` parser rejects malformed lines, and SDIO, BCMA,
+  non-bus and bracket aliases are unrepresentable;
+- no cross-package overlap (field-wise analysis);
+- exact firmware rules (modalias selectors only), the exact production
+  package set of six, all `require` from `non-free-firmware`, no version, no
+  deferred package (Realtek, Atheros, Bluetooth, NVIDIA, …);
+- every one of the 1,722 committed aliases, instantiated as a concrete
+  synthetic device, resolves to exactly its own family's package;
+- synthetic fixtures `tests/fixtures/hardware/firmware/` (`iwlwifi`, `i915`,
+  `xe`, `amdgpu`, `radeon`, `brcmfmac` PCI and USB) map as expected, while
+  near misses (Intel network/display/audio devices without a qualified
+  alias, AMD HDMI audio, a Broadcom BCMA chip, Broadcom Ethernet, Realtek and
+  Atheros Wi-Fi, NVIDIA display) get no package;
+- `network.wifi` only for qualified Wi-Fi aliases, `0280` alone stays
+  `network.other`, firmware rules never create `gpu.*`;
+- unknown hardware gets nothing; CPU microcode is unchanged;
+- production/reference parity and plan determinism on the firmware fixtures;
+- the resolver and probe never read kernel alias metadata (no runtime rule
+  generation) and the qualification tool starts no process.
+
+M1-E mutation coverage (gates 6 and 7): broadening any family to a whole
+vendor, an alias from the wrong module, a dropped alias, an SDIO alias,
+normalized case, a duplicate alias, a Realtek, Atheros or NVIDIA firmware
+rule, a seventh package, a firmware source of `main` or `non-free`, a version
+pin, runtime rule generation from `modules.alias`, and an install subprocess.
+
+### Builder firmware requalification (M1-E)
+
+Operator-run on `lubarchy-builder`, never in CI, unprivileged, nothing
+installed and no module loaded:
+
+1. Record `uname -r`, the owning kernel package and version, the
+   `modules.alias` SHA-256, and confirm with `modinfo -F alias` (reading the
+   package-owned `.ko` files) that each mapped module's aliases equal its
+   `modules.alias` entries.
+2. `tools/hwe/qualify-firmware-mappings.py check-evidence --modules-alias
+   /lib/modules/$(uname -r)/modules.alias …` must report that the committed
+   evidence regenerates byte-for-byte; `check-rules` must pass.
+3. Verify each firmware package's component, version and long description
+   with the authenticated metadata procedure above; optionally download each
+   `.deb` with that metadata, check its hash against the signed index, list
+   its contents with `dpkg-deb -c`, and delete it.
+4. Run probe → resolve twice; on the QEMU builder no device firmware
+   package may appear (only `intel-microcode`), with the usual side-effect
+   checks.
+
+This qualifies alias coverage and package provenance, not real hardware: it
+does not show that firmware loads, Wi-Fi associates or graphics
+acceleration works.
+
 ## GitHub CI
 
 The static gates run as the GitHub Actions workflow
@@ -395,6 +464,10 @@ within gate 6; no new dependency) was executed on GitHub by workflow
 gates ran and passed: repository lint, ShellCheck, live-build configuration,
 hardware contracts, hardware probe and hardware resolver. The CI container's
 own APT sources stayed Debian `main` only.
+
+The M1-E change (gate 7, hardware firmware, synthetic and committed evidence
+only; `tools/**` added to the workflow path filter; no new dependency) has
+**not yet run on GitHub**.
 
 ## Clean rebuild comparison
 

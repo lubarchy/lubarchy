@@ -105,12 +105,14 @@ Since M1-A the data boundaries are defined as versioned contracts: the
 inventory holds observed, privacy-safe facts only; declarative rules hold
 policy; resolution produces a proposed plan that contains no commands and
 enables no package source. Unknown hardware and rule conflicts fail closed.
-Implemented boundary since M1-D: live read-only probe → inventory v1 →
-production resolver → plan v1. Production rules classify hardware and map
-CPU microcode (`intel-microcode`, `amd64-microcode` from
-`non-free-firmware`) as proposals. Device firmware mappings, applying a plan
-(installation and configuration) and validation are **not implemented**. See
-[hardware-enablement.md](hardware-enablement.md).
+Implemented boundary since M1-E: live read-only probe → inventory v1 →
+production resolver → plan v1. Production rules classify hardware, map CPU
+microcode and, since M1-E, map device firmware through qualified kernel
+module aliases (device modalias → module alias → Debian firmware package from
+`non-free-firmware`), all as proposals. The rules are generated offline from
+committed kernel alias evidence; nothing reads kernel metadata at runtime.
+Applying a plan (installation and configuration) and validation are **not
+implemented**. See [hardware-enablement.md](hardware-enablement.md).
 
 ## Installer boundary (future)
 

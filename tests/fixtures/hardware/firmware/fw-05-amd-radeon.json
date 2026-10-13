@@ -1,0 +1,31 @@
+{
+  "schema": "lubarchy.hardware.inventory/v1",
+  "system": {
+    "architecture": "amd64",
+    "kernel_release": "6.12.0-fixture-amd64",
+    "boot_firmware": "uefi",
+    "secure_boot": "disabled",
+    "virtualization": {
+      "kind": "none"
+    }
+  },
+  "cpu": {
+    "architecture": "x86_64",
+    "vendor": "AuthenticAMD",
+    "model_name": "Synthetic firmware fixture CPU"
+  },
+  "devices": [
+    {
+      "id": "pci:0000:01:00.0",
+      "bus": "pci",
+      "locator": "0000:01:00.0",
+      "vendor_id": "1002",
+      "device_id": "3150",
+      "subsystem_vendor_id": "f0e0",
+      "subsystem_device_id": "f0e1",
+      "class_id": "030000",
+      "modalias": "pci:v00001002d00003150sv0000F0E0sd0000F0E1bc03sc00i00",
+      "driver": "radeon"
+    }
+  ]
+}

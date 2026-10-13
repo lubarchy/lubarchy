@@ -11,7 +11,8 @@ later installation/configuration → later validation
 | [`schemas/inventory-v1.schema.json`](schemas/inventory-v1.schema.json) | `lubarchy.hardware.inventory/v1`: observed, normalized, privacy-safe facts |
 | [`schemas/rule-v1.schema.json`](schemas/rule-v1.schema.json) | `lubarchy.hardware.rule/v1`: one declarative compatibility rule |
 | [`schemas/plan-v1.schema.json`](schemas/plan-v1.schema.json) | `lubarchy.hardware.plan/v1`: a proposed resolution plan |
-| [`rules/`](rules/) | Production rules: classification baseline (M1-C) and CPU microcode mappings (M1-D) |
+| [`rules/`](rules/) | Production rules: classification baseline (M1-C), CPU microcode mappings (M1-D), device firmware mappings (M1-E, generated) |
+| [`../tools/hwe/`](../tools/hwe/) | Offline qualification tooling: kernel module-alias evidence and firmware rule generation/drift checks (M1-E) |
 | [`probe.py`](probe.py) | Read-only live probe: running system → canonical inventory v1 on stdout (M1-B) |
 | [`resolver.py`](resolver.py), [`resolve.py`](resolve.py) | Production resolver library and CLI: inventory v1 + production rules → canonical plan v1 (M1-C) |
 

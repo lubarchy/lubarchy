@@ -1,0 +1,69 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "package.firmware.brcm80211",
+  "description": "Broadcom/Cypress 802.11 devices handled by the brcmfmac kernel module on PCI or USB (matched by its kernel module aliases) -> Debian firmware-brcm80211 from non-free-firmware (ADR-0001). SDIO devices and brcmsmac (BCMA bus) are not representable in inventory v1 and are excluded. A proposal only; nothing is installed.",
+  "priority": 100,
+  "match": [
+    {
+      "pci": {
+        "modalias": [
+          "pci:v000014E4d00004354sv*sd*bc02sc80i*",
+          "pci:v000014E4d00004355sv000014E4sd00004355bc02sc80i*",
+          "pci:v000014E4d00004365sv000014E4sd00004365bc02sc80i*",
+          "pci:v000014E4d000043A3sv*sd*bc02sc80i*",
+          "pci:v000014E4d000043BAsv*sd*bc02sc80i*",
+          "pci:v000014E4d000043BBsv*sd*bc02sc80i*",
+          "pci:v000014E4d000043BCsv*sd*bc02sc80i*",
+          "pci:v000014E4d000043C3sv*sd*bc02sc80i*",
+          "pci:v000014E4d000043C4sv*sd*bc02sc80i*",
+          "pci:v000014E4d000043C5sv*sd*bc02sc80i*",
+          "pci:v000014E4d000043CAsv*sd*bc02sc80i*",
+          "pci:v000014E4d000043CBsv*sd*bc02sc80i*",
+          "pci:v000014E4d000043CCsv*sd*bc02sc80i*",
+          "pci:v000014E4d000043D3sv*sd*bc02sc80i*",
+          "pci:v000014E4d000043D9sv*sd*bc02sc80i*",
+          "pci:v000014E4d000043DCsv*sd*bc02sc80i*",
+          "pci:v000014E4d000043E9sv*sd*bc02sc80i*",
+          "pci:v000014E4d000043ECsv*sd*bc02sc80i*",
+          "pci:v000014E4d000043EFsv*sd*bc02sc80i*",
+          "pci:v000014E4d0000440Dsv*sd*bc02sc80i*",
+          "pci:v000014E4d00004415sv*sd*bc02sc80i*",
+          "pci:v000014E4d00004425sv*sd*bc02sc80i*",
+          "pci:v000014E4d00004433sv*sd*bc02sc80i*",
+          "pci:v000014E4d00004464sv*sd*bc02sc80i*",
+          "pci:v000014E4d00004488sv*sd*bc02sc80i*",
+          "pci:v000014E4d0000AA31sv*sd*bc02sc80i*",
+          "pci:v000014E4d0000AA52sv*sd*bc02sc80i*"
+        ]
+      }
+    },
+    {
+      "usb": {
+        "modalias": [
+          "usb:v043Ep3101d*dc*dsc*dp*ic*isc*ip*in*",
+          "usb:v04B4p0BDCd*dc*dsc*dp*ic*isc*ip*in*",
+          "usb:v04B4pBD29d*dc*dsc*dp*ic*isc*ip*in*",
+          "usb:v0A5Cp0BDCd*dc*dsc*dp*ic*isc*ip*in*",
+          "usb:v0A5CpBD17d*dc*dsc*dp*ic*isc*ip*in*",
+          "usb:v0A5CpBD1Ed*dc*dsc*dp*ic*isc*ip*in*",
+          "usb:v0A5CpBD1Fd*dc*dsc*dp*ic*isc*ip*in*",
+          "usb:v0A5CpBD27d*dc*dsc*dp*ic*isc*ip*in*",
+          "usb:v13B1p0039d*dc*dsc*dp*ic*isc*ip*in*"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "network.wifi"
+    ],
+    "packages": [
+      {
+        "name": "firmware-brcm80211",
+        "disposition": "require",
+        "source": "non-free-firmware",
+        "reason": "Debian firmware-brcm80211 provides the binary firmware for Broadcom/Cypress 802.11 wireless devices supported by the brcmfmac driver."
+      }
+    ]
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "schema": "lubarchy.hardware.inventory/v1",
+  "system": {
+    "architecture": "amd64",
+    "kernel_release": "6.12.0-fixture-amd64",
+    "boot_firmware": "uefi",
+    "secure_boot": "disabled",
+    "virtualization": {
+      "kind": "none"
+    }
+  },
+  "cpu": {
+    "architecture": "x86_64",
+    "vendor": "GenuineIntel",
+    "model_name": "Synthetic firmware fixture CPU"
+  },
+  "devices": [
+    {
+      "id": "pci:0000:00:14.0",
+      "bus": "pci",
+      "locator": "0000:00:14.0",
+      "vendor_id": "8086",
+      "device_id": "f008",
+      "subsystem_vendor_id": "8086",
+      "subsystem_device_id": "f108",
+      "class_id": "0c0330",
+      "modalias": "pci:v00008086d0000F008sv00008086sd0000F108bc0Csc03i30",
+      "driver": "xhci_hcd"
+    },
+    {
+      "id": "usb:1-4",
+      "bus": "usb",
+      "parent": "pci:0000:00:14.0",
+      "locator": "1-4",
+      "vendor_id": "043e",
+      "product_id": "3101",
+      "device_class": "00",
+      "device_subclass": "00",
+      "device_protocol": "00",
+      "driver": "usb",
+      "interfaces": [
+        {
+          "number": "00",
+          "class": "ff",
+          "subclass": "02",
+          "protocol": "ff",
+          "modalias": "usb:v043Ep3101d0001dc00dsc00dp00icFFisc02ipFFin00",
+          "driver": "brcmfmac",
+          "modules": [
+            "brcmfmac"
+          ]
+        }
+      ]
+    }
+  ]
+}

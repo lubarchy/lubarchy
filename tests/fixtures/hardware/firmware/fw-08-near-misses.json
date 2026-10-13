@@ -1,0 +1,118 @@
+{
+  "schema": "lubarchy.hardware.inventory/v1",
+  "system": {
+    "architecture": "amd64",
+    "kernel_release": "6.12.0-fixture-amd64",
+    "boot_firmware": "uefi",
+    "secure_boot": "disabled",
+    "virtualization": {
+      "kind": "none"
+    }
+  },
+  "cpu": {
+    "architecture": "x86_64",
+    "vendor": "SyntheticCPU",
+    "model_name": "Synthetic firmware fixture CPU"
+  },
+  "devices": [
+    {
+      "id": "pci:0000:00:02.0",
+      "bus": "pci",
+      "locator": "0000:00:02.0",
+      "vendor_id": "8086",
+      "device_id": "f0c2",
+      "subsystem_vendor_id": "8086",
+      "subsystem_device_id": "f1c2",
+      "class_id": "030000",
+      "modalias": "pci:v00008086d0000F0C2sv00008086sd0000F1C2bc03sc00i00"
+    },
+    {
+      "id": "pci:0000:00:1f.3",
+      "bus": "pci",
+      "locator": "0000:00:1f.3",
+      "vendor_id": "8086",
+      "device_id": "f0c5",
+      "subsystem_vendor_id": "8086",
+      "subsystem_device_id": "f1c5",
+      "class_id": "040300",
+      "modalias": "pci:v00008086d0000F0C5sv00008086sd0000F1C5bc04sc03i00"
+    },
+    {
+      "id": "pci:0000:03:00.0",
+      "bus": "pci",
+      "locator": "0000:03:00.0",
+      "vendor_id": "8086",
+      "device_id": "f0c1",
+      "subsystem_vendor_id": "8086",
+      "subsystem_device_id": "f1c1",
+      "class_id": "028000",
+      "modalias": "pci:v00008086d0000F0C1sv00008086sd0000F1C1bc02sc80i00"
+    },
+    {
+      "id": "pci:0000:05:00.1",
+      "bus": "pci",
+      "locator": "0000:05:00.1",
+      "vendor_id": "1002",
+      "device_id": "f0c3",
+      "subsystem_vendor_id": "1002",
+      "subsystem_device_id": "f1c3",
+      "class_id": "040300",
+      "modalias": "pci:v00001002d0000F0C3sv00001002sd0000F1C3bc04sc03i00"
+    },
+    {
+      "id": "pci:0000:06:00.0",
+      "bus": "pci",
+      "locator": "0000:06:00.0",
+      "vendor_id": "14e4",
+      "device_id": "4727",
+      "subsystem_vendor_id": "14e4",
+      "subsystem_device_id": "f1c6",
+      "class_id": "028000",
+      "modalias": "pci:v000014E4d00004727sv000014E4sd0000F1C6bc02sc80i00"
+    },
+    {
+      "id": "pci:0000:07:00.0",
+      "bus": "pci",
+      "locator": "0000:07:00.0",
+      "vendor_id": "14e4",
+      "device_id": "f0c4",
+      "subsystem_vendor_id": "14e4",
+      "subsystem_device_id": "f1c4",
+      "class_id": "020000",
+      "modalias": "pci:v000014E4d0000F0C4sv000014E4sd0000F1C4bc02sc00i00"
+    },
+    {
+      "id": "pci:0000:08:00.0",
+      "bus": "pci",
+      "locator": "0000:08:00.0",
+      "vendor_id": "10ec",
+      "device_id": "c821",
+      "subsystem_vendor_id": "10ec",
+      "subsystem_device_id": "f1c7",
+      "class_id": "028000",
+      "modalias": "pci:v000010ECd0000C821sv000010ECsd0000F1C7bc02sc80i00"
+    },
+    {
+      "id": "pci:0000:09:00.0",
+      "bus": "pci",
+      "locator": "0000:09:00.0",
+      "vendor_id": "168c",
+      "device_id": "003e",
+      "subsystem_vendor_id": "168c",
+      "subsystem_device_id": "f1c8",
+      "class_id": "028000",
+      "modalias": "pci:v0000168Cd0000003Esv0000168Csd0000F1C8bc02sc80i00"
+    },
+    {
+      "id": "pci:0000:0a:00.0",
+      "bus": "pci",
+      "locator": "0000:0a:00.0",
+      "vendor_id": "10de",
+      "device_id": "2484",
+      "subsystem_vendor_id": "10de",
+      "subsystem_device_id": "f1c9",
+      "class_id": "030000",
+      "modalias": "pci:v000010DEd00002484sv000010DEsd0000F1C9bc03sc00i00"
+    }
+  ]
+}
