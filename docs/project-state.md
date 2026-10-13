@@ -41,7 +41,7 @@ later installation/configuration → later validation.
 | M1-C | Production resolver and high-confidence classification baseline | PASS (CTO accepted) |
 | M1-D | Debian non-free-firmware policy and CPU microcode package mappings | PASS (CTO accepted) |
 | M1-E | Device-specific firmware mapping baseline | PASS (CTO accepted) |
-| M1-F | Second-wave network and Bluetooth firmware qualification | Implemented locally; awaiting CTO review |
+| M1-F | Second-wave network and Bluetooth firmware qualification | Published (`d56d6eb`); GitHub CI green (run #16); awaiting CTO review |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
   `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
@@ -149,8 +149,11 @@ later installation/configuration → later validation.
   CI's APT sources, change live-build or the ISO, map Realtek, Atheros,
   Bluetooth, NVIDIA or other firmware, or qualify real hardware
   (firmware loading, Wi-Fi association, graphics acceleration).
-- M1-F — second-wave network and Bluetooth firmware: **implemented locally;
-  awaiting CTO review** (not PASS). Strengthened evidence chain: device
+- M1-F — second-wave network and Bluetooth firmware: **published; awaiting
+  CTO review** (not PASS). Implementation commit
+  `d56d6eb4c5a61ab0e10f37b23635cf3a8fa8485c`; `Static gates` run #16
+  ([38372395051](https://github.com/lubarchy/lubarchy/actions/runs/38372395051))
+  passed all seven gates on that commit. Strengthened evidence chain: device
   modalias → kernel module alias → binding module and its dependency closure
   → declared firmware files (package-owned module metadata) → authenticated
   Debian package ownership (Contents indices and payload manifests). Active:
@@ -352,9 +355,10 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-F (second-wave network and Bluetooth firmware, local commit,
-not yet pushed or run in GitHub CI). M1-G has not started and waits for a CTO
-brief.
+CTO review of M1-F (second-wave network and Bluetooth firmware, published as
+`d56d6eb4c5a61ab0e10f37b23635cf3a8fa8485c`; `Static gates` run #16 passed all
+seven gates on that commit; see [testing.md](testing.md)). M1-G has not
+started and waits for a CTO brief.
 
 ## PASS rule
 

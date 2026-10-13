@@ -479,6 +479,8 @@ probes hardware.**
 | [#12 (38321463299)](https://github.com/lubarchy/lubarchy/actions/runs/38321463299) | `4917b47948f5b3ab19a292a510a979f674e3c654` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks) and hardware resolver (24 checks, including the package/source-policy checks; 96 parity cases) passed; CI container sources `main` only |
 | [#13 (38321640718)](https://github.com/lubarchy/lubarchy/actions/runs/38321640718) | `93d18659a6a1591748871d7c4304329ddb37bb23` | push | **success**: all six gates passed (documentation commit) |
 | [#14 (38362588631)](https://github.com/lubarchy/lubarchy/actions/runs/38362588631) | `b316042a960683fbf44f2279de0754db1b731abb` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks) and hardware firmware (12 checks; 1,722 committed aliases mapped, no cross-package overlap) passed; CI container sources `main` only |
+| [#15 (38363375181)](https://github.com/lubarchy/lubarchy/actions/runs/38363375181) | `d86458882de6ae44353d4a860c79f31c2bf6cc76` | push | **success**: all seven gates passed (documentation commit) |
+| [#16 (38372395051)](https://github.com/lubarchy/lubarchy/actions/runs/38372395051) | `d56d6eb4c5a61ab0e10f37b23635cf3a8fa8485c` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks) and hardware firmware (13 checks; 2,517 committed aliases mapped, M1-E rules regenerated from v1 evidence, attribution and collision checks clean) passed; CI container sources `main` only |
 
 The fix in `ce2462e` trusts exactly `$GITHUB_WORKSPACE` for the gate step
 through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`; no Git
@@ -528,8 +530,15 @@ gates ran and passed: repository lint, ShellCheck, live-build configuration,
 hardware contracts, hardware probe, hardware resolver and hardware firmware.
 CI read only the committed alias evidence, never the runner's kernel modules.
 
-The M1-F change (strengthened gate 7, v2 evidence, five new firmware rules;
-no new dependency) has **not yet run on GitHub**.
+**M1-F CI qualification:** the M1-F change (strengthened gate 7, v2
+evidence, five new firmware rules; no new dependency) was executed on GitHub
+by workflow `Static gates`, run ID
+[38372395051](https://github.com/lubarchy/lubarchy/actions/runs/38372395051)
+(run #16), on commit `d56d6eb4c5a61ab0e10f37b23635cf3a8fa8485c`. All seven
+gates ran and passed: repository lint, ShellCheck, live-build configuration,
+hardware contracts, hardware probe, hardware resolver and hardware firmware.
+CI used only committed evidence and synthetic fixtures; it downloaded no
+package and never read the runner's kernel modules or hardware.
 
 ## Clean rebuild comparison
 
