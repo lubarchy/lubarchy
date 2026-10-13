@@ -42,7 +42,7 @@ later installation/configuration → later validation.
 | M1-D | Debian non-free-firmware policy and CPU microcode package mappings | PASS (CTO accepted) |
 | M1-E | Device-specific firmware mapping baseline | PASS (CTO accepted) |
 | M1-F | Second-wave network and Bluetooth firmware qualification | PASS (CTO accepted) |
-| M1-G | NVIDIA driver strategy qualification and architecture decision evidence | Implemented locally; awaiting CTO review (ADR-0002 Proposed) |
+| M1-G | NVIDIA driver strategy qualification and architecture decision evidence | Published (`9beb35d`); GitHub CI green (run #18, all eight gates); awaiting CTO review (ADR-0002 Proposed) |
 | M1-H | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
@@ -174,8 +174,10 @@ later installation/configuration → later validation.
   CI's APT sources, change live-build or the ISO, map NVIDIA, or qualify real
   hardware.
 - M1-G — NVIDIA driver strategy qualification and architecture decision
-  evidence: **implemented locally; awaiting CTO review** (not PASS, not
-  pushed). [ADR-0002](decisions/0002-nvidia-driver-strategy.md) is
+  evidence: **published; awaiting CTO review** (not PASS). Implementation
+  commit `9beb35d211f5def6b5642d5bb31ef830bf1f6ae4`; `Static gates` run #18
+  ([38437605209](https://github.com/lubarchy/lubarchy/actions/runs/38437605209))
+  passed all eight gates on that commit. [ADR-0002](decisions/0002-nvidia-driver-strategy.md) is
   **Proposed** and decides nothing. The evidence compares Debian Stable 550,
   `trixie-backports`, NVIDIA's signed Debian 13 repository and Nouveau:
   sources, signing, branches, security state (93 open trixie issues for
@@ -376,8 +378,9 @@ not be treated as decided:
 ## Immediate next action
 
 CTO review of M1-G (NVIDIA driver strategy evidence; ADR-0002 Proposed),
-which is a local commit only and is not yet pushed or CI-qualified. M1-H has
-not started and waits for a CTO brief.
+published as `9beb35d211f5def6b5642d5bb31ef830bf1f6ae4`; `Static gates` run
+#18 passed all eight gates on that commit (see [testing.md](testing.md)).
+M1-H has not started and waits for a CTO brief.
 
 ## PASS rule
 

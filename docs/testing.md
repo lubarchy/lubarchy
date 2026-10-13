@@ -535,6 +535,8 @@ probes hardware.**
 | [#14 (38362588631)](https://github.com/lubarchy/lubarchy/actions/runs/38362588631) | `b316042a960683fbf44f2279de0754db1b731abb` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks) and hardware firmware (12 checks; 1,722 committed aliases mapped, no cross-package overlap) passed; CI container sources `main` only |
 | [#15 (38363375181)](https://github.com/lubarchy/lubarchy/actions/runs/38363375181) | `d86458882de6ae44353d4a860c79f31c2bf6cc76` | push | **success**: all seven gates passed (documentation commit) |
 | [#16 (38372395051)](https://github.com/lubarchy/lubarchy/actions/runs/38372395051) | `d56d6eb4c5a61ab0e10f37b23635cf3a8fa8485c` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks) and hardware firmware (13 checks; 2,517 committed aliases mapped, M1-E rules regenerated from v1 evidence, attribution and collision checks clean) passed; CI container sources `main` only |
+| [#17 (38372865767)](https://github.com/lubarchy/lubarchy/actions/runs/38372865767) | `6798524aaf0f650710c7408ba7e07e98803c29ad` | push | **success**: all seven gates passed (documentation commit) |
+| [#18 (38437605209)](https://github.com/lubarchy/lubarchy/actions/runs/38437605209) | `9beb35d211f5def6b5642d5bb31ef830bf1f6ae4` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks) and hardware NVIDIA strategy (14 checks; committed evidence only, no NVIDIA repository contacted or package installed) passed; CI container sources `main` only |
 
 The fix in `ce2462e` trusts exactly `$GITHUB_WORKSPACE` for the gate step
 through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`; no Git
@@ -593,6 +595,20 @@ gates ran and passed: repository lint, ShellCheck, live-build configuration,
 hardware contracts, hardware probe, hardware resolver and hardware firmware.
 CI used only committed evidence and synthetic fixtures; it downloaded no
 package and never read the runner's kernel modules or hardware.
+
+**M1-G CI qualification:** the M1-G change (gate 8, hardware NVIDIA
+strategy; NVIDIA evidence and normalized supported-GPU snapshot; ADR-0002
+Proposed; no new dependency) was executed on GitHub by workflow
+`Static gates`, run ID
+[38437605209](https://github.com/lubarchy/lubarchy/actions/runs/38437605209)
+(run #18), on implementation commit
+`9beb35d211f5def6b5642d5bb31ef830bf1f6ae4`. All eight gates ran and passed:
+repository lint, ShellCheck, live-build configuration, hardware contracts,
+hardware probe, hardware resolver, hardware firmware and hardware NVIDIA
+strategy. CI used only committed evidence and synthetic fixtures. It fetched
+packages only from Debian `main`, contacted no NVIDIA repository, installed
+no NVIDIA package and probed no runner hardware. M1-G remains awaiting CTO
+review (not PASS).
 
 ## Clean rebuild comparison
 
