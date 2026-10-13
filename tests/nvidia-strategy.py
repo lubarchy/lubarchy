@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""LUBARCHY NVIDIA driver strategy gate (M1-G; committed evidence only).
+"""LUBARCHY NVIDIA driver strategy gate (M1-G, extended in M1-H; committed evidence only).
 
 Checks the NVIDIA strategy evidence and the policy boundary around it:
 
@@ -21,7 +21,14 @@ Checks the NVIDIA strategy evidence and the policy boundary around it:
   qualified without real-hardware evidence;
 - the NVIDIA signing-key wording is precise: the 404 fallback URL and the
   index-exposed 8793F200.pub are recorded, neither is a trust anchor, and a
-  future bootstrap must verify the full fingerprint.
+  future bootstrap must verify the full fingerprint;
+- M1-H repository containment (tools/hwe/validate-nvidia-apt-policy.py):
+  the inactive candidate APT policy, its rendered preferences, the compact
+  authenticated APT fixtures, a model of apt_preferences(5) semantics that
+  must reproduce the recorded APT candidates, the approved closure, the
+  Debian-overlap audit, dkms provenance, branch lock and escape, vendor
+  pinning comparison, Release-Date rollback protection and the inactive-
+  policy boundary; in-memory policy mutations must be rejected.
 
 It reads committed files only; it downloads nothing and needs no
 dependency beyond the existing static gates.
@@ -54,6 +61,14 @@ sys.path.remove(str(HARDWARE))
 spec = importlib.util.spec_from_file_location("lubarchy_normalize_nvidia", TOOL)
 normalize = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(normalize)
+
+CONTAIN_TOOL = REPO / "tools" / "hwe" / "validate-nvidia-apt-policy.py"
+cspec = importlib.util.spec_from_file_location("lubarchy_validate_nvidia_apt_policy", CONTAIN_TOOL)
+contain = importlib.util.module_from_spec(cspec)
+cspec.loader.exec_module(contain)
+APT_POLICY = NVIDIA / "apt-policy-v1.json"
+APT_PREFS = NVIDIA / "apt-preferences.example"
+APT_FIXTURES = NVIDIA / "apt-fixtures-v1.json"
 
 STRATEGIES = ("A", "B", "C", "D")
 SCORE_KEYS = ("open_security_issues", "security_update_channel", "provenance", "builds_on_current_kernel",
@@ -387,7 +402,22 @@ def no_production_nvidia_effect():
 @check
 def no_nvidia_source_or_key_tracked():
     hits = []
-    allowed = {EVIDENCE, SNAPSHOT, ADR, NVIDIA / "README.md", pathlib.Path(__file__).resolve()}
+    pgp_block = re.compile("-----BEGIN PGP " + "(PRIVATE|PUBLIC) KEY BLOCK-----")
+    for path in tracked_files():
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        if pgp_block.search(text):
+            hits.append(f"{path.relative_to(REPO)} (OpenPGP key block)")
+        if path.suffix != ".md" and path != pathlib.Path(__file__).resolve():
+            if re.search("trusted" + r"\s*=\s*" + "yes", text.replace("never trusted=yes", "")):
+                hits.append(f"{path.relative_to(REPO)} (trusted=yes)")
+    expect(not hits, f"key material or trusted=yes tracked: {hits}")
+    allowed = {EVIDENCE, SNAPSHOT, ADR, NVIDIA / "README.md", APT_POLICY, APT_PREFS, APT_FIXTURES, CONTAIN_TOOL,
+               pathlib.Path(__file__).resolve()}
     for path in tracked_files():
         if path in allowed or not path.is_file() or path.suffix in (".md",):
             continue
@@ -418,6 +448,185 @@ def runtime_never_reads_evidence():
         for word in ("nvidia/", "supported-gpus", "evidence-v1", "normalize-nvidia"):
             expect(word not in text, f"{path.name} references {word}")
     return "resolver, resolve and probe never read the NVIDIA evidence"
+
+
+@check
+def containment_policy_validates():
+    policy, fx = contain.check(str(REPO))
+    ob = fx["apt_observations"]
+    return (f"NOT ACTIVE; {len(policy['closure'])} allowlisted binaries ({len(policy['rules']['driver_allowlist'])} "
+            f"branch {policy['branch']['version_glob']}, {len(policy['rules']['exact_version_allowlist'])} exact); "
+            f"eligible NVIDIA names uncontained {fx['eligible_nvidia_names']['S1']} -> deny-all "
+            f"{fx['eligible_nvidia_names']['S2']} -> contained {fx['eligible_nvidia_names']['S3']}; "
+            f"dkms {ob['S3']['desktop_open']['dkms']['origin']}; model == APT for {len(ob['S3']['candidates'])} names")
+
+
+def _policy_rejected(mutate):
+    import copy
+    policy = contain.load_policy(str(REPO))
+    evidence_doc = strict_json(EVIDENCE)
+    fx = contain.strict_load(str(APT_FIXTURES))
+    m = copy.deepcopy(policy)
+    mutate(m)
+    try:
+        recs = contain.check_policy(m, evidence_doc)
+    except contain.PolicyError:
+        return True
+    model = contain.candidates(recs, contain.version_universe(fx, "product"))
+    allow = set(m["rules"]["driver_allowlist"]) | set(m["rules"]["exact_version_allowlist"])
+    for name, cand in model.items():
+        if cand and cand["origin"] == "NVIDIA" and name not in set(policy["closure"]):
+            return True
+        if name == "dkms" and cand and cand["origin"] == "NVIDIA":
+            return True
+    for r in fx["nvidia_records"]:
+        if r["Package"] in allow and not r["Version"].startswith("615."):
+            exact = m["rules"]["exact_version_allowlist"].get(r["Package"])
+            if exact is None and contain.priority(recs, r["Package"], r["Version"],
+                                                  {"origin": "NVIDIA", "label": "NVIDIA CUDA"}) >= 0:
+                return True
+    return False
+
+
+@check
+def containment_policy_mutations_are_rejected():
+    def remove_global_deny(m):
+        m["rules"]["origin_default_deny"] = False
+    def deny_permissive(m):
+        m["deny_priority"] = 100
+    def allow_wildcard(m):
+        m["rules"]["driver_allowlist"].append("*")
+    def allow_dkms(m):
+        m["rules"]["debian_overlap_deny"].remove("dkms"); m["rules"]["driver_allowlist"].append("dkms")  # noqa: E702
+        m["closure"]["dkms"] = "driver-support-utility"
+    def allow_cuda(m):
+        m["rules"]["driver_allowlist"].append("cuda-toolkit"); m["closure"]["cuda-toolkit"] = "desktop-driver-required"  # noqa: E702
+    def allow_fabric(m):
+        m["rules"]["driver_allowlist"].append("nvidia-fabricmanager")
+        m["closure"]["nvidia-fabricmanager"] = "driver-support-utility"
+    def allow_keyring(m):
+        m["rules"]["exact_version_allowlist"]["cuda-keyring"] = "1.1-1"
+        m["closure"]["cuda-keyring"] = "driver-support-utility"
+    def remove_branch_lock(m):
+        m["branch"]["version_glob"] = "*"
+    def branch_610(m):
+        m["branch"] = {"id": "610", "version_glob": "610.*", "note": ""}
+    def any_branch(m):
+        m["branch"]["version_glob"] = "6*"
+    def overlap_wins(m):
+        m["rules"]["debian_overlap_deny"].remove("libnvidia-egl-wayland1")
+        m["rules"]["exact_version_allowlist"]["libnvidia-egl-wayland1"] = "1:1.1.21-1"
+        m["closure"]["libnvidia-egl-wayland1"] = "gl-egl-vulkan-required"
+    def alter_origin(m):
+        m["repository"]["origin"] = "NVIDIA Corporation"
+    def alter_label(m):
+        m["repository"]["label"] = "NVIDIA"
+    def alter_fpr(m):
+        m["repository"]["signing_key_fingerprint"] = "0" * 40
+    def mark_active(m):
+        m["active"] = True
+    def trusted(m):
+        m["repository"]["trusted_yes"] = True
+    def no_rollback(m):
+        m["freshness"]["release_date_monotonic"] = False
+    def accept_adr(m):
+        m["adr"]["status"] = "Accepted"
+    def vendor(m):
+        m["vendor_pinning_relied_upon"] = True
+    def max_age(m):
+        m["freshness"]["max_age_days"] = 30
+    muts = [remove_global_deny, deny_permissive, allow_wildcard, allow_dkms, allow_cuda, allow_fabric, allow_keyring,
+            remove_branch_lock, branch_610, any_branch, overlap_wins, alter_origin, alter_label, alter_fpr, mark_active,
+            trusted, no_rollback, accept_adr, vendor, max_age]
+    survived = [f.__name__ for f in muts if not _policy_rejected(f)]
+    expect(not survived, f"policy mutations not rejected: {survived}")
+    return f"{len(muts)} in-memory policy mutations rejected"
+
+
+@check
+def containment_model_detects_takeover():
+    policy = contain.load_policy(str(REPO))
+    fx = contain.strict_load(str(APT_FIXTURES))
+    recs = contain.records(policy)
+    uni = contain.version_universe(fx, "product")
+    contained = contain.candidates(recs, uni)
+    uncontained = contain.candidates([], uni)
+    takeover = sorted(n for n, c in uncontained.items() if c and c["origin"] == "NVIDIA" and n not in policy["closure"])
+    expect("dkms" in takeover, "uncontained model does not show the dkms takeover")
+    leaked = sorted(n for n, c in contained.items() if c and c["origin"] == "NVIDIA" and n not in policy["closure"])
+    expect(not leaked, f"contained model leaks {leaked}")
+    expect(contained["dkms"]["origin"] == "Debian", "dkms not Debian under the policy")
+    # order matters: allowlisting dkms after Rule D still loses (first specific record wins)
+    recs2 = [dict(r) for r in recs]
+    recs2.insert(1, {"packages": ["dkms"], "pin": "version 3.4.3*", "priority": 500, "comment": "mutation"})
+    expect(contain.candidates(recs2, {"dkms": uni["dkms"]})["dkms"]["origin"] == "Debian", "Rule D precedence")
+    return f"uncontained model: {len(takeover)} non-closure NVIDIA names eligible (incl. dkms); contained: none"
+
+
+CONTAINMENT_PROSE = [ADR, NVIDIA / "README.md"] + [REPO / "docs" / n for n in (
+    "security.md", "hardware-enablement.md", "testing.md", "project-state.md")]
+NEGATION = re.compile(r"\b(not|never|no|cannot|outside|does not|do not)\b", re.I)
+PIN_SUBJECT = re.compile(r"(apt preferences|apt pinning|negative pin|pin-priority|pinning|preferences)", re.I)
+ROOT_CLAIM = re.compile(r"(sandbox|\bMAC\b|mandatory access control|hard (security )?boundary|against root|"
+                        r"prevents? (an? )?(arbitrary )?root|stops? (an? )?root)", re.I)
+OVERRIDE_SUBJECT = re.compile(r"(explicit|pkg=version|exact-version|version-qualified)", re.I)
+INEFFECTIVE_CLAIM = re.compile(r"(ineffective|defeat|invalidat|undermin|bypass(es)? (the )?containment|"
+                               r"breaks? (the )?containment|containment (fails|is void|is broken)|"
+                               r"contain(s|ment of)? (only )?automatic resolution only|not deliberate)", re.I)
+
+
+def _sentences(text):
+    flat = " ".join(text.split())
+    return re.split(r"(?<=[.;:])\s+(?=[A-Z`*(-])", flat)
+
+
+@check
+def containment_boundary_wording_is_precise():
+    hits = []
+    for path in CONTAINMENT_PROSE:
+        for sent in _sentences(path.read_text(encoding="utf-8")):
+            if PIN_SUBJECT.search(sent) and ROOT_CLAIM.search(sent) and not NEGATION.search(sent):
+                hits.append(f"{path.relative_to(REPO)}: root-boundary claim: {sent[:140]!r}")
+            if OVERRIDE_SUBJECT.search(sent) and INEFFECTIVE_CLAIM.search(sent) and not re.search(
+                    r"does not (weaken|make)|not a reason", sent):
+                hits.append(f"{path.relative_to(REPO)}: override-defeats-containment claim: {sent[:140]!r}")
+    expect(not hits, f"containment boundary overclaims: {hits}")
+    adr = " ".join(ADR.read_text(encoding="utf-8").split())
+    for phrase in ("not a sandbox or MAC mechanism against root",
+                   "outside the repository-containment threat boundary",
+                   "Containment assessment: YES — NVIDIA's Debian 13 repository can be technically contained as a "
+                   "candidate D-005 exception.",
+                   "privileged bounded package executor", "remains Proposed"):
+        expect(phrase in adr, f"ADR-0002 lacks {phrase!r}")
+    expect("CONDITIONAL" not in adr, "ADR-0002 still carries the superseded CONDITIONAL assessment")
+    sec = " ".join((REPO / "docs" / "security.md").read_text(encoding="utf-8").split())
+    expect("not a sandbox or MAC mechanism against root" in sec, "security.md lacks the root-boundary statement")
+    hwe = " ".join((REPO / "docs" / "hardware-enablement.md").read_text(encoding="utf-8").split())
+    expect("privileged package executor" in hwe and "validated plan" in hwe, "executor requirement missing")
+    fx = contain.strict_load(str(APT_FIXTURES))
+    expect(fx["apt_observations"]["explicit_version_override"]["dkms=3.4.3-1"] == "NVIDIA",
+           "empirical explicit-version evidence must be kept")
+    return "no root-boundary or override-defeats-containment claims; YES assessment, executor requirement and evidence kept"
+
+
+@check
+def release_date_rollback_protection():
+    m1g = {"date": "Fri, 09 Oct 2026 19:11:44 +0000", "inrelease_sha256": "a" * 64}
+    m1h = {"date": "Tue, 13 Oct 2026 15:21:52 +0000", "inrelease_sha256": "b" * 64}
+    state = contain.freshness_accept(contain.freshness_accept(None, m1g), m1h)
+    for bad in (m1g, {"date": m1h["date"], "inrelease_sha256": "c" * 64}):
+        try:
+            contain.freshness_accept(state, bad)
+        except contain.PolicyError:
+            continue
+        raise Failure(f"freshness rule accepted {bad}")
+    expect(contain.freshness_accept(state, m1h) == m1h, "identical replay of the current index rejected")
+    fx = contain.strict_load(str(APT_FIXTURES))
+    hist = fx["release_history"]
+    expect([h["observed"] for h in hist] == ["M1-G", "M1-H"], "release history")
+    policy = contain.load_policy(str(REPO))
+    expect(policy["freshness"]["max_age_days"] is None, "unjustified maximum age")
+    return "Date regression and same-Date content change rejected; identical index accepted; no max-age claimed"
 
 
 def main():

@@ -109,7 +109,8 @@ Btrfs preferred, pending validation.
 ### Proposed: NVIDIA driver strategy (ADR-0002)
 
 [ADR-0002](decisions/0002-nvidia-driver-strategy.md) is **Proposed**, not
-accepted: M1-G architecture evidence for a CTO decision. It authorises no
+accepted: M1-G architecture evidence and the M1-H repository containment
+proof (an inactive candidate APT policy) for a CTO decision. It authorises no
 NVIDIA source, key, package or rule.
 
 ## Decision process

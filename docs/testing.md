@@ -453,8 +453,9 @@ acceleration works.
 
 ## M1 hardware NVIDIA strategy gate
 
-`tests/nvidia-strategy.py` (gate 8 of `tests/run-static.sh`, since M1-G) has
-14 checks and uses committed files only (no network, no new dependency):
+`tests/nvidia-strategy.py` (gate 8 of `tests/run-static.sh`, since M1-G,
+extended in M1-H) has 19 checks and uses committed files only (no network, no
+new dependency):
 
 - `hardware/nvidia/evidence-v1.json` is canonical and complete; strategy
   scores are in range; tiers use only recommended strategies; no
@@ -491,6 +492,52 @@ acceleration works.
   live-build configuration enables no `contrib`/`non-free` or NVIDIA package;
 - the resolver, `resolve.py` and the probe never read the NVIDIA evidence.
 
+- M1-H containment (`tools/hwe/validate-nvidia-apt-policy.py check`):
+  - The policy is NOT ACTIVE, references ADR-0002 as Proposed, and has the
+    exact Origin/Label, URI and fingerprint. It commits no key material and
+    sets no `trusted=yes`.
+  - Default deny is the last record. The allowlist is finite, exact and
+    disjoint from Rule D. Every positive record is name plus version, and no
+    allowlisted name matches a denied class.
+  - Branch lock `615.*`; `dkms` is denied.
+  - The rendered `apt-preferences.example` equals the rendering of the
+    policy.
+  - The fixtures are canonical, with the Release identity (absent
+    `Suite`/`Codename`/`Valid-Until`, `Acquire-By-Hash: no`).
+  - An `apt_preferences(5)` model must reproduce APT's recorded candidate
+    for all 558 NVIDIA names, in both the product and the all-components
+    context.
+  - The contained transaction pulls exactly the closure, with Debian's
+    `dkms`. Every closure dependency stays inside the closure or Debian, and
+    every closure member is reachable from the two roots.
+  - Classification covers every NVIDIA name. No non-closure NVIDIA name is
+    eligible, and no unrelated overlap or infrastructure package resolves to
+    NVIDIA.
+  - Non-615 and future-branch versions are ineligible.
+  - Recorded negative, branch-escape, precedence, explicit-override and
+    vendor-pinning outcomes are present.
+  - The Release-Date history is monotonic.
+  - Nothing in `build/`, `.github/` or `hardware/rules/` references the
+    policy, NVIDIA's URI or its key;
+- 20 in-memory policy mutations (deny removed or permissive, wildcard,
+  `dkms`/CUDA/fabric/keyring allowed, branch lock removed, 610, any branch,
+  overlap wins, identity or fingerprint altered, active, `trusted=yes`, no
+  rollback rule, ADR accepted, vendor pinning relied on, invented max age)
+  must be rejected. The model must show the uncontained `dkms` takeover and
+  none under the policy, and Rule D precedence must hold.
+- The containment assessment is recorded as YES, scoped to LUBARCHY-managed
+  automatic transactions, and does not authorise the repository. Its
+  activation prerequisites (key bootstrap, freshness, privileged executor,
+  P-006, ADR-0002) and the seven executor requirements must be present.
+- Boundary wording: the gate fails on un-negated wording that presents
+  pinning as protection from root administrators. It also fails on wording
+  that presents an explicit exact-version request as nullifying the
+  automatic containment. The empirical explicit-version evidence must stay
+  in the fixtures.
+- Release-Date rollback protection rejects a Date regression and a same-Date
+  content change, and claims no maximum age.
+- No tracked file contains an OpenPGP key block or `trusted=yes`.
+
 ### Isolated NVIDIA APT simulations (M1-G, builder only)
 
 The strategy evidence comes from `apt-get -s` runs on the builder, each with
@@ -504,6 +551,40 @@ synthetic installed states built from authenticated index metadata, with
 auto-install marks. Downloaded `.deb` files are only hashed and listed, then
 deleted. This qualifies package resolution and provenance, not drivers: no
 module is built or loaded and no GPU is involved.
+
+### NVIDIA repository containment simulations (M1-H, builder only)
+
+Live requalification runs on the builder only; normal CI never contacts
+NVIDIA.
+- **Metadata:** each profile has its own `Dir::State`, `Dir::Etc` and cache.
+  NVIDIA metadata is authenticated with an evidence-only copy of the key,
+  whose full fingerprint is checked first by a standalone calculator
+  (fail-closed). The verified Release is extracted with `sqv`, and the
+  Packages hash is matched against it.
+- **Matrix:** S0 Debian only, S1 uncontained, S2 default deny, S3 contained,
+  S3X/S1X all Debian components (takeover audit), S4 contained upgrades and
+  the in-branch update, S5 source disabled, S6 pinned rollbacks.
+- **Other runs:**
+  - negative and branch-escape installs;
+  - apt_preferences precedence probes;
+  - the vendor pinning package inspected (downloaded, hashed, extracted,
+    deleted) and applied alone (SV);
+  - explicit exact-version probes (`pkg=version`). These show that APT 3.0.3
+    lets an explicit administrator request override candidate selection for
+    the named package. The result is kept as evidence of a privileged
+    override outside the containment boundary.
+- **dkms criterion:** NVIDIA's `dkms` is not an APT candidate and cannot be
+  selected by normal LUBARCHY-managed dependency resolution. No claim is
+  made that APT stops an arbitrary root administrator from requesting that
+  exact version.
+- **Fixtures:** `tools/hwe/validate-nvidia-apt-policy.py extract` turns the
+  capture into the committed fixtures. Exact-commit validation re-captures,
+  re-extracts and compares byte-for-byte.
+- **Repository mutation suite:** each mutation is committed in a throwaway
+  clone and `tests/run-static.sh` must fail on it, after a passing baseline.
+
+This qualifies package-source containment only. Nothing is installed, no
+module is built and no GPU is involved.
 
 ## GitHub CI
 

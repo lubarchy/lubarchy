@@ -48,6 +48,42 @@ The threat model will be refined as the architecture develops.
   need a bounded D-005 exception: a dedicated key, an allowlist, branch
   pinning and a compensating control for its missing `Valid-Until`. It also
   overrides Debian's `dkms` unless pinned away.
+- External-repository containment model (M1-H evidence, inactive): a signed
+  repository is not enough. Containment requires all of:
+  - the expected full signing fingerprint;
+  - the exact repository identity (Origin/Label);
+  - a default deny for that origin;
+  - a finite, exact binary allowlist;
+  - a branch lock;
+  - protection of Debian infrastructure (for example `dkms`), where a deny
+    record placed before the allowlist wins;
+  - requalification of every update;
+  - rollback and freshness controls. The repository lacks `Valid-Until`, so
+    a monotonic signed Release Date is enforced, and absolute freshness needs
+    a future policy.
+
+  These controls govern APT candidate selection: what normal
+  install/upgrade/dist-upgrade resolution can choose. APT preferences are
+  not a sandbox or MAC mechanism against root. In APT 3.0.3 an explicit
+  exact-version administrator request (`apt install pkg=version`) overrides
+  candidate selection for the named package. That is an intentional
+  privileged override, outside the repository-containment boundary, and it
+  does not weaken containment of LUBARCHY-managed automatic transactions.
+  The vendor's pinning package has no default deny and must not own the
+  trust boundary. Key material is never committed for this evidence, and
+  `trusted=yes` is never used.
+- Privileged package boundary (future M1 requirement, not implemented):
+  untrusted or user request → LUBARCHY resolver and approved plan →
+  privileged bounded package executor → APT. The executor:
+  - accepts only a validated plan;
+  - takes package names from the plan, never from caller-controlled text;
+  - never lets caller input inject versions, source or release selectors, or
+    arbitrary APT options;
+  - rejects direct package or version requests;
+  - drives APT non-interactively through a bounded API or command
+    construction;
+  - revalidates the plan immediately before mutation;
+  - records the transaction and the validation result.
 
 ## Build security
 

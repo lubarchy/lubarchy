@@ -42,8 +42,9 @@ later installation/configuration → later validation.
 | M1-D | Debian non-free-firmware policy and CPU microcode package mappings | PASS (CTO accepted) |
 | M1-E | Device-specific firmware mapping baseline | PASS (CTO accepted) |
 | M1-F | Second-wave network and Bluetooth firmware qualification | PASS (CTO accepted) |
-| M1-G | NVIDIA driver strategy qualification and architecture decision evidence | Published (`9beb35d`); GitHub CI green (run #18, all eight gates); awaiting CTO review (ADR-0002 Proposed) |
-| M1-H | Not defined | Not started |
+| M1-G | NVIDIA driver strategy qualification and architecture decision evidence | PASS (CTO accepted); ADR-0002 remains Proposed |
+| M1-H | NVIDIA repository containment and pinning proof | Implemented locally; awaiting CTO review (ADR-0002 Proposed) |
+| M1-I | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
   `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
@@ -174,7 +175,7 @@ later installation/configuration → later validation.
   CI's APT sources, change live-build or the ISO, map NVIDIA, or qualify real
   hardware.
 - M1-G — NVIDIA driver strategy qualification and architecture decision
-  evidence: **published; awaiting CTO review** (not PASS). Implementation
+  evidence: **PASS** (CTO accepted; ADR-0002 remains Proposed). Implementation
   commit `9beb35d211f5def6b5642d5bb31ef830bf1f6ae4`; `Static gates` run #18
   ([38437605209](https://github.com/lubarchy/lubarchy/actions/runs/38437605209))
   passed all eight gates on that commit. [ADR-0002](decisions/0002-nvidia-driver-strategy.md) is
@@ -193,7 +194,35 @@ later installation/configuration → later validation.
   Backports, change the builder's, the ISO's or the CI's APT sources, install
   anything, build DKMS modules, load modules, add `gpu.hybrid`, change the
   hardware schemas, or decide P-006.
-- M1-H has not started and waits for a CTO brief.
+- M1-H — NVIDIA repository containment and pinning proof: **implemented
+  locally; awaiting CTO review** (not PASS, not pushed). It tests whether
+  NVIDIA's signed Debian 13 repository can be contained by a LUBARCHY-owned,
+  **inactive** APT policy: default deny for Origin `NVIDIA` / Label
+  `NVIDIA CUDA`, a finite allowlist of the 30 binaries of the
+  `nvidia-driver` + `nvidia-kernel-open-dkms` closure, a branch-615 lock and
+  Debian-infrastructure protection (`dkms` stays Debian). Isolated builder
+  simulations show the uncontained takeover, default deny, the contained
+  install/upgrade/source-disable/rollback paths, the negative and
+  branch-escape tests, and the vendor pinning package's broader scope.
+  Recommendation: **YES**, technically containable as a candidate D-005
+  exception for LUBARCHY-managed automatic transactions. The repository
+  remains unauthorised. APT preferences are not a sandbox or MAC mechanism
+  against root: an explicit exact-version administrator request
+  (`pkg=version`) can override candidate selection in APT 3.0.3. That is
+  recorded as evidence and sits outside the containment boundary. Artifacts:
+  `hardware/nvidia/apt-policy-v1.json`, `apt-preferences.example`,
+  `apt-fixtures-v1.json` and `tools/hwe/validate-nvidia-apt-policy.py`; gate 8
+  now has 19 checks. Details:
+  [hardware-enablement.md](hardware-enablement.md#nvidia-repository-containment-m1-h).
+- M1-H does **not** authorise the NVIDIA repository, commit key material,
+  install anything, change the builder's, the ISO's or the CI's APT sources,
+  change live-build, the resolver source policy or the production package
+  set (10), or decide ADR-0002 or P-006.
+- Future M1 requirement (apply/install step): a LUBARCHY privileged package
+  executor that installs only a validated, source-controlled plan, never
+  forwards caller-controlled package names, versions, source selectors or
+  APT options, revalidates before mutation and records the transaction.
+- M1-I has not started and waits for a CTO brief.
 
 ## M0 — Minimal reproducible ISO (closed)
 
@@ -355,7 +384,7 @@ not be treated as decided:
   `ath12k`, NVIDIA, Intel sound, BCMA/SDIO/serial devices such as `brcmsmac`
 - Activating `non-free-firmware` in the ISO/installed-system sources and
   applying plans (installation)
-- NVIDIA driver strategy (evidence in M1-G; ADR-0002 Proposed, not decided)
+- NVIDIA driver strategy (evidence in M1-G, repository containment proof in M1-H; ADR-0002 Proposed, not decided)
 - Hybrid/multi-GPU composition and USB device classification
 - Installer
 - Recovery implementation
@@ -377,10 +406,9 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-G (NVIDIA driver strategy evidence; ADR-0002 Proposed),
-published as `9beb35d211f5def6b5642d5bb31ef830bf1f6ae4`; `Static gates` run
-#18 passed all eight gates on that commit (see [testing.md](testing.md)).
-M1-H has not started and waits for a CTO brief.
+CTO review of M1-H (NVIDIA repository containment and pinning proof; local
+commit only, not yet pushed or CI-qualified; ADR-0002 Proposed). M1-I has not
+started and waits for a CTO brief.
 
 ## PASS rule
 

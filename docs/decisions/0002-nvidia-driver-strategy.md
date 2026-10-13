@@ -322,6 +322,135 @@ review. Until the CTO decides: no NVIDIA package is mapped, no source is
 added, the production source policy stays `main` + `non-free-firmware`, and
 `class.gpu.nvidia` stays classification-only.
 
+## M1-H repository containment proof (evidence, not a decision)
+
+M1-H tested whether Strategy C's repository could be used without taking over
+Debian packages. The repository stays **unauthorised**. This section records
+evidence for the CTO and does not change the Decision above.
+
+**Identity, re-verified live on 2026-10-13.** Origin `NVIDIA`, Label
+`NVIDIA CUDA`, signing key `02182E60104FCDC26EAE1B8597A5D4CB8793F200` (checked
+with gpg on the host, with a standalone fingerprint calculator and with
+`sqv` on the builder). Release Date `Tue, 13 Oct 2026 15:21:52 +0000` (later
+than M1-G's). `Suite`, `Codename` and `Valid-Until` are absent;
+`Acquire-By-Hash: no`. The `cuda-archive-keyring.gpg` fallback URL still
+returned 404, and the index still exposes `8793F200.pub` with the same full
+fingerprint. Key material was used only as temporary evidence; none is
+committed. Branch 615 is unchanged since M1-G: the republish added 27 CUDA,
+nvcomp and GDS packages only.
+
+**Candidate policy (inactive).** `hardware/nvidia/apt-policy-v1.json`,
+rendered to `hardware/nvidia/apt-preferences.example`, in record order:
+
+1. *Rule D:* the 39 NVIDIA package names that also exist in Debian and are
+   outside the closure (`dkms`, `dh-dkms`, `libnvidia-egl-wayland1`,
+   `libcuda1`, …), with `Pin: release o=NVIDIA,l=NVIDIA CUDA`, priority −1.
+2. *Rules B+C:* 26 driver-versioned binaries, `Pin: version 615.*`,
+   priority 500.
+3. *Rules B+C:* 4 NVIDIA EGL platform libraries that carry their own versions
+   (`libnvidia-egl-gbm1` 1.1.4-2, `libnvidia-egl-wayland21` 1.0.2-1,
+   `libnvidia-egl-xcb1`/`libnvidia-egl-xlib1` 1:1.0.6-1), each pinned to its
+   exact version, priority 500.
+4. *Rule A:* `Package: *`, `Pin: release o=NVIDIA,l=NVIDIA CUDA`, priority −1.
+
+Semantics verified on APT 3.0.3:
+- The first matching specific record wins: a Rule D deny placed first beats a
+  later allowlist entry for the same package.
+- The general record applies only when no specific record matches.
+- A negative priority removes a version from candidacy.
+
+**Allowlisting granularity.** The policy uses an exact binary allowlist.
+Source-package allowlisting was rejected: `src:nvidia-graphics-drivers` alone
+also admits 45 further binaries, including `cuda-drivers`, `libcuda1`,
+`cuda-compat-*`, `nvlink5` and every `nvidia-driver-pinning-*` package.
+
+**Results (isolated `apt-get -s`, product sources `main` + `non-free-firmware`):**
+
+| Model | Result |
+| --- | --- |
+| S0 Debian only | `nvidia-driver` unavailable |
+| S1 uncontained | 558 NVIDIA names eligible; desktop/open install takes 31 NVIDIA packages including NVIDIA's `dkms` 3.4.3-1 |
+| S2 default deny | 0 NVIDIA names eligible; driver install impossible |
+| S3 contained | 30 NVIDIA names eligible (exactly the closure); desktop/open install solvable (143 packages, 30 NVIDIA); `dkms` 3.2.2-1~deb13u1 from Debian |
+| S4 contained upgrade | upgrade, dist-upgrade and full-upgrade change nothing; the in-branch update 615.71.09-1 → -2 upgrades 26 packages |
+| S5 source disabled | installed versions stay; `apt-get check` clean; no Debian replacement (Debian's `firmware-nvidia-gsp` 550 is older and not forced); reinstall impossible and no further updates |
+| S6 rollback | pin variants with priority 1001 downgrade exactly 26 driver-versioned packages to 615.71.09-1 or to 610.57.04-1; the 4 EGL libraries stay |
+| Negative tests | 24 denied names (CUDA toolkit and metapackages, `libcuda1`, `nvidia-smi`, fabric manager, NSCQ, IMEX, Nsight, CUPTI, profiler API, DCGM, GDS, `cuda-keyring`, `nvidia-driver-pinning-615`, assistant, settings, xconfig, persistenced, `nvidia-kernel-dkms`, `libnccl2`, `nvidia-fs-dkms`, `dh-dkms`) install nothing from NVIDIA |
+| Branch escape | explicit 610, 595 and 590 driver requests are unsolvable; `-t o=NVIDIA dkms` still selects Debian |
+| Takeover audit | 64 NVIDIA names overlap Debian (all components); uncontained, NVIDIA wins all 64; contained, the 39 outside the closure resolve to Debian and only the 25 closure members resolve to NVIDIA; compilers, headers, initramfs-tools, systemd, udev, Mesa, Xorg, XWayland, Vulkan loader and GL/EGL/glvnd all stay Debian |
+
+**Vendor pinning package.** `nvidia-driver-pinning-615` (615-1) installs
+`Pin-Priority: 1000` records for `src:` patterns, including `cuda-drivers*`,
+fabric manager, NSCQ, NVSDM and IMEX. It has no default deny: with it alone,
+all 558 names stay eligible, NVIDIA's `dkms` wins and `cuda-toolkit` installs.
+LUBARCHY must not rely on it for containment.
+
+**Observed APT 3.0.3 behaviour (evidence, kept).** NVIDIA-denied versions
+have a negative candidate priority (for example `dkms` 3.4.3-1 at −1).
+Normal `install`, `upgrade`, `dist-upgrade` and `full-upgrade` resolution
+never selects them, and dependencies are resolved only from candidates, so
+`cuda-toolkit=13.4.3-1` stays unsolvable. An explicit exact-version
+administrator request does override candidate selection for the named
+package: `apt-get install dkms=3.4.3-1` and
+`nvidia-fabricmanager=615.71.09-1` both select NVIDIA's packages. This
+happens even though `apt_preferences(5)` says "P < 0 prevents the version
+from being installed". The probe results stay in the committed fixtures.
+
+**Containment boundary.** APT preferences are the candidate-selection policy
+for normal APT resolution. They are not a sandbox or MAC mechanism against
+root. A root administrator who can run arbitrary `apt install pkg=version`
+commands can also edit sources and preferences directly. An explicit
+exact-version request is therefore an intentional privileged override,
+outside the repository-containment threat boundary. It does not weaken the
+containment of LUBARCHY-managed automatic transactions. The LUBARCHY
+security boundary is:
+
+untrusted or user request → LUBARCHY resolver and approved plan →
+privileged bounded package executor → APT.
+
+**Future requirement (later M1 apply/install step; not implemented in
+M1-H): the LUBARCHY privileged package executor.**
+- It accepts only a validated, source-controlled plan.
+- Package names come from that plan, never from caller-controlled text.
+- Caller input cannot inject package versions, source or release selectors,
+  or arbitrary APT options.
+- It rejects direct arbitrary package or version requests.
+- It drives APT non-interactively through a bounded API or command
+  construction.
+- It revalidates the plan immediately before mutating the system.
+- It records the transaction and the validation result.
+
+**Freshness.** A monotonic signed Release Date rule is designed and tested:
+persist the newest accepted Date and InRelease hash, and reject a Date
+regression or a same-Date content change. With only two observations (M1-G
+and M1-H), no maximum age can be justified. Absolute freshness against a
+frozen repository therefore needs a future explicit policy. Without
+`Acquire-By-Hash`, a fetch can race a repository update. APT then fails
+closed with a hash mismatch. Content substitution is still detected through
+the signed SHA-256 chain InRelease → Packages → `.deb`.
+
+**Key bootstrap (proposal only).** LUBARCHY would carry the key in its own
+signed packaging (P-007), after checking the full fingerprint against the
+source-controlled value through an independently qualified channel. Neither
+`cuda-keyring` nor `8793F200.pub` is a trust anchor. Never `trusted=yes`.
+
+**Containment assessment: YES — NVIDIA's Debian 13 repository can be
+technically contained as a candidate D-005 exception.** For LUBARCHY-managed
+automatic transactions, four controls contain every normal APT resolution
+path:
+- a default deny for the origin;
+- a finite 30-binary allowlist;
+- a branch-615 lock;
+- Debian-infrastructure protection.
+
+`dkms` from NVIDIA is not an APT candidate and cannot be selected by normal
+LUBARCHY-managed dependency resolution. Before any activation, a qualified
+key bootstrap and an absolute-freshness policy are still required. These
+are activation prerequisites, not reasons to reject technical containment.
+P-006 (Secure Boot) independently blocks automatic use. None of this
+authorises the repository or accepts the strategy: ADR-0002 remains
+Proposed.
+
 ## Security consequences
 
 If the proposal is accepted: the Nouveau baseline candidate stays within

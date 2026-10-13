@@ -3,7 +3,7 @@
 Requirements for LUBARCHY hardware enablement. Hardware enablement is a
 first-class subsystem (D-008).
 
-**Status (M1-G):** the data and policy contracts — inventory v1, rule v1 and
+**Status (M1-H):** the data and policy contracts — inventory v1, rule v1 and
 plan v1 — are defined and tested (M1-A). A read-only live probe,
 `hardware/probe.py`, turns a running system into an inventory v1 document
 (M1-B, see [Live probe](#live-probe-m1-b)). A production resolver turns that
@@ -19,7 +19,10 @@ evidence chain (M1-F, see
 [Second-wave firmware mappings](#second-wave-firmware-mappings-m1-f)).
 The NVIDIA driver strategy is qualified as architecture evidence only, in
 the Proposed ADR-0002 (M1-G, see
-[NVIDIA driver strategy evidence](#nvidia-driver-strategy-evidence-m1-g)).
+[NVIDIA driver strategy evidence](#nvidia-driver-strategy-evidence-m1-g)),
+and the containment of NVIDIA's repository is tested with an inactive
+candidate APT policy (M1-H, see
+[NVIDIA repository containment](#nvidia-repository-containment-m1-h)).
 **Packages in a plan are proposals only: nothing installs, enables a source
 or configures anything yet.** Further firmware families, installation,
 configuration and validation are later M1 work.
@@ -788,6 +791,64 @@ package set stays at 10, and the source policy stays `main` +
   are recommended for a later inventory-v2 proposal; no schema changes.
 - Gate 8 (`tests/nvidia-strategy.py`) enforces the boundary and the
   evidence consistency using committed files only.
+
+## NVIDIA repository containment (M1-H)
+
+M1-H proves how far NVIDIA's signed Debian 13 repository can be contained by
+a LUBARCHY-owned APT policy. The repository remains **unauthorised**, the
+policy is **NOT ACTIVE**, and ADR-0002 remains Proposed.
+
+- Package-source boundary: Debian stays authoritative for the operating
+  system. NVIDIA's origin (Origin `NVIDIA`, Label `NVIDIA CUDA`) is denied by
+  default. Only the reviewed closure of `nvidia-driver` +
+  `nvidia-kernel-open-dkms` is eligible: 30 binaries (26 driver-versioned,
+  locked to `615.*`, plus 4 EGL platform libraries at exact versions). The 39
+  NVIDIA names that overlap Debian outside the closure, including `dkms`, are
+  denied before the allowlist. CUDA, datacenter/fabric, development,
+  profiling, repository-management and optional-utility packages stay
+  ineligible.
+- Artifacts:
+  - `hardware/nvidia/apt-policy-v1.json` (policy);
+  - `hardware/nvidia/apt-preferences.example` (rendered apt_preferences);
+  - `hardware/nvidia/apt-fixtures-v1.json` (compact authenticated APT
+    fixtures: Release identity, package records, Debian competitors,
+    classification, overlap audit, recorded APT outcomes);
+  - `tools/hwe/validate-nvidia-apt-policy.py` (render, extract, check,
+    freshness).
+
+  None is used by the resolver, live-build, the ISO, the builder or CI
+  sources.
+- Results:
+  - The contained desktop/open install is solvable with Debian's `dkms`.
+  - Upgrades admit nothing new.
+  - Disabling the source leaves a coherent state.
+  - Rollback needs an explicit requalified pin.
+  - Branch escapes are unsolvable.
+  - Recommendation: YES. The repository can be technically contained as a
+    candidate D-005 exception for LUBARCHY-managed automatic transactions.
+    It remains unauthorised, and a qualified key bootstrap and an
+    absolute-freshness policy are activation prerequisites.
+- Boundary: APT preferences govern candidate selection in normal APT
+  resolution. They are not a sandbox or MAC mechanism against root. APT
+  3.0.3 lets an explicit exact-version administrator request
+  (`pkg=version`) override candidate selection for the named package. That
+  is a privileged override outside the containment boundary (evidence kept
+  in the fixtures), and it does not weaken containment of LUBARCHY-managed
+  automatic transactions.
+- Future requirement (later apply/install step, not implemented in M1-H): a
+  LUBARCHY privileged package executor. It:
+  - accepts only a validated plan;
+  - takes package names from the plan, never from caller-controlled text;
+  - lets no caller-supplied versions, source or release selectors, or APT
+    options through;
+  - rejects direct arbitrary package or version requests;
+  - drives APT non-interactively through a bounded API or command
+    construction;
+  - revalidates the plan immediately before mutation;
+  - records the transaction and the validation result.
+- Containment says nothing about module builds, graphics, Wayland, PRIME,
+  suspend, Hyprland or Plasma on real hardware, and it does not resolve
+  Secure Boot (P-006).
 
 ## Hardware classes
 
