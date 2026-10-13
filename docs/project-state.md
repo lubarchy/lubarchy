@@ -40,7 +40,7 @@ later installation/configuration → later validation.
 | M1-B | Live read-only hardware probe producing inventory v1 | PASS (CTO accepted) |
 | M1-C | Production resolver and high-confidence classification baseline | PASS (CTO accepted) |
 | M1-D | Debian non-free-firmware policy and CPU microcode package mappings | PASS (CTO accepted) |
-| M1-E | Device-specific firmware mapping baseline | Implemented locally; awaiting CTO review |
+| M1-E | Device-specific firmware mapping baseline | Published (`b316042`); GitHub CI green (run #14); awaiting CTO review |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
   `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
@@ -126,8 +126,11 @@ later installation/configuration → later validation.
   container's APT sources (still `main` only), change live-build or the ISO,
   map any device firmware (graphics, Wi-Fi, Bluetooth, network) or decide
   NVIDIA driver policy. Packages in a plan are proposals only.
-- M1-E — device-specific firmware mapping baseline: **implemented locally;
-  awaiting CTO review** (not PASS). Four firmware families are mapped from
+- M1-E — device-specific firmware mapping baseline: **published; awaiting
+  CTO review** (not PASS). Implementation commit
+  `b316042a960683fbf44f2279de0754db1b731abb`; `Static gates` run #14
+  ([38362588631](https://github.com/lubarchy/lubarchy/actions/runs/38362588631))
+  passed all seven gates on that commit. Four firmware families are mapped from
   qualified Debian kernel module aliases (`linux-image-6.12.111+deb13-amd64`
   6.12.111-1): `iwlwifi`/`iwl3945`/`iwl4965` → `firmware-iwlwifi`,
   `i915`/`xe` → `firmware-intel-graphics`, `amdgpu`/`radeon` →
@@ -329,8 +332,10 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-E (device firmware mapping baseline, local commit, not yet
-pushed or run in GitHub CI). M1-F has not started and waits for a CTO brief.
+CTO review of M1-E (device firmware mapping baseline, published as
+`b316042a960683fbf44f2279de0754db1b731abb`; `Static gates` run #14 passed all
+seven gates on that commit; see [testing.md](testing.md)). M1-F has not
+started and waits for a CTO brief.
 
 ## PASS rule
 
