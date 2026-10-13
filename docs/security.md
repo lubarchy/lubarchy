@@ -126,6 +126,39 @@ implemented.**
 - Administrative actions require explicit authentication.
 - Hardware enablement and recovery tools must not grant broader privileges
   than needed.
+- Package mutation boundary (M1-I contract, executor not implemented):
+  untrusted or user request → LUBARCHY resolver and approved plan →
+  transaction compiler and verification → privileged bounded package
+  executor → APT/dpkg. Details:
+  [package-transactions.md](package-transactions.md).
+  - **Package-name authority:** names come only from a freshly recomputed
+    production plan. An incoming plan or package list is never authority;
+    callers may pass expected digests only.
+  - **Stale-transaction defence:** any change to the inventory, rules, plan,
+    installed state, holds, package-manager configuration or repository
+    metadata makes the transaction stale. The executor must recompile
+    immediately before mutation and fail closed on any difference.
+  - **Exact internal binding:** the complete closure in the transaction is
+    authoritative, but only direct requirements become explicit APT targets
+    (`name:architecture=version`, built by the executor). A fresh simulation
+    must reproduce the complete closure before any mutation. Callers can
+    never supply versions, architectures, release selectors or options.
+  - **Package marks:** APT automatic/manual state is part of transaction
+    integrity. New direct requirements end manual and new dependencies
+    automatic. Existing marks are never changed silently, and a mark change
+    makes a prepared transaction stale.
+  - **Environment sanitization:** fixed absolute binaries, an environment
+    built from scratch (C locale, fixed `PATH`,
+    `DEBIAN_FRONTEND=noninteractive`), no inherited `APT_CONFIG`, proxy or
+    locale, `shell=False`. Dangerous APT options (`--allow-*`,
+    `--force-yes`, `--fix-broken`, `-o`, `-c`, target release) are
+    forbidden.
+  - **Locks and concurrency:** one LUBARCHY-owned transaction lock, then
+    the normal APT/dpkg locks. LUBARCHY never deletes package-manager locks
+    and never kills another package manager.
+  - **Root/administrator boundary:** these controls govern
+    LUBARCHY-managed transactions. A root administrator acting directly on
+    APT/dpkg is outside this boundary.
 
 ## Network exposure policy
 

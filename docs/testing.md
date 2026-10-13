@@ -65,7 +65,7 @@ A clean rebuild must succeed from the same commit.
 | --- | --- |
 | Repository lint | `tests/repo-lint.sh` (M0-I) |
 | shellcheck | Every tracked shell script, via `tests/run-static.sh` (M0-I) |
-| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I); hardware contracts added in M1-A; hardware probe added in M1-B; hardware resolver added in M1-C; hardware firmware added in M1-E; hardware NVIDIA strategy added in M1-G |
+| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I); hardware contracts added in M1-A; hardware probe added in M1-B; hardware resolver added in M1-C; hardware firmware added in M1-E; hardware NVIDIA strategy added in M1-G; hardware package transaction added in M1-I |
 | GitHub CI | `.github/workflows/m0-static.yml` runs `tests/run-static.sh` on GitHub Actions (green since M0-J) |
 | `live-build` configuration validation | `tests/live-build-config.sh` (M0-E) |
 | ISO build | Manual, from the committed configuration (M0-F) |
@@ -585,6 +585,105 @@ NVIDIA.
 
 This qualifies package-source containment only. Nothing is installed, no
 module is built and no GPU is involved.
+
+## M1 hardware package transaction gate
+
+`tests/hardware-transaction.py` (gate 9 of `tests/run-static.sh`, since
+M1-I) has 17 checks and is synthetic only. It never contacts a mirror or
+NVIDIA, never probes the runner, never runs apt or dpkg and never mutates
+packages. Its inputs:
+- the existing synthetic inventories (`tests/fixtures/hardware/firmware`,
+  `inventory`) and the production rules;
+- a deterministic package universe
+  (`tests/fixtures/hardware/transaction/universe.json`), rendered by a fake
+  read-only backend in APT's own text formats;
+- real APT/dpkg output samples captured on the builder (`apt-samples/`),
+  which check the production parsers.
+
+It proves:
+- **Contract:** schema meta-validity with every object closed and no
+  time/identity fields; inventory/rule/plan v1 unchanged.
+- **Determinism:** canonical bytes and digest are deterministic, and 10
+  fixtures covering all 10 production packages compile to the reviewed
+  transactions in `transaction/expected/`.
+- **Authority:** package names equal the fresh plan's names; the compiler
+  has no package, version, selector or option parameter; a caller-added
+  package is rejected; CLI package, version, selector, option, rules,
+  binary and `apply` arguments are usage errors; the CLI uses the fixed
+  probe, production rules and system backend.
+- **Staleness:** changes to the inventory, rule set, plan, inventory or
+  rule digests, installed state, holds, repository metadata, package
+  version, hash, size or hook configuration all make the transaction stale.
+- **Plan acceptance:** `contrib` → unauthorised; forbid/conflict, invalid
+  inventory and warnings → rejected; `partial` is accepted and keeps its
+  unresolved targets.
+- **Provenance:** wrong component (`non-free`, `contrib`), origin, label,
+  codename (sid, Backports), an untrusted index or a foreign keyring rejects
+  the transaction, including through a dependency; the plan component, the
+  SHA-256 and the candidate are all bound.
+- **Install-only:** `already_satisfied` works; upgrade, downgrade, removal,
+  purge, reinstall, architecture change, held-package change, a hold on a
+  new package and an unresolvable set are each rejected for the right
+  reason; recommends are never selected.
+- **Exact closure with direct-only targets:** only direct requirements are
+  explicit targets (`name:arch=version`; the dependency `iucode-tool` never
+  is). Their simulation must reproduce the full closure. An extra, missing,
+  re-versioned or re-architected dependency is rejected.
+- **Package marks:**
+  - New direct packages end manual and new dependencies automatic.
+  - An existing manually installed dependency stays manual and is never
+    targeted.
+  - Automatic↔manual flips (of a dependency or an unrelated package) make
+    the transaction stale.
+  - An already-installed automatic direct requirement fails closed.
+  - Inconsistent marks fail the contract.
+  - A wrong or foreign target architecture is rejected, and so is a
+    dependency used as a target.
+  - A dependency architecture change makes the transaction stale.
+- **Future apply argv and environment:** an array starting with
+  `/usr/bin/apt-get install` with `--no-install-recommends` and
+  `--no-remove`, no forbidden option, plain `name:arch=version` direct
+  targets only;
+  caller `APT_CONFIG`/`DEBIAN_FRONTEND` ignored; executables and the
+  environment are literal constants.
+- **No mutation path:** `subprocess.run(shell=False)` only; no lock, kill
+  or unlink; no apply implementation; an exact read-only operation
+  allowlist (any install, download, update, `dpkg -i`, `-o` or shell
+  request is refused before execution).
+- **Real samples and unchanged policy:** the builder output samples parse;
+  the source policy and the 10-package set are unchanged, and the NVIDIA
+  policy stays inactive.
+
+### Builder transaction dry-run qualification (M1-I, builder only)
+
+`tools/hwe/qualify-transaction.py WORKDIR` builds an isolated APT environment:
+- Debian `trixie`, `trixie-updates` and `trixie-security`, components
+  `main` + `non-free-firmware`, Signed-By the Debian archive keyring;
+- the system dpkg database used read-only;
+- the system APT configuration and sources untouched.
+
+It then:
+- runs fresh probe → production resolve → compile twice and compares the
+  bytes;
+- verifies the transaction;
+- records the install simulation, the direct-target simulation and its
+  closure comparison with the intended package marks, the index targets, the
+  candidate policy and the future argv (not executed);
+- probes the APT target syntax in simulation only: native, `:all` and
+  foreign architecture qualifiers for an arch-specific and an
+  `Architecture: all` package;
+- downloads each selected `.deb` into WORKDIR only, checks its SHA-256 and
+  size against the transaction and deletes it;
+- runs the production CLI against the system configuration, where it must
+  fail closed.
+
+A before/after audit compares:
+- the dpkg status and package, manual, automatic and hold counts, and the
+  APT `extended_states` hash;
+- the APT sources and preferences;
+- the system archive cache;
+- loaded modules and failed units;
+- APT history.
 
 ## GitHub CI
 

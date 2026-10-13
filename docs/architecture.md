@@ -116,8 +116,21 @@ module aliases (device modalias → module alias → Debian firmware package fro
 module's declared firmware files to be shipped only by that package), all as
 proposals. The rules are generated offline from
 committed kernel alias evidence; nothing reads kernel metadata at runtime.
-Applying a plan (installation and configuration) and validation are **not
-implemented**. See [hardware-enablement.md](hardware-enablement.md).
+Since M1-I the path from proposal to package mutation is contracted:
+
+plan proposal → transaction compilation (fresh probe, fresh resolve,
+install-only APT change set bound to exact versions, architectures,
+authorised Debian provenance, installed state including APT automatic/manual
+marks, and repository state; only direct requirements become explicit APT
+targets) → transaction verification →
+privileged apply boundary (future executor; not implemented) → post-apply
+validation (later).
+
+Package names come only from the freshly recomputed plan, never from a
+caller. Applying a transaction (installation and configuration) and
+validation are **not implemented**. See
+[package-transactions.md](package-transactions.md) and
+[hardware-enablement.md](hardware-enablement.md).
 
 ## Installer boundary (future)
 

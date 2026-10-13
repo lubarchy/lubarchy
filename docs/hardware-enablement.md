@@ -3,7 +3,7 @@
 Requirements for LUBARCHY hardware enablement. Hardware enablement is a
 first-class subsystem (D-008).
 
-**Status (M1-H):** the data and policy contracts — inventory v1, rule v1 and
+**Status (M1-I):** the data and policy contracts — inventory v1, rule v1 and
 plan v1 — are defined and tested (M1-A). A read-only live probe,
 `hardware/probe.py`, turns a running system into an inventory v1 document
 (M1-B, see [Live probe](#live-probe-m1-b)). A production resolver turns that
@@ -23,6 +23,8 @@ the Proposed ADR-0002 (M1-G, see
 and the containment of NVIDIA's repository is tested with an inactive
 candidate APT policy (M1-H, see
 [NVIDIA repository containment](#nvidia-repository-containment-m1-h)).
+From M1-I a plan can be compiled into an install-only package transaction
+(see [Package transactions](#package-transactions-m1-i)); nothing applies it.
 **Packages in a plan are proposals only: nothing installs, enables a source
 or configures anything yet.** Further firmware families, installation,
 configuration and validation are later M1 work.
@@ -849,6 +851,32 @@ policy is **NOT ACTIVE**, and ADR-0002 remains Proposed.
 - Containment says nothing about module builds, graphics, Wayland, PRIME,
   suspend, Hyprland or Plasma on real hardware, and it does not resolve
   Secure Boot (P-006).
+
+## Package transactions (M1-I)
+
+M1-I adds the step from a plan proposal to a package transaction. The
+contract is in [package-transactions.md](package-transactions.md).
+
+- The plan v1 stays a declarative proposal and is never package authority.
+  The compiler always re-probes the machine, re-resolves against the
+  production rules and derives the direct requirements from that fresh plan.
+- `partial` plans compile: unresolved hardware never blocks independently
+  proven requirements such as CPU microcode, and unresolved targets are kept
+  in the transaction.
+- Plans that are invalid, in conflict, carry `policy_review_required`
+  sources or forbid effects, or have profiles or warnings are rejected.
+- The transaction holds the complete APT-selected install-only change set
+  without recommends: direct requirements plus dependencies, each with an
+  exact version, its authorised Debian repository identity and component,
+  and the SHA-256 and size from the signed index.
+- Live builder evidence: for the builder VM, the direct requirement is
+  `intel-microcode` (`non-free-firmware`, the only explicit target, ending
+  manual) and APT adds `iucode-tool` (automatic)
+  (`main`). This was compiled only in an isolated qualification environment.
+  The builder's own `main`-only APT configuration makes the production
+  `compile` fail closed (exit 6). Source activation is later work.
+- Every current production package family (10 packages, no NVIDIA) compiles
+  against the synthetic universe of gate 9.
 
 ## Hardware classes
 

@@ -1,0 +1,6 @@
+adduser	all	3.152	install ok installed
+apparmor	amd64	4.1.0-1	install ok installed
+apt	amd64	3.0.3	install ok installed
+apt-listchanges	all	4.8	install ok installed
+apt-utils	amd64	3.0.3	install ok installed
+arch-test	all	0.22-1	install ok installed

@@ -35,3 +35,13 @@ rules have something to match; device IDs are synthetic (`f0xx`), and fixture
 Expected plans are regenerated only when a contract change is intended; any
 regeneration must be reviewed line by line, because the gate trusts them as
 the specification of the resolver's output.
+
+## Package transaction fixtures (`transaction/`, TEST-ONLY)
+
+Used by `tests/hardware-transaction.py` (gate 9):
+
+| Path | Content |
+| --- | --- |
+| `transaction/universe.json` | Synthetic package universe: the 10 production packages, `iucode-tool`, a synthetic recommended helper, Debian repository identities in the shape of `apt-get indextargets`. Versions, sizes and SHA-256 values are synthetic |
+| `transaction/expected/` | Reviewed canonical transactions for 10 firmware fixtures (all 10 production packages), regenerated only with `tests/hardware-transaction.py --write-expected` and reviewed |
+| `transaction/apt-samples/` | Real `apt-cache policy`, `apt-get --simulate`, `apt-get indextargets` (Packages targets, local paths removed), `dpkg-query` and `apt-config` output captured on the Debian builder, used to test the production parsers |

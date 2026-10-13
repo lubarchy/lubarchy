@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lubarchy:hardware:package-transaction:v1",
+  "title": "LUBARCHY hardware package transaction v1",
+  "description": "Install-only package transaction compiled from a freshly recomputed production plan (M1-I). The complete closure is authoritative; only direct requirements become explicit APT targets, so direct packages end manual and APT-selected dependencies automatic. Installed state binds APT automatic/manual marks. Deterministic, security-relevant facts only: no timestamps, commands, output, secrets, user, host or network identity. A transaction authorises nothing by itself; a future privileged executor must recompile and compare it immediately before any mutation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "plan_schema",
+    "architecture",
+    "inventory_digest",
+    "rule_set_digest",
+    "plan_digest",
+    "plan_status",
+    "source_policy",
+    "repository_state_digest",
+    "installed_state_digest",
+    "installed_package_count",
+    "automatic_package_count",
+    "held_packages",
+    "package_manager_config_digest",
+    "direct_requirements",
+    "operations",
+    "unresolved",
+    "safety"
+  ],
+  "properties": {
+    "schema": {"const": "lubarchy.hardware.package-transaction/v1"},
+    "plan_schema": {"const": "lubarchy.hardware.plan/v1"},
+    "architecture": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,31}$"},
+    "inventory_digest": {"$ref": "#/$defs/digest"},
+    "rule_set_digest": {"$ref": "#/$defs/digest"},
+    "plan_digest": {"$ref": "#/$defs/digest"},
+    "plan_status": {"enum": ["resolved", "partial"]},
+    "source_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["components", "releases", "signed_by"],
+      "properties": {
+        "components": {"const": ["main", "non-free-firmware"]},
+        "releases": {
+          "const": [
+            {"origin": "Debian", "label": "Debian", "codename": "trixie"},
+            {"origin": "Debian", "label": "Debian", "codename": "trixie-updates"},
+            {"origin": "Debian", "label": "Debian-Security", "codename": "trixie-security"}
+          ]
+        },
+        "signed_by": {
+          "const": ["/usr/share/keyrings/debian-archive-keyring.gpg", "/usr/share/keyrings/debian-archive-keyring.pgp"]
+        }
+      }
+    },
+    "repository_state_digest": {"$ref": "#/$defs/digest"},
+    "installed_state_digest": {"$ref": "#/$defs/digest"},
+    "installed_package_count": {"type": "integer", "minimum": 0},
+    "automatic_package_count": {"type": "integer", "minimum": 0},
+    "held_packages": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9+.-]{1,127}:[a-z0-9][a-z0-9-]{0,31}$"}
+    },
+    "package_manager_config_digest": {"$ref": "#/$defs/digest"},
+    "direct_requirements": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["package", "source"],
+        "properties": {
+          "package": {"$ref": "#/$defs/package"},
+          "source": {"enum": ["main", "non-free-firmware"]}
+        }
+      }
+    },
+    "operations": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["package", "architecture", "version", "action", "relation", "automatic_before", "automatic_after",
+                     "repositories", "sha256", "size"],
+        "properties": {
+          "package": {"$ref": "#/$defs/package"},
+          "architecture": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,31}$"},
+          "version": {"type": "string", "pattern": "^(?:[0-9]+:)?[0-9][A-Za-z0-9.+~-]{0,127}$"},
+          "action": {"enum": ["install", "already_satisfied"]},
+          "relation": {"enum": ["direct", "dependency"]},
+          "automatic_before": {"type": ["boolean", "null"]},
+          "automatic_after": {"type": "boolean"},
+          "repositories": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["origin", "label", "codename", "suite", "component", "base_uri"],
+              "properties": {
+                "origin": {"const": "Debian"},
+                "label": {"enum": ["Debian", "Debian-Security"]},
+                "codename": {"enum": ["trixie", "trixie-updates", "trixie-security"]},
+                "suite": {"type": "string", "pattern": "^[a-z0-9-]{1,64}$"},
+                "component": {"enum": ["main", "non-free-firmware"]},
+                "base_uri": {"type": "string", "pattern": "^https?://[A-Za-z0-9.-]+(:[0-9]+)?/[A-Za-z0-9._~/-]*$"}
+              }
+            }
+          },
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "size": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "unresolved": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target", "reason"],
+        "properties": {
+          "target": {"type": "string", "minLength": 1, "maxLength": 128},
+          "reason": {"const": "no_rule_matched"}
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["install_only", "install_recommends", "allow_removals", "upgrades", "downgrades", "removals",
+                   "reinstalls", "held_changes", "architecture_changes", "exact_version_closure_verified",
+                   "explicit_targets", "package_marks", "existing_marks_preserved"],
+      "properties": {
+        "install_only": {"const": true},
+        "install_recommends": {"const": false},
+        "allow_removals": {"const": false},
+        "upgrades": {"const": 0},
+        "downgrades": {"const": 0},
+        "removals": {"const": 0},
+        "reinstalls": {"const": 0},
+        "held_changes": {"const": 0},
+        "architecture_changes": {"const": 0},
+        "exact_version_closure_verified": {"const": true},
+        "explicit_targets": {"const": "direct_only"},
+        "package_marks": {"const": "direct_manual_dependency_automatic"},
+        "existing_marks_preserved": {"const": true}
+      }
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "package": {"type": "string", "pattern": "^[a-z0-9][a-z0-9+.-]{1,127}$"}
+  }
+}

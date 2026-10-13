@@ -1,0 +1,278 @@
+{
+  "architecture": "amd64",
+  "config": [
+    "APT::Install-Recommends \"1\";",
+    "APT::Install-Suggests \"0\";",
+    "Acquire::AllowInsecureRepositories \"false\";",
+    "Acquire::AllowDowngradeToInsecureRepositories \"false\";",
+    "DPkg::Pre-Install-Pkgs \"\";",
+    "DPkg::Pre-Install-Pkgs:: \"/usr/sbin/dpkg-preconfigure --apt || true\";"
+  ],
+  "extra_simulation_lines": [],
+  "installed": [
+    {
+      "architecture": "amd64",
+      "package": "apt",
+      "status": "install ok installed",
+      "version": "3.0.3"
+    },
+    {
+      "architecture": "amd64",
+      "package": "dpkg",
+      "status": "install ok installed",
+      "version": "1.22.21"
+    },
+    {
+      "architecture": "amd64",
+      "package": "libc6",
+      "status": "install ok installed",
+      "version": "2.41-12"
+    }
+  ],
+  "note": "TEST-ONLY synthetic package universe for tests/hardware-transaction.py. Repository identities follow the shape of `apt-get indextargets`; versions, sizes and SHA-256 values are synthetic and not authoritative.",
+  "packages": {
+    "amd64-microcode": [
+      {
+        "architecture": "amd64",
+        "depends": [],
+        "recommends": [],
+        "repositories": [
+          "trixie-non-free-firmware"
+        ],
+        "sha256": "9b7e176ccf7addecdeee8971ab8d41b7cd4f9d14eef839acf3c5b183023a2f33",
+        "size": 200000,
+        "version": "3.20250311.1~deb13u1"
+      }
+    ],
+    "bluez-firmware": [
+      {
+        "architecture": "all",
+        "depends": [],
+        "recommends": [],
+        "repositories": [
+          "trixie-non-free-firmware"
+        ],
+        "sha256": "bfb9956371d72f109261ea9b033d086838a83146473355abcfb977c41f0ff02d",
+        "size": 150000,
+        "version": "1.2-11"
+      }
+    ],
+    "firmware-amd-graphics": [
+      {
+        "architecture": "all",
+        "depends": [],
+        "recommends": [],
+        "repositories": [
+          "trixie-non-free-firmware"
+        ],
+        "sha256": "9956e89710bf748cfd31ad4b8236be6fc27e245d5fb7f475a5ee8d22df1bf67f",
+        "size": 40000000,
+        "version": "20250410-2"
+      }
+    ],
+    "firmware-atheros": [
+      {
+        "architecture": "all",
+        "depends": [],
+        "recommends": [],
+        "repositories": [
+          "trixie-non-free-firmware"
+        ],
+        "sha256": "705cf57e57f5200e5427bee27829cbf84a97cf122422e374d958c0a355a6a1ec",
+        "size": 20000000,
+        "version": "20250410-2"
+      }
+    ],
+    "firmware-brcm80211": [
+      {
+        "architecture": "all",
+        "depends": [],
+        "recommends": [],
+        "repositories": [
+          "trixie-non-free-firmware"
+        ],
+        "sha256": "e48b4d3fcfab79530e66d71168c09377141155bc4327c4d047946677f189ff20",
+        "size": 8000000,
+        "version": "20250410-2"
+      }
+    ],
+    "firmware-intel-graphics": [
+      {
+        "architecture": "all",
+        "depends": [],
+        "recommends": [],
+        "repositories": [
+          "trixie-non-free-firmware"
+        ],
+        "sha256": "55dbc3b8b1b9b9f2a11db6e1c4aa8b234294d5eab80173cc18d4d7765a262184",
+        "size": 3000000,
+        "version": "20250410-2"
+      }
+    ],
+    "firmware-iwlwifi": [
+      {
+        "architecture": "all",
+        "depends": [],
+        "recommends": [],
+        "repositories": [
+          "trixie-non-free-firmware"
+        ],
+        "sha256": "001d714831cdd5b9d77aeca80d6996a7c691a3aaab70f2fc3fd2db2dbb7773da",
+        "size": 9000000,
+        "version": "20250410-2"
+      }
+    ],
+    "firmware-mediatek": [
+      {
+        "architecture": "all",
+        "depends": [],
+        "recommends": [],
+        "repositories": [
+          "trixie-non-free-firmware"
+        ],
+        "sha256": "498ade67f1a86559558ac9a7c89c0ef0a2d13e629135287a3041d94c000825da",
+        "size": 15000000,
+        "version": "20250410-2"
+      }
+    ],
+    "firmware-realtek": [
+      {
+        "architecture": "all",
+        "depends": [],
+        "recommends": [],
+        "repositories": [
+          "trixie-non-free-firmware"
+        ],
+        "sha256": "33ddb89e8605c5bbffdaff526d25708d2747150e3e3e2b66dd9339179fc9490b",
+        "size": 5000000,
+        "version": "20250410-2"
+      }
+    ],
+    "intel-microcode": [
+      {
+        "architecture": "amd64",
+        "depends": [
+          "iucode-tool"
+        ],
+        "recommends": [
+          "test-recommended-helper"
+        ],
+        "repositories": [
+          "trixie-non-free-firmware"
+        ],
+        "sha256": "6fc30cbdca9154959603883123d097108139e590c13bb69f16c1c9d00f8d0ec0",
+        "size": 12847144,
+        "version": "3.20251111.1~deb13u1"
+      },
+      {
+        "architecture": "amd64",
+        "depends": [
+          "iucode-tool"
+        ],
+        "recommends": [
+          "test-recommended-helper"
+        ],
+        "repositories": [
+          "trixie-security-non-free-firmware"
+        ],
+        "sha256": "e2b114a6ef013ef7812e46e31542c47847b9457498c6a340f50d0e45829a0f63",
+        "size": 12800000,
+        "version": "3.20250812.1~deb13u1"
+      }
+    ],
+    "iucode-tool": [
+      {
+        "architecture": "amd64",
+        "depends": [],
+        "recommends": [],
+        "repositories": [
+          "trixie-main"
+        ],
+        "sha256": "4f9ff3ae1fe3645b6db619e6a4f20501ac4b8bf23264d712ccb524af2b54f0f1",
+        "size": 56128,
+        "version": "2.3.1-3"
+      }
+    ],
+    "test-recommended-helper": [
+      {
+        "architecture": "all",
+        "depends": [],
+        "recommends": [],
+        "repositories": [
+          "trixie-main"
+        ],
+        "sha256": "2df5d97adb48e76b46de83cd4ad047409ffe74d3623449454a6f6425be93ea6d",
+        "size": 2048,
+        "version": "1.0-1"
+      }
+    ]
+  },
+  "repositories": {
+    "trixie-main": {
+      "Architecture": "amd64",
+      "Base-URI": "https://deb.debian.org/debian/dists/trixie/",
+      "Codename": "trixie",
+      "Component": "main",
+      "Description": "https://deb.debian.org/debian trixie/main amd64 Packages",
+      "Identifier": "Packages",
+      "Label": "Debian",
+      "Origin": "Debian",
+      "Signed-By": "/usr/share/keyrings/debian-archive-keyring.pgp",
+      "Suite": "stable",
+      "Trusted": "yes"
+    },
+    "trixie-non-free-firmware": {
+      "Architecture": "amd64",
+      "Base-URI": "https://deb.debian.org/debian/dists/trixie/",
+      "Codename": "trixie",
+      "Component": "non-free-firmware",
+      "Description": "https://deb.debian.org/debian trixie/non-free-firmware amd64 Packages",
+      "Identifier": "Packages",
+      "Label": "Debian",
+      "Origin": "Debian",
+      "Signed-By": "/usr/share/keyrings/debian-archive-keyring.pgp",
+      "Suite": "stable",
+      "Trusted": "yes"
+    },
+    "trixie-security-main": {
+      "Architecture": "amd64",
+      "Base-URI": "https://security.debian.org/debian-security/dists/trixie-security/",
+      "Codename": "trixie-security",
+      "Component": "main",
+      "Description": "https://security.debian.org/debian-security trixie-security/main amd64 Packages",
+      "Identifier": "Packages",
+      "Label": "Debian-Security",
+      "Origin": "Debian",
+      "Signed-By": "/usr/share/keyrings/debian-archive-keyring.pgp",
+      "Suite": "stable-security",
+      "Trusted": "yes"
+    },
+    "trixie-security-non-free-firmware": {
+      "Architecture": "amd64",
+      "Base-URI": "https://security.debian.org/debian-security/dists/trixie-security/",
+      "Codename": "trixie-security",
+      "Component": "non-free-firmware",
+      "Description": "https://security.debian.org/debian-security trixie-security/non-free-firmware amd64 Packages",
+      "Identifier": "Packages",
+      "Label": "Debian-Security",
+      "Origin": "Debian",
+      "Signed-By": "/usr/share/keyrings/debian-archive-keyring.pgp",
+      "Suite": "stable-security",
+      "Trusted": "yes"
+    },
+    "trixie-updates-main": {
+      "Architecture": "amd64",
+      "Base-URI": "https://deb.debian.org/debian/dists/trixie-updates/",
+      "Codename": "trixie-updates",
+      "Component": "main",
+      "Description": "https://deb.debian.org/debian trixie-updates/main amd64 Packages",
+      "Identifier": "Packages",
+      "Label": "Debian",
+      "Origin": "Debian",
+      "Signed-By": "/usr/share/keyrings/debian-archive-keyring.pgp",
+      "Suite": "stable-updates",
+      "Trusted": "yes"
+    }
+  },
+  "schema": "lubarchy.test.package-universe/v1"
+}

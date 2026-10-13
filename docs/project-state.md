@@ -43,8 +43,9 @@ later installation/configuration → later validation.
 | M1-E | Device-specific firmware mapping baseline | PASS (CTO accepted) |
 | M1-F | Second-wave network and Bluetooth firmware qualification | PASS (CTO accepted) |
 | M1-G | NVIDIA driver strategy qualification and architecture decision evidence | PASS (CTO accepted); ADR-0002 remains Proposed |
-| M1-H | NVIDIA repository containment and pinning proof | Published (`cd8b43f`); GitHub CI green (run #20, all eight gates); awaiting CTO review (ADR-0002 Proposed) |
-| M1-I | Not defined | Not started |
+| M1-H | NVIDIA repository containment and pinning proof | PASS (CTO accepted); ADR-0002 remains Proposed |
+| M1-I | Privileged package apply transaction contract | Implemented locally; awaiting CTO review |
+| M1-J | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
   `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
@@ -194,8 +195,11 @@ later installation/configuration → later validation.
   Backports, change the builder's, the ISO's or the CI's APT sources, install
   anything, build DKMS modules, load modules, add `gpu.hybrid`, change the
   hardware schemas, or decide P-006.
-- M1-H — NVIDIA repository containment and pinning proof: **published;
-  awaiting CTO review** (not PASS). Implementation commit
+- M1-H — NVIDIA repository containment and pinning proof: **PASS** (CTO
+  accepted). Containment conclusion: YES — NVIDIA's Debian 13 repository can
+  be technically contained as a candidate D-005 exception. The repository
+  remains unauthorised, the NVIDIA policy remains inactive, ADR-0002 stays
+  Proposed, and there is no NVIDIA package mapping. Implementation commit
   `cd8b43fc329a8093c43e97d388689f4386dc3c34`; `Static gates` run #20
   ([38474658686](https://github.com/lubarchy/lubarchy/actions/runs/38474658686))
   passed all eight gates on that commit. It tests whether
@@ -225,7 +229,30 @@ later installation/configuration → later validation.
   executor that installs only a validated, source-controlled plan, never
   forwards caller-controlled package names, versions, source selectors or
   APT options, revalidates before mutation and records the transaction.
-- M1-I has not started and waits for a CTO brief.
+- M1-I — privileged package apply transaction contract: **implemented
+  locally; awaiting CTO review** (not PASS, not pushed). New downstream
+  contract `lubarchy.hardware.package-transaction/v1`
+  (`hardware/schemas/package-transaction-v1.schema.json`; inventory, rule
+  and plan v1 unchanged). The compiler (`hardware/package_transaction.py`,
+  read-only CLI `hardware/compile-transaction.py` with `compile`, `verify`
+  and `validate`) derives package names only from a freshly recomputed
+  production plan. It binds the inventory, rule set, plan, installed state,
+  holds, APT automatic/manual marks, package-manager configuration and
+  repository state; selects an install-only, no-recommends change set; and
+  records exact versions, architectures, authorised Debian provenance,
+  SHA-256 and intended package marks for the complete closure. Only direct
+  requirements become explicit APT targets, so dependencies stay
+  automatic. Stale
+  inputs fail closed. The future privileged executor, its argv and
+  environment contract, the lock and the state machine are documented, not
+  implemented. Gate 9 (`tests/hardware-transaction.py`) runs synthetic only.
+  Details: [package-transactions.md](package-transactions.md).
+- M1-I does **not** install, upgrade, remove or configure any package,
+  activate a source, take a package-manager lock, create a privileged
+  daemon/setuid/sudoers/polkit path, change the production rules, the
+  resolver source policy (`main` + `non-free-firmware`) or the production
+  package set (10), or authorise NVIDIA.
+- M1-J has not started and waits for a CTO brief.
 
 ## M0 — Minimal reproducible ISO (closed)
 
@@ -409,13 +436,9 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-H (NVIDIA repository containment and pinning proof),
-published as `cd8b43fc329a8093c43e97d388689f4386dc3c34`; `Static gates` run
-#20 passed all eight gates on that commit (see [testing.md](testing.md)).
-Containment recommendation: YES — NVIDIA's Debian 13 repository can be
-technically contained as a candidate D-005 exception. ADR-0002 remains
-Proposed, the NVIDIA repository remains unauthorised and no NVIDIA package is
-installed. M1-I has not started and waits for a CTO brief.
+CTO review of M1-I (package transaction contract; local commit only, not
+yet pushed or CI-qualified). No package mutation has been implemented or
+executed. M1-J has not started and waits for a CTO brief.
 
 ## PASS rule
 

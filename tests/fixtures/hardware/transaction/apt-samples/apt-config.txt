@@ -1,0 +1,4 @@
+APT::Install-Recommends "1";
+APT::Install-Suggests "0";
+Acquire::AllowInsecureRepositories "false";
+Acquire::AllowDowngradeToInsecureRepositories "false";

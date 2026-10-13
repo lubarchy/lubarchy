@@ -1,0 +1,144 @@
+MetaKey: main/binary-amd64/Packages
+ShortDesc: Packages
+Description: https://deb.debian.org/debian trixie/main amd64 Packages
+URI: https://deb.debian.org/debian/dists/trixie/main/binary-amd64/Packages
+Optional: no
+KeepCompressed: no
+Codename: trixie
+Label: Debian
+Origin: Debian
+Signed-By: /usr/share/keyrings/debian-archive-keyring.pgp
+Suite: stable
+Trusted: yes
+Version: 13.7
+Architecture: amd64
+Base-URI: https://deb.debian.org/debian/dists/trixie/
+By-Hash: yes
+Component: main
+CompressionTypes: xz bz2 lzma gz lz4 zst uncompressed
+Created-By: Packages
+DefaultEnabled: yes
+Fallback-Of:
+Identifier: Packages
+KeepCompressedAs: lz4 zst gz xz bz2 lzma uncompressed
+PDiffs: yes
+Release: trixie
+Repo-URI: https://deb.debian.org/debian/
+Site: https://deb.debian.org/debian
+Target-Of: deb
+
+MetaKey: non-free-firmware/binary-amd64/Packages
+ShortDesc: Packages
+Description: https://deb.debian.org/debian trixie/non-free-firmware amd64 Packages
+URI: https://deb.debian.org/debian/dists/trixie/non-free-firmware/binary-amd64/Packages
+Optional: no
+KeepCompressed: no
+Codename: trixie
+Label: Debian
+Origin: Debian
+Signed-By: /usr/share/keyrings/debian-archive-keyring.pgp
+Suite: stable
+Trusted: yes
+Version: 13.7
+Architecture: amd64
+Base-URI: https://deb.debian.org/debian/dists/trixie/
+By-Hash: yes
+Component: non-free-firmware
+CompressionTypes: xz bz2 lzma gz lz4 zst uncompressed
+Created-By: Packages
+DefaultEnabled: yes
+Fallback-Of:
+Identifier: Packages
+KeepCompressedAs: lz4 zst gz xz bz2 lzma uncompressed
+PDiffs: yes
+Release: trixie
+Repo-URI: https://deb.debian.org/debian/
+Site: https://deb.debian.org/debian
+Target-Of: deb
+
+MetaKey: main/binary-amd64/Packages
+ShortDesc: Packages
+Description: https://deb.debian.org/debian trixie-updates/main amd64 Packages
+URI: https://deb.debian.org/debian/dists/trixie-updates/main/binary-amd64/Packages
+Optional: no
+KeepCompressed: no
+Codename: trixie-updates
+Label: Debian
+Origin: Debian
+Signed-By: /usr/share/keyrings/debian-archive-keyring.pgp
+Suite: stable-updates
+Trusted: yes
+Version: 13-updates
+Architecture: amd64
+Base-URI: https://deb.debian.org/debian/dists/trixie-updates/
+By-Hash: yes
+Component: main
+CompressionTypes: xz bz2 lzma gz lz4 zst uncompressed
+Created-By: Packages
+DefaultEnabled: yes
+Fallback-Of:
+Identifier: Packages
+KeepCompressedAs: lz4 zst gz xz bz2 lzma uncompressed
+PDiffs: yes
+Release: trixie-updates
+Repo-URI: https://deb.debian.org/debian/
+Site: https://deb.debian.org/debian
+Target-Of: deb
+
+MetaKey: main/binary-amd64/Packages
+ShortDesc: Packages
+Description: https://security.debian.org/debian-security trixie-security/main amd64 Packages
+URI: https://security.debian.org/debian-security/dists/trixie-security/main/binary-amd64/Packages
+Optional: no
+KeepCompressed: no
+Codename: trixie-security
+Label: Debian-Security
+Origin: Debian
+Signed-By: /usr/share/keyrings/debian-archive-keyring.pgp
+Suite: stable-security
+Trusted: yes
+Version: 13
+Architecture: amd64
+Base-URI: https://security.debian.org/debian-security/dists/trixie-security/
+By-Hash: yes
+Component: main
+CompressionTypes: xz bz2 lzma gz lz4 zst uncompressed
+Created-By: Packages
+DefaultEnabled: yes
+Fallback-Of:
+Identifier: Packages
+KeepCompressedAs: lz4 zst gz xz bz2 lzma uncompressed
+PDiffs: yes
+Release: trixie-security
+Repo-URI: https://security.debian.org/debian-security/
+Site: https://security.debian.org/debian-security
+Target-Of: deb
+
+MetaKey: non-free-firmware/binary-amd64/Packages
+ShortDesc: Packages
+Description: https://security.debian.org/debian-security trixie-security/non-free-firmware amd64 Packages
+URI: https://security.debian.org/debian-security/dists/trixie-security/non-free-firmware/binary-amd64/Packages
+Optional: no
+KeepCompressed: no
+Codename: trixie-security
+Label: Debian-Security
+Origin: Debian
+Signed-By: /usr/share/keyrings/debian-archive-keyring.pgp
+Suite: stable-security
+Trusted: yes
+Version: 13
+Architecture: amd64
+Base-URI: https://security.debian.org/debian-security/dists/trixie-security/
+By-Hash: yes
+Component: non-free-firmware
+CompressionTypes: xz bz2 lzma gz lz4 zst uncompressed
+Created-By: Packages
+DefaultEnabled: yes
+Fallback-Of:
+Identifier: Packages
+KeepCompressedAs: lz4 zst gz xz bz2 lzma uncompressed
+PDiffs: yes
+Release: trixie-security
+Repo-URI: https://security.debian.org/debian-security/
+Site: https://security.debian.org/debian-security
+Target-Of: deb
