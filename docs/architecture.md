@@ -109,7 +109,9 @@ Implemented boundary since M1-E: live read-only probe → inventory v1 →
 production resolver → plan v1. Production rules classify hardware, map CPU
 microcode and, since M1-E, map device firmware through qualified kernel
 module aliases (device modalias → module alias → Debian firmware package from
-`non-free-firmware`), all as proposals. The rules are generated offline from
+`non-free-firmware`; since M1-F second-wave families also require the
+module's declared firmware files to be shipped only by that package), all as
+proposals. The rules are generated offline from
 committed kernel alias evidence; nothing reads kernel metadata at runtime.
 Applying a plan (installation and configuration) and validation are **not
 implemented**. See [hardware-enablement.md](hardware-enablement.md).

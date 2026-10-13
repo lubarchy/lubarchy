@@ -1,0 +1,28 @@
+{
+  "schema": "lubarchy.hardware.rule/v1",
+  "id": "package.firmware.bluez-bcm203x",
+  "description": "Broadcom BCM2033 USB Bluetooth controllers handled by the bcm203x kernel module (matched by its kernel module alias; the module declares firmware shipped only by bluez-firmware) -> Debian bluez-firmware from non-free-firmware (ADR-0001). A proposal only; nothing is installed.",
+  "priority": 100,
+  "match": [
+    {
+      "usb": {
+        "modalias": [
+          "usb:v0A5Cp2033d*dc*dsc*dp*ic*isc*ip*in*"
+        ]
+      }
+    }
+  ],
+  "effects": {
+    "classifications": [
+      "bluetooth.controller"
+    ],
+    "packages": [
+      {
+        "name": "bluez-firmware",
+        "disposition": "require",
+        "source": "non-free-firmware",
+        "reason": "The bcm203x Bluetooth driver requests the BCM2033 firmware that Debian ships in bluez-firmware."
+      }
+    ]
+  }
+}

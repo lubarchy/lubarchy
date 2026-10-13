@@ -3,7 +3,7 @@
 Requirements for LUBARCHY hardware enablement. Hardware enablement is a
 first-class subsystem (D-008).
 
-**Status (M1-E):** the data and policy contracts — inventory v1, rule v1 and
+**Status (M1-F):** the data and policy contracts — inventory v1, rule v1 and
 plan v1 — are defined and tested (M1-A). A read-only live probe,
 `hardware/probe.py`, turns a running system into an inventory v1 document
 (M1-B, see [Live probe](#live-probe-m1-b)). A production resolver turns that
@@ -13,10 +13,13 @@ is an accepted hardware-enablement source and the first package mappings —
 Intel and AMD CPU microcode — appear in plans (M1-D, see
 [Package source policy](#package-source-policy-m1-d)). Four device firmware
 families are mapped from qualified kernel module aliases (M1-E, see
-[Device firmware mappings](#device-firmware-mappings-m1-e)). **Packages in a
-plan are proposals only: nothing installs, enables a source or configures
-anything yet.** Further firmware families, installation, configuration and
-validation are later M1 work.
+[Device firmware mappings](#device-firmware-mappings-m1-e)); second-wave
+network and Bluetooth families follow under a stronger firmware-file
+evidence chain (M1-F, see
+[Second-wave firmware mappings](#second-wave-firmware-mappings-m1-f)).
+**Packages in a plan are proposals only: nothing installs, enables a source
+or configures anything yet.** Further firmware families, installation,
+configuration and validation are later M1 work.
 
 ## Goal
 
@@ -523,11 +526,12 @@ the resolver calls no APT, dpkg, unattended-upgrades or PackageKit.
 
 Verified to exist in Debian Trixie `non-free-firmware` (see
 [`hardware/rules/SOURCES.md`](../hardware/rules/SOURCES.md)) but **candidate
-only — no production mapping**: `firmware-realtek`, `firmware-atheros`,
-`bluez-firmware`, `firmware-nvidia-graphics`, `firmware-nvidia-gsp`. (In
-M1-D the list also held `firmware-intel-graphics`, `firmware-amd-graphics`,
-`firmware-iwlwifi` and `firmware-brcm80211`, which M1-E maps.) Mapping any of
-them needs device-specific evidence and qualification in a later step.
+only — no production mapping**: `firmware-nvidia-graphics`,
+`firmware-nvidia-gsp`. (M1-D also listed `firmware-intel-graphics`,
+`firmware-amd-graphics`, `firmware-iwlwifi`, `firmware-brcm80211` — mapped
+in M1-E — and `firmware-realtek`, `firmware-atheros`, `bluez-firmware` —
+mapped for specific families in M1-F.) Mapping any of them needs
+device-specific evidence and qualification in a later step.
 
 ### NVIDIA boundary
 
@@ -599,9 +603,10 @@ the overlap analysis). `amdgpu` includes the kernel's own vendor+class
 aliases for AMD display/processing-accelerator classes; they are kept
 verbatim.
 
-The exact production package set is `intel-microcode`, `amd64-microcode`,
-`firmware-iwlwifi`, `firmware-intel-graphics`, `firmware-amd-graphics`,
-`firmware-brcm80211`. Every firmware requirement is `require` from
+After M1-E the exact production package set was `intel-microcode`,
+`amd64-microcode`, `firmware-iwlwifi`, `firmware-intel-graphics`,
+`firmware-amd-graphics`, `firmware-brcm80211` (M1-F adds four; see below).
+Every firmware requirement is `require` from
 `non-free-firmware` with no version: APT resolves the qualified Stable
 version.
 
@@ -626,9 +631,10 @@ a firmware requirement and a hardware class remain separate facts.
   representable in inventory v1; excluded.
 - IPU/camera devices (also in `firmware-intel-graphics`), AMD NPU
   (`amdxdna`) and `r128`: not mapped.
-- Deferred families: `firmware-realtek`, `firmware-atheros`,
+- Deferred families after M1-E: `firmware-realtek`, `firmware-atheros`,
   `bluez-firmware`, `firmware-nvidia-graphics`, `firmware-nvidia-gsp`, Intel
-  sound, MediaTek and other Qualcomm firmware.
+  sound, MediaTek and other Qualcomm firmware (M1-F qualifies some of them;
+  see below).
 
 ### What this does not prove
 
@@ -637,6 +643,100 @@ Wi-Fi associates, graphics acceleration works, firmware loads on physical
 devices, suspend/resume works or package installation succeeds. Those need
 later installation and real-hardware validation. Nothing is installed and no
 module is loaded by mapping or qualification.
+
+## Second-wave firmware mappings (M1-F)
+
+### Strengthened evidence chain
+
+For broad firmware packages a package description is supporting evidence
+only. An M1-F family is active only when, for every module in it:
+
+```text
+device modalias
+  → kernel module alias (binding module; PCI/USB only)
+  → binding module + its dependency closure (modinfo "depends")
+  → firmware files declared by those modules (modinfo "firmware")
+  → ownership of those files in authenticated Debian data
+  → exactly one non-free-firmware package
+```
+
+- Module metadata is read from the package-owned `.ko` files of the
+  qualified kernel (`linux-image-6.12.111+deb13-amd64` 6.12.111-1); the
+  qualification tool's own ELF reader agrees with `modinfo` for every mapped
+  module.
+- File ownership comes from Debian's Contents indices, fetched through an
+  isolated APT configuration and verified against the signed `InRelease`,
+  and is corroborated by the candidates' downloaded payload manifests (the
+  `.deb` hash matches the signed index; payloads are deleted).
+- Every declared firmware file of the closure must be shipped by the family
+  package or by no package (for example `cfg80211`'s `regulatory.db`); at
+  least one must be shipped by the family package. No relevant firmware
+  path may be shipped by two packages.
+- An alias that another module also claims device-specifically must be
+  same-package, explicitly reviewed or excluded.
+- Rules with different package **or** classification may not overlap.
+
+An empty firmware declaration is not taken to mean "no firmware": such
+modules are deferred unless other authoritative evidence exists. Where a
+driver builds file names at runtime, exhaustive file-level proof is not
+claimed.
+
+Evidence is recorded in the versioned tooling format
+`lubarchy.hardware.firmware-evidence/v2` (`tools/hwe/module-alias-evidence.json`);
+the M1-E alias evidence inside it is unchanged, and the M1-E rules still
+regenerate byte-for-byte from the original M1-E evidence. This is tooling
+evidence, not a change to inventory, rule or plan v1.
+
+### Active second-wave families
+
+| Rule | Kernel modules (binding) | Buses | Package | Classification | Aliases |
+| --- | --- | --- | --- | --- | --- |
+| `package.firmware.realtek-wifi` | `rtl8188ee`, `rtl8192ce`, `rtl8192cu`, `rtl8192de`, `rtl8192ee`, `rtl8192se`, `rtl8723be`, `rtl8821ae`, `rtl8xxxu`, `rtw88_*e`/`*u` (8723d, 8821c, 8822b, 8822c), `rtw89_*e` (8851b, 8852a, 8852b, 8852bt, 8852c, 8922a) | PCI, USB | `firmware-realtek` | `network.wifi` | 29 + 157 |
+| `package.firmware.atheros-wifi` | `ar5523`, `ath10k_pci`, `ath6kl_usb`, `wil6210` | PCI, USB | `firmware-atheros` | `network.wifi` | 12 + 58 |
+| `package.firmware.atheros-bluetooth` | `ath3k` | USB | `firmware-atheros` | `bluetooth.controller` | 62 |
+| `package.firmware.mediatek-wifi` | `mt7601u`, `mt7615e`, `mt7663u`, `mt76x0e/u`, `mt76x2e/u`, `mt7915e`, `mt7921e/u`, `mt7925e/u`, `mt7996e`, `rt2800pci`, `rt2800usb`, `rt61pci`, `rt73usb` | PCI, USB | `firmware-mediatek` | `network.wifi` | 61 + 415 |
+| `package.firmware.bluez-bcm203x` | `bcm203x` | USB | `bluez-firmware` | `bluetooth.controller` | 1 |
+
+The exact production package set is now ten: the six from M1-D/M1-E plus
+`firmware-realtek`, `firmware-atheros`, `firmware-mediatek` and
+`bluez-firmware`.
+
+Reviewed exclusions (identity ambiguity, narrowing only):
+`pci:v000010ECd00008192…` (also `r8192e_pci`, whose firmware Debian does not
+ship) is not mapped by `rtl8192se`; `usb:v050Dp7050…` (also `p54usb` and
+`rt2500usb`) is not mapped by `rt73usb`.
+
+### Deferred, with reasons
+
+| Family | Reason |
+| --- | --- |
+| Realtek Ethernet (`r8169`, `r8152`, `r8153_ecm`) | Firmware is loaded only for some chip revisions, which the modalias cannot distinguish (all RTL8168 variants share `10ec:8168`). |
+| USB Bluetooth via `btusb` (`btrtl`, `btmtk`, `btintel`, `btbcm`) | `btusb` binds many vendors; its closure declares firmware from `firmware-realtek`, `firmware-mediatek` and `firmware-iwlwifi`, so module → package is ambiguous at the alias level. |
+| `hci_uart` | Serial/ACPI/OF transports only. |
+| `ath6kl_sdio`, `rtw88_*s` | SDIO only. |
+| `ath11k_pci`, `ath12k` | No declared firmware; file names are built at runtime from board data. |
+| Realtek audio / card-reader firmware | Not requested by any PCI/USB network or Bluetooth module; out of scope. |
+| `bluez-firmware` Raspberry Pi files | Serial/platform only, not amd64 PCI/USB. |
+
+### Bluetooth ownership
+
+A Bluetooth firmware rule matches only the target whose alias binds the
+Bluetooth module (`ath3k`, `bcm203x` USB devices). A combo card's PCI Wi-Fi
+function never receives a Bluetooth package or `bluetooth.controller` on
+the strength of being on the same card; its Bluetooth half, typically a USB
+device bound by `btusb`, stays unresolved because `btusb` is deferred.
+
+### Unsupported buses
+
+SDIO, BCMA, ACPI/OF/platform, serdev/UART and other non-PCI/non-USB aliases
+are never mapped; inventory v1 does not represent them.
+
+### Reviewed observation on an M1-E family
+
+`brcmfmac` declares `brcm/brcmfmac43456-sdio.bin`, which Debian ships in
+`raspi-firmware`. It is firmware for an SDIO-only chip (not mapped), so it
+does not affect the PCI/USB `brcmfmac` mapping; it is recorded as a reviewed
+foreign request. M1-E families keep their original evidence mode.
 
 ## Hardware classes
 

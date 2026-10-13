@@ -1,0 +1,30 @@
+{
+  "schema": "lubarchy.hardware.inventory/v1",
+  "system": {
+    "architecture": "amd64",
+    "kernel_release": "6.12.0-fixture-amd64",
+    "boot_firmware": "uefi",
+    "secure_boot": "disabled",
+    "virtualization": {
+      "kind": "none"
+    }
+  },
+  "cpu": {
+    "architecture": "x86_64",
+    "vendor": "GenuineIntel",
+    "model_name": "Synthetic firmware fixture CPU"
+  },
+  "devices": [
+    {
+      "id": "pci:0000:02:00.0",
+      "bus": "pci",
+      "locator": "0000:02:00.0",
+      "vendor_id": "10ec",
+      "device_id": "b852",
+      "subsystem_vendor_id": "f0e0",
+      "subsystem_device_id": "f0e1",
+      "class_id": "028000",
+      "modalias": "pci:v000010ECd0000B852sv0000F0E0sd0000F0E1bc02sc80i00"
+    }
+  ]
+}

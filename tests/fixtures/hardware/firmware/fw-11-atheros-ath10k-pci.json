@@ -1,0 +1,30 @@
+{
+  "schema": "lubarchy.hardware.inventory/v1",
+  "system": {
+    "architecture": "amd64",
+    "kernel_release": "6.12.0-fixture-amd64",
+    "boot_firmware": "uefi",
+    "secure_boot": "disabled",
+    "virtualization": {
+      "kind": "none"
+    }
+  },
+  "cpu": {
+    "architecture": "x86_64",
+    "vendor": "AuthenticAMD",
+    "model_name": "Synthetic firmware fixture CPU"
+  },
+  "devices": [
+    {
+      "id": "pci:0000:03:00.0",
+      "bus": "pci",
+      "locator": "0000:03:00.0",
+      "vendor_id": "168c",
+      "device_id": "003c",
+      "subsystem_vendor_id": "f0e0",
+      "subsystem_device_id": "f0e1",
+      "class_id": "028000",
+      "modalias": "pci:v0000168Cd0000003Csv0000F0E0sd0000F0E1bc02sc80i00"
+    }
+  ]
+}

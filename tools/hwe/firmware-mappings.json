@@ -1,27 +1,92 @@
 {
-  "description": "M1-E device firmware mapping configuration. Each family maps the PCI/USB module aliases of its kernel modules to one Debian non-free-firmware package. Input to tools/hwe/qualify-firmware-mappings.py; not read at runtime.",
-  "representable_buses": ["pci", "usb"],
+  "description": "Device firmware mapping configuration (M1-E, extended in M1-F). Each family maps the PCI/USB module aliases of its kernel modules to one Debian non-free-firmware package. Input to tools/hwe/qualify-firmware-mappings.py; not read at runtime.",
+  "representable_buses": [
+    "pci",
+    "usb"
+  ],
+  "allowed_packages": [
+    "firmware-amd-graphics",
+    "firmware-atheros",
+    "firmware-brcm80211",
+    "firmware-intel-graphics",
+    "firmware-iwlwifi",
+    "firmware-mediatek",
+    "firmware-realtek",
+    "bluez-firmware"
+  ],
   "families": [
     {
       "rule_id": "package.firmware.amd-graphics",
       "package": "firmware-amd-graphics",
-      "modules": ["amdgpu", "radeon"],
+      "modules": [
+        "amdgpu",
+        "radeon"
+      ],
       "classifications": [],
       "description": "AMD/ATI graphics functions handled by the amdgpu or radeon kernel modules (matched by their kernel module aliases) -> Debian firmware-amd-graphics from non-free-firmware (ADR-0001). A proposal only; nothing is installed.",
       "reason": "Debian firmware-amd-graphics provides the binary firmware for AMD/ATI graphics chips supported by the amdgpu and radeon drivers."
     },
     {
+      "rule_id": "package.firmware.atheros-bluetooth",
+      "package": "firmware-atheros",
+      "modules": [
+        "ath3k"
+      ],
+      "classifications": [
+        "bluetooth.controller"
+      ],
+      "evidence_mode": "declared-firmware-closure",
+      "description": "Qualcomm Atheros USB Bluetooth controllers handled by the ath3k kernel module (matched by its kernel module aliases; the module declares firmware shipped only by firmware-atheros) -> Debian firmware-atheros from non-free-firmware (ADR-0001). A proposal only; nothing is installed.",
+      "reason": "The ath3k Bluetooth driver requests firmware that Debian ships in firmware-atheros."
+    },
+    {
+      "rule_id": "package.firmware.atheros-wifi",
+      "package": "firmware-atheros",
+      "modules": [
+        "ar5523",
+        "ath10k_pci",
+        "ath6kl_usb",
+        "wil6210"
+      ],
+      "classifications": [
+        "network.wifi"
+      ],
+      "evidence_mode": "declared-firmware-closure",
+      "description": "Qualcomm Atheros wireless devices on PCI or USB handled by the ar5523, ath10k_pci, ath6kl_usb or wil6210 kernel modules (matched by their kernel module aliases; their declared firmware is shipped only by firmware-atheros) -> Debian firmware-atheros from non-free-firmware (ADR-0001). SDIO devices (ath6kl_sdio) and modules without declared firmware (ath11k, ath12k) are not mapped. A proposal only; nothing is installed.",
+      "reason": "The ar5523, ath10k, ath6kl and wil6210 drivers request firmware that Debian ships in firmware-atheros."
+    },
+    {
+      "rule_id": "package.firmware.bluez-bcm203x",
+      "package": "bluez-firmware",
+      "modules": [
+        "bcm203x"
+      ],
+      "classifications": [
+        "bluetooth.controller"
+      ],
+      "evidence_mode": "declared-firmware-closure",
+      "description": "Broadcom BCM2033 USB Bluetooth controllers handled by the bcm203x kernel module (matched by its kernel module alias; the module declares firmware shipped only by bluez-firmware) -> Debian bluez-firmware from non-free-firmware (ADR-0001). A proposal only; nothing is installed.",
+      "reason": "The bcm203x Bluetooth driver requests the BCM2033 firmware that Debian ships in bluez-firmware."
+    },
+    {
       "rule_id": "package.firmware.brcm80211",
       "package": "firmware-brcm80211",
-      "modules": ["brcmfmac"],
-      "classifications": ["network.wifi"],
+      "modules": [
+        "brcmfmac"
+      ],
+      "classifications": [
+        "network.wifi"
+      ],
       "description": "Broadcom/Cypress 802.11 devices handled by the brcmfmac kernel module on PCI or USB (matched by its kernel module aliases) -> Debian firmware-brcm80211 from non-free-firmware (ADR-0001). SDIO devices and brcmsmac (BCMA bus) are not representable in inventory v1 and are excluded. A proposal only; nothing is installed.",
       "reason": "Debian firmware-brcm80211 provides the binary firmware for Broadcom/Cypress 802.11 wireless devices supported by the brcmfmac driver."
     },
     {
       "rule_id": "package.firmware.intel-graphics",
       "package": "firmware-intel-graphics",
-      "modules": ["i915", "xe"],
+      "modules": [
+        "i915",
+        "xe"
+      ],
       "classifications": [],
       "description": "Intel graphics functions handled by the i915 or xe kernel modules (matched by their kernel module aliases) -> Debian firmware-intel-graphics from non-free-firmware (ADR-0001). IPU/camera devices are not mapped. A proposal only; nothing is installed.",
       "reason": "Debian firmware-intel-graphics provides the binary firmware for Intel graphics supported by the i915 and xe drivers."
@@ -29,13 +94,103 @@
     {
       "rule_id": "package.firmware.iwlwifi",
       "package": "firmware-iwlwifi",
-      "modules": ["iwl3945", "iwl4965", "iwlwifi"],
-      "classifications": ["network.wifi"],
+      "modules": [
+        "iwl3945",
+        "iwl4965",
+        "iwlwifi"
+      ],
+      "classifications": [
+        "network.wifi"
+      ],
       "description": "Intel wireless devices handled by the iwlwifi, iwl3945 or iwl4965 kernel modules (matched by their kernel module aliases) -> Debian firmware-iwlwifi from non-free-firmware (ADR-0001). A proposal only; nothing is installed.",
       "reason": "Debian firmware-iwlwifi provides the binary firmware for Intel wireless cards supported by the iwlwifi, iwl3945 and iwl4965 drivers."
+    },
+    {
+      "rule_id": "package.firmware.mediatek-wifi",
+      "package": "firmware-mediatek",
+      "modules": [
+        "mt7601u",
+        "mt7615e",
+        "mt7663u",
+        "mt76x0e",
+        "mt76x0u",
+        "mt76x2e",
+        "mt76x2u",
+        "mt7915e",
+        "mt7921e",
+        "mt7921u",
+        "mt7925e",
+        "mt7925u",
+        "mt7996e",
+        "rt2800pci",
+        "rt2800usb",
+        "rt61pci",
+        "rt73usb"
+      ],
+      "classifications": [
+        "network.wifi"
+      ],
+      "evidence_mode": "declared-firmware-closure",
+      "description": "MediaTek and Ralink wireless devices on PCI or USB handled by the mt76-family, mt7601u, rt2800pci/usb, rt61pci or rt73usb kernel modules (matched by their kernel module aliases; their declared firmware is shipped only by firmware-mediatek) -> Debian firmware-mediatek from non-free-firmware (ADR-0001). Bluetooth functions of combo cards are not mapped. A proposal only; nothing is installed.",
+      "reason": "The MediaTek mt76/mt7601u and Ralink rt2x00 wireless drivers request firmware that Debian ships in firmware-mediatek."
+    },
+    {
+      "rule_id": "package.firmware.realtek-wifi",
+      "package": "firmware-realtek",
+      "modules": [
+        "rtl8188ee",
+        "rtl8192ce",
+        "rtl8192cu",
+        "rtl8192de",
+        "rtl8192ee",
+        "rtl8192se",
+        "rtl8723be",
+        "rtl8821ae",
+        "rtl8xxxu",
+        "rtw88_8723de",
+        "rtw88_8723du",
+        "rtw88_8821ce",
+        "rtw88_8821cu",
+        "rtw88_8822be",
+        "rtw88_8822bu",
+        "rtw88_8822ce",
+        "rtw88_8822cu",
+        "rtw89_8851be",
+        "rtw89_8852ae",
+        "rtw89_8852be",
+        "rtw89_8852bte",
+        "rtw89_8852ce",
+        "rtw89_8922ae"
+      ],
+      "classifications": [
+        "network.wifi"
+      ],
+      "evidence_mode": "declared-firmware-closure",
+      "description": "Realtek wireless devices on PCI or USB handled by the rtlwifi, rtl8xxxu, rtw88 or rtw89 kernel modules (matched by their kernel module aliases; their declared firmware is shipped only by firmware-realtek) -> Debian firmware-realtek from non-free-firmware (ADR-0001). Realtek Ethernet, Bluetooth, audio and SDIO devices are not mapped. A proposal only; nothing is installed.",
+      "reason": "The Realtek rtlwifi, rtl8xxxu, rtw88 and rtw89 wireless drivers request firmware that Debian ships in firmware-realtek."
     }
   ],
   "excluded_modules": {
     "brcmsmac": "Only bcma: aliases; the BCMA bus is not representable in inventory v1, and its BCMA cores are also claimed by b43 (firmware from contrib, not authorised). Deferred to a future inventory/schema and firmware-policy review."
+  },
+  "excluded_aliases": {
+    "pci:v000010ECd00008192sv*sd*bc*sc*i*": "Also claimed by r8192e_pci (staging RTL8192E driver), whose declared firmware (RTL8192E/*.img) Debian does not ship; the modalias cannot tell RTL8192SE from RTL8192E, so rtl8192se's mapping excludes this ID.",
+    "usb:v050Dp7050d*dc*dsc*dp*ic*isc*ip*in*": "Belkin ID also claimed by p54usb (declared firmware isl3887usb/isl3886usb not shipped by Debian) and rt2500usb (no firmware); the modalias cannot tell the chip, so rt73usb's mapping excludes this ID."
+  },
+  "reviewed_shared_claims": {
+    "radeon|radeonfb": "radeonfb is the legacy framebuffer driver for the same Radeon chips; it declares and loads no firmware, so firmware-amd-graphics remains the only firmware package for these devices (reviewed in M1-E)."
+  },
+  "reviewed_foreign_requests": {
+    "brcmfmac|brcm/brcmfmac43456-sdio.bin": "Declared by brcmfmac but shipped by raspi-firmware: firmware for an SDIO-only Broadcom chip (Raspberry Pi boards). SDIO is not representable in inventory v1 and not mapped, so it does not affect the PCI/USB brcmfmac mapping (reviewed in M1-F)."
+  },
+  "deferred": {
+    "brcmsmac": "M1-E: only bcma: aliases (BCMA bus not representable in inventory v1); cores also claimed by b43 (contrib firmware).",
+    "r8169, r8152, r8153_ecm (Realtek Ethernet)": "Firmware is loaded only for some chip revisions, which the modalias cannot distinguish (e.g. all RTL8168 variants share 10ec:8168); a per-device firmware requirement cannot be proven.",
+    "btusb + btrtl/btmtk/btintel/btbcm (USB Bluetooth)": "btusb binds Bluetooth controllers of many vendors (generic class and vendor aliases); its dependency closure declares firmware from firmware-realtek, firmware-mediatek and firmware-iwlwifi, so module -> package is ambiguous at the alias level.",
+    "hci_uart (serial Bluetooth)": "Only ACPI/OF/tty-ldisc aliases; not representable in inventory v1.",
+    "ath6kl_sdio, rtw88_8723cs, rtw88_8723ds, rtw88_8821cs, rtw88_8822bs, rtw88_8822cs": "SDIO-only aliases; not representable in inventory v1.",
+    "ath11k_pci, ath12k": "No declared firmware requests (firmware paths are built at runtime from board data); the module -> firmware-file link cannot be established from package-owned module metadata.",
+    "Realtek audio/card-reader firmware in firmware-realtek": "No PCI/USB network or Bluetooth module requests it; audio and card readers are out of M1-F scope.",
+    "bluez-firmware Raspberry Pi/serial firmware": "Only reachable through serial/platform transports; not an amd64 PCI/USB mapping."
   }
 }

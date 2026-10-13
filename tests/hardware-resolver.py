@@ -76,13 +76,18 @@ EXPECTED_PACKAGE_RULES = {
     "package.cpu.intel-microcode": ("GenuineIntel", "intel-microcode"),
     "package.cpu.amd64-microcode": ("AuthenticAMD", "amd64-microcode"),
 }
-# M1-E device firmware rules (generated from qualified kernel module aliases;
+# M1-E/M1-F device firmware rules (generated from qualified kernel evidence;
 # drift is checked by tests/hardware-firmware.py).
 FIRMWARE_PACKAGE_RULES = {
     "package.firmware.amd-graphics": "firmware-amd-graphics",
+    "package.firmware.atheros-bluetooth": "firmware-atheros",
+    "package.firmware.atheros-wifi": "firmware-atheros",
+    "package.firmware.bluez-bcm203x": "bluez-firmware",
     "package.firmware.brcm80211": "firmware-brcm80211",
     "package.firmware.intel-graphics": "firmware-intel-graphics",
     "package.firmware.iwlwifi": "firmware-iwlwifi",
+    "package.firmware.mediatek-wifi": "firmware-mediatek",
+    "package.firmware.realtek-wifi": "firmware-realtek",
 }
 PRODUCTION_PACKAGES = {"intel-microcode", "amd64-microcode", *FIRMWARE_PACKAGE_RULES.values()}
 # Product source policy (ADR-0001). Stated here independently of the
@@ -386,8 +391,9 @@ def production_rule_policy():
     plan = produce(fixture("04-intel-nvidia-hybrid"))
     expect(plan["profiles"] == [] and plan["warnings"] == [], "production plan proposes profiles or warnings")
     expect(plan["source_policy"] == {"authorised": list(PRODUCT_SOURCE_POLICY)}, "source policy")
-    return (f"{len(EXPECTED_PRODUCTION_RULES)} classification rules + 2 CPU + 4 firmware package rules; exact package "
-            "set of 6, all 'require' from non-free-firmware; no profile/warning/forbid")
+    return (f"{len(EXPECTED_PRODUCTION_RULES)} classification rules + 2 CPU + {len(FIRMWARE_PACKAGE_RULES)} firmware "
+            f"package rules; exact package set of {len(PRODUCTION_PACKAGES)}, all 'require' from non-free-firmware; "
+            "no profile/warning/forbid")
 
 
 def _packages(plan):

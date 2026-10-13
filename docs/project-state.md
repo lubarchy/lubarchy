@@ -40,7 +40,8 @@ later installation/configuration → later validation.
 | M1-B | Live read-only hardware probe producing inventory v1 | PASS (CTO accepted) |
 | M1-C | Production resolver and high-confidence classification baseline | PASS (CTO accepted) |
 | M1-D | Debian non-free-firmware policy and CPU microcode package mappings | PASS (CTO accepted) |
-| M1-E | Device-specific firmware mapping baseline | Published (`b316042`); GitHub CI green (run #14); awaiting CTO review |
+| M1-E | Device-specific firmware mapping baseline | PASS (CTO accepted) |
+| M1-F | Second-wave network and Bluetooth firmware qualification | Implemented locally; awaiting CTO review |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
   `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
@@ -126,8 +127,8 @@ later installation/configuration → later validation.
   container's APT sources (still `main` only), change live-build or the ISO,
   map any device firmware (graphics, Wi-Fi, Bluetooth, network) or decide
   NVIDIA driver policy. Packages in a plan are proposals only.
-- M1-E — device-specific firmware mapping baseline: **published; awaiting
-  CTO review** (not PASS). Implementation commit
+- M1-E — device-specific firmware mapping baseline: **PASS** (CTO
+  accepted). Implementation commit
   `b316042a960683fbf44f2279de0754db1b731abb`; `Static gates` run #14
   ([38362588631](https://github.com/lubarchy/lubarchy/actions/runs/38362588631))
   passed all seven gates on that commit. Four firmware families are mapped from
@@ -148,7 +149,26 @@ later installation/configuration → later validation.
   CI's APT sources, change live-build or the ISO, map Realtek, Atheros,
   Bluetooth, NVIDIA or other firmware, or qualify real hardware
   (firmware loading, Wi-Fi association, graphics acceleration).
-- M1-F has not started.
+- M1-F — second-wave network and Bluetooth firmware: **implemented locally;
+  awaiting CTO review** (not PASS). Strengthened evidence chain: device
+  modalias → kernel module alias → binding module and its dependency closure
+  → declared firmware files (package-owned module metadata) → authenticated
+  Debian package ownership (Contents indices and payload manifests). Active:
+  Realtek Wi-Fi (`rtlwifi`, `rtl8xxxu`, `rtw88`, `rtw89` PCI/USB) →
+  `firmware-realtek`; Qualcomm Atheros Wi-Fi (`ar5523`, `ath10k_pci`,
+  `ath6kl_usb`, `wil6210`) and USB Bluetooth (`ath3k`) → `firmware-atheros`;
+  MediaTek/Ralink Wi-Fi (`mt76` family, `mt7601u`, `rt2800pci/usb`,
+  `rt61pci`, `rt73usb`) → `firmware-mediatek`; BCM2033 USB Bluetooth
+  (`bcm203x`) → `bluez-firmware`. Deferred with recorded reasons: Realtek
+  Ethernet (`r8169`, `r8152`, `r8153_ecm`), `btusb`-based Bluetooth,
+  SDIO/serial modules, `ath11k`/`ath12k`. Two ambiguous device IDs are
+  excluded. Firmware evidence moved to the versioned format
+  `lubarchy.hardware.firmware-evidence/v2`; the M1-E rules regenerate
+  unchanged. The production package set is now 10.
+- M1-F does **not** install anything, load modules, change the builder's or
+  CI's APT sources, change live-build or the ISO, map NVIDIA, or qualify real
+  hardware.
+- M1-G has not started.
 
 ## M0 — Minimal reproducible ISO (closed)
 
@@ -305,9 +325,9 @@ not be treated as decided:
 - LUBARCHY package repository
 - Desktop stack
 - Inventory persistence and diagnostics
-- Device firmware mappings beyond the four M1-E families (Realtek,
-  Qualcomm/Atheros, Bluetooth, NVIDIA, MediaTek, Intel sound, BCMA/SDIO
-  devices such as `brcmsmac`)
+- Device firmware mappings deferred by M1-E/M1-F: Realtek Ethernet,
+  `btusb`-based Bluetooth (Realtek, MediaTek, Intel, Broadcom), `ath11k`/
+  `ath12k`, NVIDIA, Intel sound, BCMA/SDIO/serial devices such as `brcmsmac`
 - Activating `non-free-firmware` in the ISO/installed-system sources and
   applying plans (installation)
 - NVIDIA driver strategy
@@ -332,10 +352,9 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-E (device firmware mapping baseline, published as
-`b316042a960683fbf44f2279de0754db1b731abb`; `Static gates` run #14 passed all
-seven gates on that commit; see [testing.md](testing.md)). M1-F has not
-started and waits for a CTO brief.
+CTO review of M1-F (second-wave network and Bluetooth firmware, local commit,
+not yet pushed or run in GitHub CI). M1-G has not started and waits for a CTO
+brief.
 
 ## PASS rule
 

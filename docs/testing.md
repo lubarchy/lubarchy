@@ -376,6 +376,48 @@ normalized case, a duplicate alias, a Realtek, Atheros or NVIDIA firmware
 rule, a seventh package, a firmware source of `main` or `non-free`, a version
 pin, runtime rule generation from `modules.alias`, and an install subprocess.
 
+### M1-F strengthening of the firmware gate
+
+Since M1-F gate 7 has 13 checks and also verifies:
+
+- the evidence is `lubarchy.hardware.firmware-evidence/v2`, its M1-E alias
+  entries equal the committed M1-E v1 evidence, and the four M1-E rules
+  regenerate byte-for-byte from that v1 evidence (migration safety);
+- **firmware-file attribution**: for every M1-F module, every declared
+  firmware file of the binding module and its dependency closure is shipped
+  by the family package or by no package, and at least one by the family
+  package; M1-E families may only have explicitly reviewed foreign requests;
+- **collisions**: no relevant firmware path is shipped by two packages, no
+  alias overlap between rules whose package or classification differs, and
+  every device-specific claim by another module is same-package, reviewed
+  or excluded;
+- the production package set is the six of M1-D/M1-E plus only the M1-F
+  allowlist (`firmware-realtek`, `firmware-atheros`, `firmware-mediatek`,
+  `bluez-firmware`), with no deferred module and no vendor-wide alias;
+- all **2,517** active aliases (1,722 M1-E + 795 M1-F), instantiated as
+  concrete synthetic devices, map to exactly their own package and only their
+  own Wi-Fi/Bluetooth classification;
+- second-wave fixtures (`fw-09`…`fw-15`), a near-miss set (`fw-16`: Realtek
+  Ethernet, card reader, USB audio and USB Ethernet, `ath11k`, both excluded
+  ambiguous IDs, an unqualified Realtek network ID) and a combo-card
+  negative (`fw-17`: MediaTek PCI Wi-Fi gets `firmware-mediatek` and
+  `network.wifi`, its `btusb` Bluetooth half gets nothing);
+- 16 kinds of evidence/rule drift are detected, and the `modules.alias`,
+  Contents and ELF module parsers reject malformed input.
+
+Two M1-E near-miss entries in `fw-08` were replaced in M1-F because the
+devices they used (`168c:003e`, `10ec:c821`) are now correctly qualified by
+`ath10k_pci` and `rtw88_8821ce`.
+
+M1-F mutation coverage (gates 6 and 7): vendor-wide Realtek, Qualcomm and
+MediaTek rules; a wrong package for a qualified module; committed SDIO and
+BCMA aliases; Bluetooth firmware on a Wi-Fi PCI target; a Realtek audio alias
+mapped as network firmware; a dropped alias; a foreign alias; firmware-file
+ownership changed to the wrong package; an unexplained firmware-path
+collision; an unexplained cross-package alias overlap; a package outside the
+allowlist; a `non-free` source; runtime rule generation; an install
+subprocess.
+
 ### Builder firmware requalification (M1-E)
 
 Operator-run on `lubarchy-builder`, never in CI, unprivileged, nothing
@@ -395,6 +437,15 @@ installed and no module loaded:
 4. Run probe → resolve twice; on the QEMU builder no device firmware
    package may appear (only `intel-microcode`), with the usual side-effect
    checks.
+
+Since M1-F the extraction also needs authenticated package data: run the
+isolated APT procedure with Debian **Contents** index targets enabled (APT
+verifies them against the signed `InRelease`), build the firmware-path →
+package table with `/usr/lib/apt/apt-helper cat-file`, download each
+relevant `.deb` only to hash and list its firmware files (then delete it),
+and pass `--module-dir`, `--contents` and `--packages` to
+`check-evidence`. Probe → resolve on the QEMU builder must still propose
+only `intel-microcode`, with no Wi-Fi or Bluetooth classification.
 
 This qualifies alias coverage and package provenance, not real hardware: it
 does not show that firmware loads, Wi-Fi associates or graphics
@@ -476,6 +527,9 @@ run ID
 gates ran and passed: repository lint, ShellCheck, live-build configuration,
 hardware contracts, hardware probe, hardware resolver and hardware firmware.
 CI read only the committed alias evidence, never the runner's kernel modules.
+
+The M1-F change (strengthened gate 7, v2 evidence, five new firmware rules;
+no new dependency) has **not yet run on GitHub**.
 
 ## Clean rebuild comparison
 

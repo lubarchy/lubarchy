@@ -167,6 +167,121 @@ Only the listed kernel modules are mapped: not `intel-ipu6-isys`,
   device-specifically by another module; in particular no `brcmfmac` ID is
   claimed by `bcma`, `b43` or `brcmsmac`.
 
+## Second-wave firmware mappings (M1-F)
+
+Strengthened chain for every active M1-F module: device modalias → binding
+module alias → binding module and its dependency closure → declared firmware
+files → authenticated Debian owner → one `non-free-firmware` package.
+Evidence: [`tools/hwe/module-alias-evidence.json`](../../tools/hwe/module-alias-evidence.json)
+(format `lubarchy.hardware.firmware-evidence/v2`), qualified 2026-10-13 on
+`linux-image-6.12.111+deb13-amd64` 6.12.111-1 (`modules.alias` SHA-256
+`df01d151d286b149b2afa4974686794b0389cb442fb3469cf7a01aec73817699`, identical to M1-E).
+
+- **Module metadata:** `firmware`, `depends` and `alias` read from the
+  package-owned `.ko` files by the tool's ELF reader; equal to `modinfo -F`
+  output for all 54 mapped modules.
+- **File ownership:** Debian Contents indices (`trixie`, `trixie-updates`,
+  `trixie-security`; `main` and `non-free-firmware`) fetched by an isolated
+  APT configuration and verified against the signed InRelease (also checked
+  with `sqv`, 3 of 3); digest of the normalized firmware-path table
+  `sha256:851a7323ee32952e5c7d069b9dbf62f7e041f7cb90e333dc827ac50d7a92f0bb`. Contents and payload manifests agree for every
+  candidate package.
+- **Payloads:** each `.deb` downloaded only for inspection, its SHA-256
+  matched against the signed Packages index, its firmware file list
+  normalized and hashed, then deleted.
+
+| Package | Version | Section | Firmware entries | `.deb` SHA-256 | Manifest SHA-256 |
+| --- | --- | --- | --- | --- | --- |
+| `bluez-firmware` | 1.2-13 | `non-free-firmware/kernel` | 10 files, 0 links | `4dba886ff82067c814f81ec9d675aa0631b497ca8e7d7985694bac6cfe61e825` | `6aa721aaa11df485f60f4175c46df6ae7395353ecb7a382688b78346c880fb91` |
+| `firmware-amd-graphics` | 20250410-2 | `non-free-firmware/kernel` | 677 files, 215 links | `22fa89a699044d92e54c9a3b6d737da4f474245fa2001d3cbc039b74d56ac933` | `29291e6af76aeb9861f4890753ce9e13dbd692d0172575f6fe106dbd087ce8a2` |
+| `firmware-atheros` | 20250410-2 | `non-free-firmware/kernel` | 231 files, 53 links | `8387a45e9307052858185620ab30efebbf9660b072d6c8309673bf112e291f35` | `fe8c913f3f45fa949b8efb4def79911366990db6f8228f4b6050e025a12901a2` |
+| `firmware-brcm80211` | 20250410-2 | `non-free-firmware/kernel` | 74 files, 58 links | `266cc703e2299f5253fd1ff9a1fd625d85a2c8e5a88b1a65fcc190ac384ce3d7` | `2b4745423160dd172fedabae0091231651582a38191bdd53c74bdaf28eec6a0c` |
+| `firmware-intel-graphics` | 20250410-2 | `non-free-firmware/kernel` | 90 files, 10 links | `253d624068b361cfbc43c88b64ec0904fd14de1b704f89bdbe457a2e7edba2dc` | `cf8c11313e55b4a55dd73431418e05cbc6e001834a1d575c9e15c72e67824a75` |
+| `firmware-iwlwifi` | 20250410-2 | `non-free-firmware/kernel` | 117 files, 63 links | `ec0e18c0214abb1402b244c41e8f6769ffb3f4d75486536c007c5bef95f08cf5` | `bac43b64d41fb2d15eed76c401791594fa9029f7899cf160149dd1d94764ce8d` |
+| `firmware-mediatek` | 20250410-2 | `non-free-firmware/kernel` | 107 files, 12 links | `957f82d72d413f4577f45bfad03237b1dd6f8693eddc226ac452f9c5d4187012` | `f03d31935f16db89ab88673436861f6753dfcc9a57840f36ab2d897184f81308` |
+| `firmware-realtek` | 20250410-2 | `non-free-firmware/kernel` | 128 files, 16 links | `925755a9b0891c7dc39bbb73d28ab8f7193d37303b5022e8bc9d458b9b4aaa4e` | `c8dca93f3fbf2404e686dab1c783d349b56a7a5f520e451bf1367ea4af67e343` |
+
+### Active M1-F modules
+
+| Module | Module file | PCI/USB aliases | Declared firmware (closure) | Alias digest |
+| --- | --- | --- | --- | --- |
+| `ath3k` | `bluetooth/ath3k.ko.xz` | 62 | 1 by `firmware-atheros`, 0 unshipped | `sha256:3f277ddc43b76ed5…` |
+| `ar5523` | `net/wireless/ath/ar5523/ar5523.ko.xz` | 55 | 1 by `firmware-atheros`, 2 unshipped | `sha256:c6a582e1217d427a…` |
+| `ath10k_pci` | `net/wireless/ath/ath10k/ath10k_pci.ko.xz` | 9 | 15 by `firmware-atheros`, 8 unshipped | `sha256:d1123be2a9595812…` |
+| `ath6kl_usb` | `net/wireless/ath/ath6kl/ath6kl_usb.ko.xz` | 3 | 2 by `firmware-atheros`, 8 unshipped | `sha256:b4a3daef7b0c7b48…` |
+| `wil6210` | `net/wireless/ath/wil6210/wil6210.ko.xz` | 3 | 2 by `firmware-atheros`, 5 unshipped | `sha256:1e1fa86a3cfc636a…` |
+| `bcm203x` | `bluetooth/bcm203x.ko.xz` | 1 | 2 by `bluez-firmware`, 0 unshipped | `sha256:208d486ad04829b6…` |
+| `mt7601u` | `net/wireless/mediatek/mt7601u/mt7601u.ko.xz` | 17 | 1 by `firmware-mediatek`, 2 unshipped | `sha256:98dbcde40c0e66c1…` |
+| `mt7615e` | `net/wireless/mediatek/mt76/mt7615/mt7615e.ko.xz` | 3 | 7 by `firmware-mediatek`, 2 unshipped | `sha256:d6c6133d2da8ac5b…` |
+| `mt7663u` | `net/wireless/mediatek/mt76/mt7615/mt7663u.ko.xz` | 2 | 4 by `firmware-mediatek`, 2 unshipped | `sha256:3f662eb11c5271ea…` |
+| `mt76x0e` | `net/wireless/mediatek/mt76/mt76x0/mt76x0e.ko.xz` | 3 | 2 by `firmware-mediatek`, 2 unshipped | `sha256:18dd199ff3212178…` |
+| `mt76x0u` | `net/wireless/mediatek/mt76/mt76x0/mt76x0u.ko.xz` | 25 | 2 by `firmware-mediatek`, 2 unshipped | `sha256:4a4543318a5cc36c…` |
+| `mt76x2e` | `net/wireless/mediatek/mt76/mt76x2/mt76x2e.ko.xz` | 3 | 2 by `firmware-mediatek`, 2 unshipped | `sha256:5291a65898162da7…` |
+| `mt76x2u` | `net/wireless/mediatek/mt76/mt76x2/mt76x2u.ko.xz` | 16 | 2 by `firmware-mediatek`, 2 unshipped | `sha256:e9f2bfb5105eec09…` |
+| `mt7915e` | `net/wireless/mediatek/mt76/mt7915/mt7915e.ko.xz` | 4 | 6 by `firmware-mediatek`, 2 unshipped | `sha256:66debc9999520e10…` |
+| `mt7921e` | `net/wireless/mediatek/mt76/mt7921/mt7921e.ko.xz` | 6 | 6 by `firmware-mediatek`, 2 unshipped | `sha256:c75677fd2d916ce7…` |
+| `mt7921u` | `net/wireless/mediatek/mt76/mt7921/mt7921u.ko.xz` | 5 | 2 by `firmware-mediatek`, 2 unshipped | `sha256:c51e5eee55ea516e…` |
+| `mt7925e` | `net/wireless/mediatek/mt76/mt7925/mt7925e.ko.xz` | 2 | 2 by `firmware-mediatek`, 2 unshipped | `sha256:f72be955de438893…` |
+| `mt7925u` | `net/wireless/mediatek/mt76/mt7925/mt7925u.ko.xz` | 3 | 2 by `firmware-mediatek`, 2 unshipped | `sha256:5e299ad827707c97…` |
+| `mt7996e` | `net/wireless/mediatek/mt76/mt7996/mt7996e.ko.xz` | 4 | 8 by `firmware-mediatek`, 2 unshipped | `sha256:8b6ce51fe0ee6d14…` |
+| `rt2800pci` | `net/wireless/ralink/rt2x00/rt2800pci.ko.xz` | 33 | 1 by `firmware-mediatek`, 2 unshipped | `sha256:e73a7fbebf50d393…` |
+| `rt2800usb` | `net/wireless/ralink/rt2x00/rt2800usb.ko.xz` | 276 | 1 by `firmware-mediatek`, 2 unshipped | `sha256:71d0cef1a1c43e0a…` |
+| `rt61pci` | `net/wireless/ralink/rt2x00/rt61pci.ko.xz` | 3 | 3 by `firmware-mediatek`, 2 unshipped | `sha256:6f3f2ba0d56f08ff…` |
+| `rt73usb` | `net/wireless/ralink/rt2x00/rt73usb.ko.xz` | 75 | 1 by `firmware-mediatek`, 2 unshipped | `sha256:05b249845a30b793…` |
+| `rtl8188ee` | `net/wireless/realtek/rtlwifi/rtl8188ee/rtl8188ee.ko.xz` | 1 | 1 by `firmware-realtek`, 2 unshipped | `sha256:e23b123e97e378c4…` |
+| `rtl8192ce` | `net/wireless/realtek/rtlwifi/rtl8192ce/rtl8192ce.ko.xz` | 4 | 3 by `firmware-realtek`, 2 unshipped | `sha256:2e36186869a6555a…` |
+| `rtl8192cu` | `net/wireless/realtek/rtlwifi/rtl8192cu/rtl8192cu.ko.xz` | 72 | 4 by `firmware-realtek`, 2 unshipped | `sha256:b630504c1d6863e1…` |
+| `rtl8192de` | `net/wireless/realtek/rtlwifi/rtl8192de/rtl8192de.ko.xz` | 2 | 1 by `firmware-realtek`, 2 unshipped | `sha256:efb5e7883cb35d5e…` |
+| `rtl8192ee` | `net/wireless/realtek/rtlwifi/rtl8192ee/rtl8192ee.ko.xz` | 1 | 1 by `firmware-realtek`, 2 unshipped | `sha256:9b9a4d0b3ca6d7c3…` |
+| `rtl8192se` | `net/wireless/realtek/rtlwifi/rtl8192se/rtl8192se.ko.xz` | 5 | 1 by `firmware-realtek`, 2 unshipped | `sha256:7a45c9fc60864cdf…` |
+| `rtl8723be` | `net/wireless/realtek/rtlwifi/rtl8723be/rtl8723be.ko.xz` | 1 | 2 by `firmware-realtek`, 2 unshipped | `sha256:7c63984910683d48…` |
+| `rtl8821ae` | `net/wireless/realtek/rtlwifi/rtl8821ae/rtl8821ae.ko.xz` | 2 | 2 by `firmware-realtek`, 2 unshipped | `sha256:9067a18011c06293…` |
+| `rtl8xxxu` | `net/wireless/realtek/rtl8xxxu/rtl8xxxu.ko.xz` | 33 | 13 by `firmware-realtek`, 3 unshipped | `sha256:a2ede1d9435d3952…` |
+| `rtw88_8723de` | `net/wireless/realtek/rtw88/rtw88_8723de.ko.xz` | 1 | 1 by `firmware-realtek`, 2 unshipped | `sha256:5f7c9a4ede60da0d…` |
+| `rtw88_8723du` | `net/wireless/realtek/rtw88/rtw88_8723du.ko.xz` | 2 | 1 by `firmware-realtek`, 2 unshipped | `sha256:607dffaabb939bda…` |
+| `rtw88_8821ce` | `net/wireless/realtek/rtw88/rtw88_8821ce.ko.xz` | 2 | 1 by `firmware-realtek`, 2 unshipped | `sha256:2d795221a5dbdc7c…` |
+| `rtw88_8821cu` | `net/wireless/realtek/rtw88/rtw88_8821cu.ko.xz` | 15 | 1 by `firmware-realtek`, 2 unshipped | `sha256:c42f087dc4804702…` |
+| `rtw88_8822be` | `net/wireless/realtek/rtw88/rtw88_8822be.ko.xz` | 1 | 1 by `firmware-realtek`, 2 unshipped | `sha256:9a021688068636b4…` |
+| `rtw88_8822bu` | `net/wireless/realtek/rtw88/rtw88_8822bu.ko.xz` | 29 | 1 by `firmware-realtek`, 2 unshipped | `sha256:c95bb5959c6d610a…` |
+| `rtw88_8822ce` | `net/wireless/realtek/rtw88/rtw88_8822ce.ko.xz` | 2 | 2 by `firmware-realtek`, 2 unshipped | `sha256:7f166a8c3c34f103…` |
+| `rtw88_8822cu` | `net/wireless/realtek/rtw88/rtw88_8822cu.ko.xz` | 7 | 2 by `firmware-realtek`, 2 unshipped | `sha256:40fe11d0ed664cb1…` |
+| `rtw89_8851be` | `net/wireless/realtek/rtw89/rtw89_8851be.ko.xz` | 1 | 1 by `firmware-realtek`, 2 unshipped | `sha256:f0af69c38bb2a69b…` |
+| `rtw89_8852ae` | `net/wireless/realtek/rtw89/rtw89_8852ae.ko.xz` | 2 | 1 by `firmware-realtek`, 2 unshipped | `sha256:eb2a7e36971f7cb2…` |
+| `rtw89_8852be` | `net/wireless/realtek/rtw89/rtw89_8852be.ko.xz` | 2 | 1 by `firmware-realtek`, 2 unshipped | `sha256:1399c3773f3b196c…` |
+| `rtw89_8852bte` | `net/wireless/realtek/rtw89/rtw89_8852bte.ko.xz` | 1 | 1 by `firmware-realtek`, 2 unshipped | `sha256:34f67274dc099f15…` |
+| `rtw89_8852ce` | `net/wireless/realtek/rtw89/rtw89_8852ce.ko.xz` | 1 | 1 by `firmware-realtek`, 2 unshipped | `sha256:a395e83735855fff…` |
+| `rtw89_8922ae` | `net/wireless/realtek/rtw89/rtw89_8922ae.ko.xz` | 1 | 1 by `firmware-realtek`, 2 unshipped | `sha256:7b82ed77d9cac58e…` |
+
+"Unshipped" requests are files no Debian package provides under that name
+(mostly `cfg80211`'s `regulatory.db`/`regulatory.db.p7s`, and newer firmware
+revisions); no request of an active M1-F module resolves to any other
+package.
+
+### Collision and overlap results
+
+- Firmware files shipped by two packages (among the 8 relevant packages):
+  **none**.
+- Device-alias overlap between rules with different package or
+  classification: **none**.
+- Device-specific claims by other modules: `radeon`/`radeonfb` (reviewed in
+  M1-E, no firmware); `rt73usb`/`p54usb` and `rt73usb`/`rt2500usb` on
+  `usb:v050Dp7050…` and `rtl8192se`/`r8192e_pci` on
+  `pci:v000010ECd00008192…` — both IDs **excluded** from the rules. All other
+  shared claims are within one package (e.g. `mt76x0u`/`mt76x2u`/`mt7601u`/
+  `rt2800usb`, `rtw88_8822bu`/`rtw88_8822cu`).
+- Reviewed foreign request: `brcmfmac` declares
+  `brcm/brcmfmac43456-sdio.bin`, shipped by `raspi-firmware` — an SDIO-only
+  chip, not mapped.
+
+### Status matrix
+
+| Package | Status | Active families | Deferred |
+| --- | --- | --- | --- |
+| `firmware-realtek` | **PARTIAL (active for Wi-Fi)** | rtlwifi, rtl8xxxu, rtw88, rtw89 (PCI/USB) | Ethernet (`r8169`, `r8152`, `r8153_ecm`), Bluetooth (`btusb`/`btrtl`), SDIO `rtw88_*s`, audio/card readers |
+| `firmware-atheros` | **PARTIAL (active)** | `ar5523`, `ath10k_pci`, `ath6kl_usb`, `wil6210` (Wi-Fi); `ath3k` (Bluetooth) | `ath6kl_sdio`, `ath11k`, `ath12k` |
+| `firmware-mediatek` | **PARTIAL (active for Wi-Fi)** | mt76 family, `mt7601u`, rt2x00 (`rt2800pci/usb`, `rt61pci`, `rt73usb`) | Bluetooth (`btusb`/`btmtk`), SoC/media/SDIO |
+| `bluez-firmware` | **PARTIAL (active)** | `bcm203x` (BCM2033 USB Bluetooth) | Raspberry Pi/serial firmware |
+
 ## Not classified in M1-C
 
 - USB devices (Bluetooth, Wi-Fi and others): no production USB rule yet;

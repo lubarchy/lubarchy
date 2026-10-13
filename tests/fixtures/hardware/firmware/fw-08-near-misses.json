@@ -86,22 +86,22 @@
       "bus": "pci",
       "locator": "0000:08:00.0",
       "vendor_id": "10ec",
-      "device_id": "c821",
+      "device_id": "f0d6",
       "subsystem_vendor_id": "10ec",
       "subsystem_device_id": "f1c7",
       "class_id": "028000",
-      "modalias": "pci:v000010ECd0000C821sv000010ECsd0000F1C7bc02sc80i00"
+      "modalias": "pci:v000010ECd0000F0D6sv000010ECsd0000F1C7bc02sc80i00"
     },
     {
       "id": "pci:0000:09:00.0",
       "bus": "pci",
       "locator": "0000:09:00.0",
       "vendor_id": "168c",
-      "device_id": "003e",
+      "device_id": "0032",
       "subsystem_vendor_id": "168c",
       "subsystem_device_id": "f1c8",
       "class_id": "028000",
-      "modalias": "pci:v0000168Cd0000003Esv0000168Csd0000F1C8bc02sc80i00"
+      "modalias": "pci:v0000168Cd00000032sv0000168Csd0000F1C8bc02sc80i00"
     },
     {
       "id": "pci:0000:0a:00.0",

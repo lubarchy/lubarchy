@@ -1,0 +1,152 @@
+{
+  "schema": "lubarchy.hardware.inventory/v1",
+  "system": {
+    "architecture": "amd64",
+    "kernel_release": "6.12.0-fixture-amd64",
+    "boot_firmware": "uefi",
+    "secure_boot": "disabled",
+    "virtualization": {
+      "kind": "none"
+    }
+  },
+  "cpu": {
+    "architecture": "x86_64",
+    "vendor": "SyntheticCPU",
+    "model_name": "Synthetic firmware fixture CPU"
+  },
+  "devices": [
+    {
+      "id": "pci:0000:00:14.0",
+      "bus": "pci",
+      "locator": "0000:00:14.0",
+      "vendor_id": "8086",
+      "device_id": "f008",
+      "subsystem_vendor_id": "8086",
+      "subsystem_device_id": "f108",
+      "class_id": "0c0330",
+      "modalias": "pci:v00008086d0000F008sv00008086sd0000F108bc0Csc03i30"
+    },
+    {
+      "id": "pci:0000:05:00.0",
+      "bus": "pci",
+      "locator": "0000:05:00.0",
+      "vendor_id": "10ec",
+      "device_id": "8168",
+      "subsystem_vendor_id": "10ec",
+      "subsystem_device_id": "f1d1",
+      "class_id": "020000",
+      "modalias": "pci:v000010ECd00008168sv000010ECsd0000F1D1bc02sc00i00"
+    },
+    {
+      "id": "pci:0000:06:00.0",
+      "bus": "pci",
+      "locator": "0000:06:00.0",
+      "vendor_id": "10ec",
+      "device_id": "5227",
+      "subsystem_vendor_id": "10ec",
+      "subsystem_device_id": "f1d2",
+      "class_id": "ff0000",
+      "modalias": "pci:v000010ECd00005227sv000010ECsd0000F1D2bcFFsc00i00"
+    },
+    {
+      "id": "pci:0000:07:00.0",
+      "bus": "pci",
+      "locator": "0000:07:00.0",
+      "vendor_id": "17cb",
+      "device_id": "1103",
+      "subsystem_vendor_id": "17cb",
+      "subsystem_device_id": "f1d3",
+      "class_id": "028000",
+      "modalias": "pci:v000017CBd00001103sv000017CBsd0000F1D3bc02sc80i00"
+    },
+    {
+      "id": "pci:0000:08:00.0",
+      "bus": "pci",
+      "locator": "0000:08:00.0",
+      "vendor_id": "10ec",
+      "device_id": "8192",
+      "subsystem_vendor_id": "10ec",
+      "subsystem_device_id": "f1d4",
+      "class_id": "028000",
+      "modalias": "pci:v000010ECd00008192sv000010ECsd0000F1D4bc02sc80i00"
+    },
+    {
+      "id": "pci:0000:09:00.0",
+      "bus": "pci",
+      "locator": "0000:09:00.0",
+      "vendor_id": "10ec",
+      "device_id": "f0d5",
+      "subsystem_vendor_id": "10ec",
+      "subsystem_device_id": "f1d5",
+      "class_id": "028000",
+      "modalias": "pci:v000010ECd0000F0D5sv000010ECsd0000F1D5bc02sc80i00"
+    },
+    {
+      "id": "usb:1-10",
+      "bus": "usb",
+      "parent": "pci:0000:00:14.0",
+      "locator": "1-10",
+      "vendor_id": "0bda",
+      "product_id": "8153",
+      "device_class": "00",
+      "device_subclass": "00",
+      "device_protocol": "00",
+      "interfaces": [
+        {
+          "number": "00",
+          "class": "ff",
+          "subclass": "ff",
+          "protocol": "00",
+          "modalias": "usb:v0BDAp8153d3000dc00dsc00dp00icFFiscFFip00in00"
+        }
+      ]
+    },
+    {
+      "id": "usb:1-8",
+      "bus": "usb",
+      "parent": "pci:0000:00:14.0",
+      "locator": "1-8",
+      "vendor_id": "050d",
+      "product_id": "7050",
+      "device_class": "00",
+      "device_subclass": "00",
+      "device_protocol": "00",
+      "interfaces": [
+        {
+          "number": "00",
+          "class": "ff",
+          "subclass": "ff",
+          "protocol": "ff",
+          "modalias": "usb:v050Dp7050d0100dc00dsc00dp00icFFiscFFipFFin00"
+        }
+      ]
+    },
+    {
+      "id": "usb:1-9",
+      "bus": "usb",
+      "parent": "pci:0000:00:14.0",
+      "locator": "1-9",
+      "vendor_id": "0bda",
+      "product_id": "4014",
+      "device_class": "00",
+      "device_subclass": "00",
+      "device_protocol": "00",
+      "interfaces": [
+        {
+          "number": "00",
+          "class": "01",
+          "subclass": "01",
+          "protocol": "00",
+          "modalias": "usb:v0BDAp4014d0100dc00dsc00dp00ic01isc01ip00in00"
+        },
+        {
+          "number": "01",
+          "class": "01",
+          "subclass": "02",
+          "protocol": "00",
+          "modalias": "usb:v0BDAp4014d0100dc00dsc00dp00ic01isc02ip00in01"
+        }
+      ]
+    }
+  ]
+}

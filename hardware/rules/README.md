@@ -38,23 +38,40 @@ loaded only by the production resolver (`hardware/resolver.py`).
 | `package.firmware.amd-graphics` | `amdgpu`, `radeon` PCI aliases | `firmware-amd-graphics` (`non-free-firmware`) | — |
 | `package.firmware.brcm80211` | `brcmfmac` PCI and USB aliases | `firmware-brcm80211` (`non-free-firmware`) | `network.wifi` |
 
-These four files are **generated, not hand-edited**: they come from the
+## Second-wave firmware mappings (M1-F)
+
+| Rule | Matches (kernel module aliases) | Package (component) | Classification |
+| --- | --- | --- | --- |
+| `package.firmware.realtek-wifi` | Realtek rtlwifi, rtl8xxxu, rtw88, rtw89 PCI/USB aliases | `firmware-realtek` (`non-free-firmware`) | `network.wifi` |
+| `package.firmware.atheros-wifi` | `ar5523`, `ath10k_pci`, `ath6kl_usb`, `wil6210` PCI/USB aliases | `firmware-atheros` (`non-free-firmware`) | `network.wifi` |
+| `package.firmware.atheros-bluetooth` | `ath3k` USB aliases | `firmware-atheros` (`non-free-firmware`) | `bluetooth.controller` |
+| `package.firmware.mediatek-wifi` | mt76 family, `mt7601u`, rt2x00 PCI/USB aliases | `firmware-mediatek` (`non-free-firmware`) | `network.wifi` |
+| `package.firmware.bluez-bcm203x` | `bcm203x` USB alias | `bluez-firmware` (`non-free-firmware`) | `bluetooth.controller` |
+
+M1-F families additionally require that each module's declared firmware
+(including its dependency closure) is shipped by the family package and by
+no other package, verified against authenticated Debian Contents indices and
+package payloads.
+
+All nine firmware files are **generated, not hand-edited**: they come from the
 committed kernel alias evidence and `tools/hwe/firmware-mappings.json`
 through `tools/hwe/qualify-firmware-mappings.py write-rules`, and the
 static gate fails if they drift from what that evidence regenerates. Each
 matches only verbatim kernel module aliases (`modalias` selectors); none
 matches a vendor or class alone. After a kernel update they must be
-requalified. `brcmsmac` (BCMA bus), SDIO devices, Realtek, Atheros,
-Bluetooth and NVIDIA are not mapped.
+requalified. `brcmsmac` (BCMA bus), SDIO/serial devices, Realtek Ethernet,
+`btusb`-based Bluetooth, `ath11k`/`ath12k` and NVIDIA are not mapped.
 
 Every production rule has priority 100. Production rules may carry only
 classifications and `require` package effects from an authorised source
 (`main`, `non-free-firmware`; [ADR-0001](../../docs/decisions/0001-non-free-firmware.md)).
 The resolver refuses a production rule set with any other effect (`forbid`,
 profiles, warnings) or source, and the static gates require the production
-package set to be exactly `{intel-microcode, amd64-microcode,
-firmware-iwlwifi, firmware-intel-graphics, firmware-amd-graphics,
-firmware-brcm80211}`. Packages in a
+package set to be the six of M1-D/M1-E (`intel-microcode`,
+`amd64-microcode`, `firmware-iwlwifi`, `firmware-intel-graphics`,
+`firmware-amd-graphics`, `firmware-brcm80211`) plus only M1-F's allowlist
+(`firmware-realtek`, `firmware-atheros`, `firmware-mediatek`,
+`bluez-firmware`) — currently all ten. Packages in a
 plan are proposals; nothing installs them yet. Other device firmware packages are
 candidates only (see [SOURCES.md](SOURCES.md)). Identifier and package
 provenance is in [SOURCES.md](SOURCES.md).
