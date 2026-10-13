@@ -106,6 +106,12 @@ Btrfs preferred, pending validation.
 
 ### P-009 — Application delivery UX
 
+### Proposed: NVIDIA driver strategy (ADR-0002)
+
+[ADR-0002](decisions/0002-nvidia-driver-strategy.md) is **Proposed**, not
+accepted: M1-G architecture evidence for a CTO decision. It authorises no
+NVIDIA source, key, package or rule.
+
 ## Decision process
 
 1. Gather authoritative upstream evidence.

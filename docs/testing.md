@@ -65,7 +65,7 @@ A clean rebuild must succeed from the same commit.
 | --- | --- |
 | Repository lint | `tests/repo-lint.sh` (M0-I) |
 | shellcheck | Every tracked shell script, via `tests/run-static.sh` (M0-I) |
-| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I); hardware contracts added in M1-A; hardware probe added in M1-B; hardware resolver added in M1-C; hardware firmware added in M1-E |
+| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I); hardware contracts added in M1-A; hardware probe added in M1-B; hardware resolver added in M1-C; hardware firmware added in M1-E; hardware NVIDIA strategy added in M1-G |
 | GitHub CI | `.github/workflows/m0-static.yml` runs `tests/run-static.sh` on GitHub Actions (green since M0-J) |
 | `live-build` configuration validation | `tests/live-build-config.sh` (M0-E) |
 | ISO build | Manual, from the committed configuration (M0-F) |
@@ -450,6 +450,60 @@ only `intel-microcode`, with no Wi-Fi or Bluetooth classification.
 This qualifies alias coverage and package provenance, not real hardware: it
 does not show that firmware loads, Wi-Fi associates or graphics
 acceleration works.
+
+## M1 hardware NVIDIA strategy gate
+
+`tests/nvidia-strategy.py` (gate 8 of `tests/run-static.sh`, since M1-G) has
+14 checks and uses committed files only (no network, no new dependency):
+
+- `hardware/nvidia/evidence-v1.json` is canonical and complete; strategy
+  scores are in range; tiers use only recommended strategies; no
+  strategy is an automatic default, and no tier claims production
+  qualification. Strategy C is an opt-in proposal never offered to legacy
+  GPU classes;
+- Nouveau is a baseline/fallback candidate, never a qualified default:
+  per-generation status is `limited` (legacy classes), `fallback-candidate`
+  (Turing to Hopper) or `not-yet-qualified` (Blackwell); no row is
+  production-qualified. The ADR states the Mesa 25.0.7 baseline, and
+  Nouveau-default overclaims in the ADR and docs fail the gate;
+- the signing-key record includes the 404 fallback URL and the
+  index-exposed `8793F200.pub` (same full fingerprint), marks neither as a
+  trust anchor and requires full-fingerprint verification through an
+  explicitly qualified mechanism. Claims that the keyring package is the
+  key's sole channel fail the gate;
+- with open Debian security issues recorded, strategies A/B (Debian 550) are
+  never recommended or automatic; no DKMS path is automatic while P-006 is
+  undecided;
+- NVIDIA repository facts (fingerprint and hash formats, branches vs.
+  versions vs. pinning packages, missing `Valid-Until` recorded) are
+  consistent;
+- `hardware/nvidia/supported-gpus-v1.json` is canonical and self-consistent
+  (`tools/hwe/normalize-nvidia-gpus.py check`), matches the evidence's
+  provenance and generation matrix, and classifies well-known PCI IDs
+  correctly. Four snapshot mutations must be rejected;
+- the simulations record the key risks (`dkms` takeover, flavor switch,
+  Nouveau blacklist, missing headers);
+- ADR-0002 is Proposed and the register has no accepted NVIDIA decision;
+- the production package set is exactly the 10 packages and none is NVIDIA,
+  `class.gpu.nvidia` stays classification-only, there is no `gpu.hybrid`, the
+  source policy is `main` + `non-free-firmware`, no tracked file outside the
+  evidence names NVIDIA's repository or key, no key file is tracked, and the
+  live-build configuration enables no `contrib`/`non-free` or NVIDIA package;
+- the resolver, `resolve.py` and the probe never read the NVIDIA evidence.
+
+### Isolated NVIDIA APT simulations (M1-G, builder only)
+
+The strategy evidence comes from `apt-get -s` runs on the builder, each with
+its own `Dir::State`, `Dir::Etc` and status copy (the system `/etc/apt` and
+dpkg database are never written), Debian sources `Signed-By` the Debian
+archive keyring and the NVIDIA repository `Signed-By` a dedicated copy of the
+key extracted from `cuda-keyring` (full fingerprint
+`02182E60104FCDC26EAE1B8597A5D4CB8793F200` checked; this is test-only and
+not a qualified bootstrap mechanism). Upgrade, downgrade and removal paths use
+synthetic installed states built from authenticated index metadata, with
+auto-install marks. Downloaded `.deb` files are only hashed and listed, then
+deleted. This qualifies package resolution and provenance, not drivers: no
+module is built or loaded and no GPU is involved.
 
 ## GitHub CI
 

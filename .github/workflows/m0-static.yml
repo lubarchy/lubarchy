@@ -1,10 +1,11 @@
 # LUBARCHY static quality gates (repository lint, ShellCheck, live-build
 # configuration, hardware contracts, hardware probe, hardware resolver,
-# hardware firmware). Static checks only: this workflow never builds an ISO,
-# never probes the runner's hardware and never reads the runner kernel's module
-# aliases (the hardware gates use synthetic inputs and committed evidence),
-# uses no secrets, needs no privileges and publishes nothing. The file name is
-# kept from M0 to avoid churn.
+# hardware firmware, hardware NVIDIA strategy). Static checks only: this
+# workflow never builds an ISO, never probes the runner's hardware, never
+# reads the runner kernel's module aliases and never contacts NVIDIA
+# (the hardware gates use synthetic inputs and committed evidence), uses
+# no secrets, needs no privileges and publishes nothing. The file name
+# is kept from M0 to avoid churn.
 name: Static gates
 
 on:

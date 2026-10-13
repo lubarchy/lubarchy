@@ -3,7 +3,7 @@
 Requirements for LUBARCHY hardware enablement. Hardware enablement is a
 first-class subsystem (D-008).
 
-**Status (M1-F):** the data and policy contracts — inventory v1, rule v1 and
+**Status (M1-G):** the data and policy contracts — inventory v1, rule v1 and
 plan v1 — are defined and tested (M1-A). A read-only live probe,
 `hardware/probe.py`, turns a running system into an inventory v1 document
 (M1-B, see [Live probe](#live-probe-m1-b)). A production resolver turns that
@@ -17,6 +17,9 @@ families are mapped from qualified kernel module aliases (M1-E, see
 network and Bluetooth families follow under a stronger firmware-file
 evidence chain (M1-F, see
 [Second-wave firmware mappings](#second-wave-firmware-mappings-m1-f)).
+The NVIDIA driver strategy is qualified as architecture evidence only, in
+the Proposed ADR-0002 (M1-G, see
+[NVIDIA driver strategy evidence](#nvidia-driver-strategy-evidence-m1-g)).
 **Packages in a plan are proposals only: nothing installs, enables a source
 or configures anything yet.** Further firmware families, installation,
 configuration and validation are later M1 work.
@@ -541,7 +544,9 @@ M1-D therefore neither authorises nor maps `nvidia-driver`,
 NVIDIA driver-stack package; none of them is available from the authorised
 sources. The existence of NVIDIA firmware packages in `non-free-firmware`
 does not decide the NVIDIA driver strategy, which receives a separate review.
-M1-E keeps this boundary: no NVIDIA firmware or driver is mapped.
+M1-E keeps this boundary: no NVIDIA firmware or driver is mapped. M1-G
+gathers the strategy evidence without changing the boundary (see
+[NVIDIA driver strategy evidence](#nvidia-driver-strategy-evidence-m1-g)).
 
 ## Device firmware mappings (M1-E)
 
@@ -737,6 +742,52 @@ are never mapped; inventory v1 does not represent them.
 `raspi-firmware`. It is firmware for an SDIO-only chip (not mapped), so it
 does not affect the PCI/USB `brcmfmac` mapping; it is recorded as a reviewed
 foreign request. M1-E families keep their original evidence mode.
+
+## NVIDIA driver strategy evidence (M1-G)
+
+M1-G qualifies the NVIDIA driver options as **architecture evidence only**:
+[ADR-0002](decisions/0002-nvidia-driver-strategy.md) is **Proposed** and
+nothing is authorised. No NVIDIA source, package, kernel module or production
+rule exists. `class.gpu.nvidia` stays classification-only, the production
+package set stays at 10, and the source policy stays `main` +
+`non-free-firmware`.
+
+- Evidence: [hardware/nvidia/](../hardware/nvidia/README.md):
+  `evidence-v1.json` (`lubarchy.hardware.nvidia-evidence/v1`) and a normalized
+  snapshot of NVIDIA's `supported-gpus.json` (`supported-gpus-v1.json`,
+  `lubarchy.hardware.nvidia-gpu-snapshot/v1`, 2,322 entries with provenance
+  hashes). Neither is read by the resolver, the probe or any rule.
+- Strategies compared: Debian Stable 550 (A), `trixie-backports` 550 (B),
+  NVIDIA's signed Debian 13 repository (C), Nouveau (D). Debian 550 has 93
+  open security issues in trixie with no DSA, so A and B are not recommended.
+- Support classes derived from the snapshot: `legacy-older`, `legacy-470`
+  (Kepler), `legacy-580` (Maxwell/Pascal/Volta), `open-or-proprietary`
+  (Turing to Hopper), `open-only` (Blackwell and later). NVIDIA's Debian 13
+  repository carries branches 590 to 615 only, so it covers the last two
+  classes only.
+- Isolated APT simulations on the builder (test-only state, nothing
+  installed) record installs, upgrades, the pinned downgrade, removals, the
+  i386 libraries, and the takeover of Debian's NVIDIA packages and `dkms`
+  when NVIDIA's repository is enabled.
+- Proposed tier model: Nouveau (in Debian `main`) as a **baseline/fallback
+  candidate**, not a qualified default. Per generation it is limited
+  (Kepler and older, Maxwell/Pascal/Volta), a fallback candidate
+  (Turing to Hopper) or not yet qualified (Blackwell), on trixie's kernel
+  6.12 and Mesa 25.0.7. Strategy C would be an opt-in for Turing and later
+  (Proposed only), after a D-005 exception, P-006 (Secure Boot), a
+  kernel-update/rollback gate (M4) and real-hardware qualification (M7). No
+  NVIDIA generation is production-qualified without real-hardware evidence.
+- NVIDIA signing key: the documented `cuda-archive-keyring.gpg` fallback
+  URL returned 404 during qualification, and the repository index also
+  exposes `8793F200.pub`. Neither is a trust anchor: any future bootstrap
+  must verify the full fingerprint
+  `02182E60104FCDC26EAE1B8597A5D4CB8793F200` through an explicitly qualified
+  mechanism.
+- Hybrid and multi-GPU stay out of scope. Future inventory observations
+  (`boot_vga`, DRM card/render nodes, connector ownership, PCI power state)
+  are recommended for a later inventory-v2 proposal; no schema changes.
+- Gate 8 (`tests/nvidia-strategy.py`) enforces the boundary and the
+  evidence consistency using committed files only.
 
 ## Hardware classes
 

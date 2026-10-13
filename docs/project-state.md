@@ -41,7 +41,9 @@ later installation/configuration → later validation.
 | M1-C | Production resolver and high-confidence classification baseline | PASS (CTO accepted) |
 | M1-D | Debian non-free-firmware policy and CPU microcode package mappings | PASS (CTO accepted) |
 | M1-E | Device-specific firmware mapping baseline | PASS (CTO accepted) |
-| M1-F | Second-wave network and Bluetooth firmware qualification | Published (`d56d6eb`); GitHub CI green (run #16); awaiting CTO review |
+| M1-F | Second-wave network and Bluetooth firmware qualification | PASS (CTO accepted) |
+| M1-G | NVIDIA driver strategy qualification and architecture decision evidence | Implemented locally; awaiting CTO review (ADR-0002 Proposed) |
+| M1-H | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
   `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
@@ -149,8 +151,8 @@ later installation/configuration → later validation.
   CI's APT sources, change live-build or the ISO, map Realtek, Atheros,
   Bluetooth, NVIDIA or other firmware, or qualify real hardware
   (firmware loading, Wi-Fi association, graphics acceleration).
-- M1-F — second-wave network and Bluetooth firmware: **published; awaiting
-  CTO review** (not PASS). Implementation commit
+- M1-F — second-wave network and Bluetooth firmware: **PASS** (CTO
+  accepted). Implementation commit
   `d56d6eb4c5a61ab0e10f37b23635cf3a8fa8485c`; `Static gates` run #16
   ([38372395051](https://github.com/lubarchy/lubarchy/actions/runs/38372395051))
   passed all seven gates on that commit. Strengthened evidence chain: device
@@ -171,7 +173,25 @@ later installation/configuration → later validation.
 - M1-F does **not** install anything, load modules, change the builder's or
   CI's APT sources, change live-build or the ISO, map NVIDIA, or qualify real
   hardware.
-- M1-G has not started.
+- M1-G — NVIDIA driver strategy qualification and architecture decision
+  evidence: **implemented locally; awaiting CTO review** (not PASS, not
+  pushed). [ADR-0002](decisions/0002-nvidia-driver-strategy.md) is
+  **Proposed** and decides nothing. The evidence compares Debian Stable 550,
+  `trixie-backports`, NVIDIA's signed Debian 13 repository and Nouveau:
+  sources, signing, branches, security state (93 open trixie issues for
+  Debian 550, no DSA), GPU generation support, Wayland, Secure Boot,
+  kernel-update and rollback requirements, and isolated test-only APT
+  simulations. Committed under `hardware/nvidia/` with a normalized NVIDIA
+  supported-GPU snapshot that is not used in production. Gate 8
+  (`tests/nvidia-strategy.py`) enforces the evidence consistency and the
+  policy boundary. Details:
+  [hardware-enablement.md](hardware-enablement.md#nvidia-driver-strategy-evidence-m1-g).
+- M1-G does **not** authorise or add any NVIDIA source, key, package, driver,
+  kernel module or production rule. It does not enable `contrib`/`non-free`/
+  Backports, change the builder's, the ISO's or the CI's APT sources, install
+  anything, build DKMS modules, load modules, add `gpu.hybrid`, change the
+  hardware schemas, or decide P-006.
+- M1-H has not started and waits for a CTO brief.
 
 ## M0 — Minimal reproducible ISO (closed)
 
@@ -333,7 +353,7 @@ not be treated as decided:
   `ath12k`, NVIDIA, Intel sound, BCMA/SDIO/serial devices such as `brcmsmac`
 - Activating `non-free-firmware` in the ISO/installed-system sources and
   applying plans (installation)
-- NVIDIA driver strategy
+- NVIDIA driver strategy (evidence in M1-G; ADR-0002 Proposed, not decided)
 - Hybrid/multi-GPU composition and USB device classification
 - Installer
 - Recovery implementation
@@ -355,10 +375,9 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-F (second-wave network and Bluetooth firmware, published as
-`d56d6eb4c5a61ab0e10f37b23635cf3a8fa8485c`; `Static gates` run #16 passed all
-seven gates on that commit; see [testing.md](testing.md)). M1-G has not
-started and waits for a CTO brief.
+CTO review of M1-G (NVIDIA driver strategy evidence; ADR-0002 Proposed),
+which is a local commit only and is not yet pushed or CI-qualified. M1-H has
+not started and waits for a CTO brief.
 
 ## PASS rule
 

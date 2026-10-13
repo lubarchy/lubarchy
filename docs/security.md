@@ -40,6 +40,14 @@ The threat model will be refined as the architecture develops.
 - External repositories require a security review and CTO decision.
 - Fail closed on signature or authenticity failures.
 - No production `curl | sh` installation paths.
+- NVIDIA drivers (M1-G evidence,
+  [ADR-0002](decisions/0002-nvidia-driver-strategy.md), **Proposed**): no
+  NVIDIA source, key or package is authorised. Debian Stable's
+  `nvidia-graphics-drivers` 550 has 93 open security issues in trixie with no
+  DSA and must not become an automatic default. NVIDIA's own repository would
+  need a bounded D-005 exception: a dedicated key, an allowlist, branch
+  pinning and a compensating control for its missing `Valid-Until`. It also
+  overrides Debian's `dkms` unless pinned away.
 
 ## Build security
 
@@ -66,6 +74,10 @@ See [installer.md](installer.md).
 - Bootloader architecture: TBD (P-001).
 - Secure Boot ownership and key model: TBD (P-006). **Secure Boot is not
   implemented.**
+- DKMS-built third-party kernel modules (for example NVIDIA's) need MOK
+  enrollment under Secure Boot. No such driver may be automatic before P-006
+  is decided, and disabling Secure Boot is not an accepted workaround
+  (ADR-0002, Proposed).
 
 ## Encryption status
 

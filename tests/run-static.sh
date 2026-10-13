@@ -7,6 +7,7 @@
 #   5. tests/hardware-probe.py (M1 read-only probe, synthetic sysfs only)
 #   6. tests/hardware-resolver.py (M1 production resolver and rules, synthetic only)
 #   7. tests/hardware-firmware.py (M1 device firmware mappings vs committed kernel alias evidence)
+#   8. tests/nvidia-strategy.py (M1-G NVIDIA strategy evidence and policy boundary, committed evidence only)
 # Stops at the first failing gate. Never builds an image, touches libvirt or
 # probes the host's hardware; needs git, shellcheck, live-build, python3 and
 # python3-jsonschema but not root.
@@ -62,4 +63,5 @@ run_gate "hardware contracts" tests/hardware-contracts.py
 run_gate "hardware probe" tests/hardware-probe.py
 run_gate "hardware resolver" tests/hardware-resolver.py
 run_gate "hardware firmware" tests/hardware-firmware.py
+run_gate "hardware NVIDIA strategy" tests/nvidia-strategy.py
 echo "PASS: all static gates"

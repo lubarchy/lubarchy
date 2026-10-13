@@ -73,7 +73,10 @@ Debian archive components: `main`, plus `non-free-firmware` for hardware
 enablement ([ADR-0001](decisions/0001-non-free-firmware.md), D-013). `contrib`
 and `non-free` are not authorised. The builder, live-build configuration and
 CI still use `main` only; activating `non-free-firmware` in the ISO or
-installed system is later integration work.
+installed system is later integration work. The NVIDIA driver strategy,
+including whether NVIDIA's own repository may become a D-005 exception, is
+evidence in the Proposed [ADR-0002](decisions/0002-nvidia-driver-strategy.md)
+(M1-G) and is not decided.
 
 ## ISO architecture
 
@@ -143,6 +146,7 @@ recovery path. The update system design is a later milestone (M6).
 | Installer technology | TBD (P-004) |
 | Hyprland sourcing/version policy | TBD (P-005) |
 | Secure Boot ownership/key model | TBD (P-006) |
+| NVIDIA driver strategy | Evidence gathered (M1-G); ADR-0002 Proposed, not decided |
 | LUBARCHY repository infrastructure | TBD (P-007) |
 | Release cadence/support policy | TBD (P-008) |
 | Application delivery UX | TBD (P-009) |

@@ -1,0 +1,559 @@
+{
+  "adr": {
+    "path": "docs/decisions/0002-nvidia-driver-strategy.md",
+    "status": "Proposed"
+  },
+  "authorised_sources_unchanged": [
+    "main",
+    "non-free-firmware"
+  ],
+  "debian": {
+    "blackwell_supported": false,
+    "bugs": [
+      {
+        "id": 1143204,
+        "state": "open (pending)",
+        "summary": "nvidia-open-kernel-dkms 550.163.01 fails to build against linux-image-6.12.100+deb13-amd64 (pci_resize_resource API change)"
+      },
+      {
+        "id": 1135241,
+        "state": "open",
+        "summary": "550 driver fails to load nvidia_drm on 6.12.74, system freeze"
+      },
+      {
+        "id": 1148283,
+        "state": "open",
+        "summary": "nvidia-kernel-dkms fails to build on linux 7.2 headers"
+      },
+      {
+        "id": 1148493,
+        "state": "open",
+        "summary": "dkms ftbfs with gcc-16"
+      }
+    ],
+    "open_flavor_builds_on_current_trixie_kernel": false,
+    "security": {
+      "grave_security_bug": 1149642,
+      "grave_security_bug_state": "open",
+      "newest_open": "CVE-2026-47604",
+      "open_issues_by_year": {
+        "2024": 3,
+        "2025": 9,
+        "2026": 81
+      },
+      "open_issues_trixie": 93,
+      "open_issues_trixie_no_dsa": 93
+    },
+    "versions": {
+      "oldstable": "535.261.03-1",
+      "stable": "550.163.01-2",
+      "stable-backports": "550.163.01-4~bpo13+1",
+      "testing": "550.163.01-5.1",
+      "unstable": "550.163.01-5.1"
+    },
+    "wiki_statement": "This version is no longer maintained and contains several security issues. It should be used only in properly isolated, trusted environments."
+  },
+  "desktop": {
+    "explicit_sync_min_driver": "555",
+    "fbdev_default_since": "570.86.16",
+    "hyprland_in_trixie": false,
+    "kwin_explicit_sync_since": "6.1",
+    "kwin_min_driver": "495.44",
+    "nvidia_drm_modeset_required": true,
+    "xwayland_min": "24.1"
+  },
+  "generation_matrix": [
+    {
+      "debian_550": false,
+      "fallback": "framebuffer",
+      "generation": "Fermi and older",
+      "gsp": false,
+      "nouveau_status": "limited",
+      "nvidia_repo_c": false,
+      "open_modules": false,
+      "production_qualified": false,
+      "proposed_path": "D-limited",
+      "support_class": "legacy-older",
+      "support_state": "end-of-life"
+    },
+    {
+      "debian_550": false,
+      "fallback": "framebuffer",
+      "generation": "Kepler",
+      "gsp": false,
+      "nouveau_status": "limited",
+      "nvidia_repo_c": false,
+      "open_modules": false,
+      "production_qualified": false,
+      "proposed_path": "D-limited",
+      "support_class": "legacy-470",
+      "support_state": "end-of-life"
+    },
+    {
+      "debian_550": true,
+      "fallback": "framebuffer",
+      "generation": "Maxwell, Pascal, Volta",
+      "gsp": false,
+      "nouveau_status": "limited",
+      "nvidia_repo_c": false,
+      "open_modules": false,
+      "production_qualified": false,
+      "proposed_path": "D-limited",
+      "support_class": "legacy-580",
+      "support_state": "legacy-580 outside compliant sources"
+    },
+    {
+      "debian_550": true,
+      "fallback": "D-fallback-candidate",
+      "generation": "Turing, Ampere, Ada, Hopper",
+      "gsp": true,
+      "nouveau_status": "fallback-candidate",
+      "nvidia_repo_c": true,
+      "open_modules": true,
+      "production_qualified": false,
+      "proposed_path": "C-opt-in-proposed",
+      "support_class": "open-or-proprietary",
+      "support_state": "maintained"
+    },
+    {
+      "debian_550": false,
+      "fallback": "framebuffer",
+      "generation": "Blackwell and newer",
+      "gsp": true,
+      "nouveau_status": "not-yet-qualified",
+      "nvidia_repo_c": true,
+      "open_modules": true,
+      "production_qualified": false,
+      "proposed_path": "C-opt-in-proposed",
+      "support_class": "open-only",
+      "support_state": "maintained"
+    }
+  ],
+  "gpu_snapshot": {
+    "path": "hardware/nvidia/supported-gpus-v1.json",
+    "production_use": false
+  },
+  "hybrid": {
+    "future_inventory_observations": [
+      "boot_vga",
+      "drm_card_nodes",
+      "drm_render_nodes",
+      "connector_ownership",
+      "pci_power_state"
+    ],
+    "in_scope": false,
+    "recommendation": "inventory-v2 proposal later; no schema change in M1-G"
+  },
+  "milestone": "M1-G",
+  "nouveau_baseline": {
+    "kernel": "6.12.111+deb13-amd64",
+    "mesa": "25.0.7-2+deb13u1",
+    "note": "upstream Nouveau/NVK support milestones are newer than this baseline; Nouveau is a baseline/fallback candidate, not a qualified default",
+    "qualified_default": false
+  },
+  "nouveau_status_vocabulary": {
+    "fallback-candidate": "expected to give a basic desktop on the trixie baseline; not qualified",
+    "limited": "known functional limits (no reclocking, legacy hardware)",
+    "not-yet-qualified": "support on the trixie baseline is not established"
+  },
+  "nvidia_repo": {
+    "cuda_keyring_deb_sha256": "d0d4ef986a44400f9db33c600ef33a985175e7cc63d805a10e1839c7a1e78f5f",
+    "desktop_only_install": [
+      "nvidia-driver",
+      "nvidia-kernel-open-dkms"
+    ],
+    "driver_branches": [
+      "590",
+      "595",
+      "610",
+      "615"
+    ],
+    "driver_versions": [
+      "590.44.01-1",
+      "590.48.01-1",
+      "595.45.04-1",
+      "595.58.03-1",
+      "595.71.05-1",
+      "595.91.07-1",
+      "610.43.02-1",
+      "610.57.04-1",
+      "615.71.09-1",
+      "615.71.09-2"
+    ],
+    "fixed_versions_for_2026_cves": "unverified (secondary sources only)",
+    "inrelease_sha256": "82230e8b67b8de5807495bfc8586007e0ae9a733b471c071c59bd5ebe2c4608b",
+    "inrelease_signature": "good",
+    "key_distribution": {
+      "cuda_keyring_package": "cuda-keyring 1.1-1 fetched over HTTPS (NVIDIA guide's primary method); description gives short ID 8793F200 only",
+      "documented_fallback_http_status": 404,
+      "documented_fallback_url": "https://developer.download.nvidia.com/compute/cuda/repos/debian13/x86_64/cuda-archive-keyring.gpg",
+      "independent_trust_anchor": false,
+      "index_pubkey_file": "8793F200.pub",
+      "index_pubkey_fingerprint": "02182E60104FCDC26EAE1B8597A5D4CB8793F200",
+      "index_pubkey_sha256": "09edb5196bca272c091633d4e04dd6c8f3a07278834868220aa669c895f6cfd7",
+      "observed": "2026-10-13",
+      "trust_requirement": "Neither channel changes the trust decision: any future repository bootstrap must verify the expected full fingerprint 02182E60104FCDC26EAE1B8597A5D4CB8793F200 through an explicitly qualified mechanism."
+    },
+    "keyring_sha256": "77f0992eb9dfa444422b86e9857599df03172b2b0f9cf58047bc49ff66034bbe",
+    "layout": "flat",
+    "legacy_580_branch_present": false,
+    "package_count": 554,
+    "packages_gz_sha256": "42ef77bb96d8a145905a61bd02a3c87d7230b4438346f19463680aaa52f87578",
+    "pinning_packages": [
+      "nvidia-driver-pinning-590",
+      "nvidia-driver-pinning-595",
+      "nvidia-driver-pinning-610",
+      "nvidia-driver-pinning-615"
+    ],
+    "proprietary_flavor_615": "nvidia-kernel-dkms is a transitional dummy depending on nvidia-kernel-open-dkms",
+    "proprietary_flavor_last_branch": "610",
+    "release_date": "Fri, 09 Oct 2026 19:11:44 +0000",
+    "release_fields_missing": [
+      "Codename",
+      "Suite",
+      "Valid-Until"
+    ],
+    "signing_key": {
+      "algorithm": "RSA",
+      "bits": 4096,
+      "created": "2025-08-15",
+      "expires": null,
+      "uid": "Kitmaker (Debian 13 Trixie) <kitmaker@nvidia.com>"
+    },
+    "signing_key_fingerprint": "02182E60104FCDC26EAE1B8597A5D4CB8793F200",
+    "url": "https://developer.download.nvidia.com/compute/cuda/repos/debian13/x86_64/"
+  },
+  "production_effect": {
+    "classifications_added": [],
+    "packages": [],
+    "rules": [],
+    "sources": []
+  },
+  "retrieved": "2026-10-13",
+  "schema": "lubarchy.hardware.nvidia-evidence/v1",
+  "secure_boot": {
+    "depends_on": "P-006",
+    "dkms_modules_require_mok": true,
+    "nouveau_independent": true
+  },
+  "simulations": {
+    "desktop_versions_trixie": {
+      "kwin-wayland": "4:6.3.6-1",
+      "linux-headers-amd64": "6.12.111-1",
+      "mesa-vulkan-drivers": "25.0.7-2+deb13u1",
+      "xwayland": "2:24.1.6-1"
+    },
+    "environment": {
+      "apt": "3.0.3",
+      "host": "Debian 13 builder VM",
+      "kernel": "6.12.111+deb13-amd64",
+      "method": "isolated Dir::State/Dir::Etc per profile, apt-get -s only, unprivileged; system /etc/apt and dpkg database untouched; synthetic installed states built from authenticated index metadata",
+      "payloads_retained": 0,
+      "signature_failures": 0,
+      "update_warnings": 0
+    },
+    "headers_note": "No simulated install pulls linux-headers; DKMS builds need linux-headers-amd64 (6.12.111-1) installed explicitly.",
+    "headers_pulled_by_any_install": false,
+    "name_overlap": {
+      "non_nvidia_named_overlaps": [
+        "dh-dkms",
+        "dkms",
+        "dkms-noautoinstall-test-dkms",
+        "dkms-replace-test-dkms",
+        "dkms-test-dkms",
+        "eglexternalplatform-dev",
+        "libnccl-dev",
+        "libnccl2"
+      ],
+      "nvidia_package_names": 554,
+      "nvidia_wins_by_version": 62,
+      "overlapping_with_debian": 64
+    },
+    "nvidia_615_modprobe": [
+      "blacklist nouveau",
+      "blacklist nova-core",
+      "options nvidia NVreg_UseKernelSuspendNotifiers=1",
+      "options nvidia NVreg_TemporaryFilePath=/var/tmp",
+      "options nvidia NVreg_EnableS0ixPowerManagement=1",
+      "options nvidia NVreg_PreserveVideoMemoryAllocations=1"
+    ],
+    "pinning_preferences_595": "Package: src:nvidia-graphics-drivers:any src:nvidia-kmod-open:any (and related sources); Pin: version 595*; Pin-Priority: 1000",
+    "profiles": {
+      "A": "trixie, trixie-updates, trixie-security: main contrib non-free non-free-firmware",
+      "A32": "profile A with i386 added (isolated APT::Architectures only)",
+      "B": "profile A plus trixie-backports",
+      "C": "trixie, trixie-updates, trixie-security: main contrib non-free-firmware plus NVIDIA debian13 repo (Signed-By dedicated keyring)",
+      "CX": "profile A plus NVIDIA debian13 repo"
+    },
+    "results": [
+      {
+        "command": "install nvidia-driver nvidia-kernel-dkms",
+        "components": {
+          "contrib": 11,
+          "main": 179,
+          "non-free": 33,
+          "non-free-firmware": 1
+        },
+        "dkms": "3.2.2-1~deb13u1 (Debian)",
+        "driver": "550.163.01-2",
+        "exit": 0,
+        "id": "A-proprietary",
+        "new": 224
+      },
+      {
+        "command": "install nvidia-driver nvidia-open-kernel-dkms",
+        "components": {
+          "contrib": 13,
+          "main": 179,
+          "non-free": 31,
+          "non-free-firmware": 1
+        },
+        "driver": "550.163.01-2",
+        "exit": 0,
+        "id": "A-open",
+        "new": 224,
+        "note": "resolves, but the open module does not build on the current trixie kernel (#1143204)"
+      },
+      {
+        "command": "install firmware-nvidia-graphics",
+        "exit": 0,
+        "id": "A-firmware-nvidia-graphics",
+        "new": 1,
+        "source": "firmware-nonfree 20250410-2 (non-free-firmware)"
+      },
+      {
+        "command": "purge --autoremove nvidia-driver nvidia-kernel-dkms (synthetic installed, auto marks)",
+        "exit": 0,
+        "id": "A-purge-autoremove",
+        "removed": 167
+      },
+      {
+        "command": "install nvidia-driver nvidia-kernel-dkms nvidia-driver-libs:i386 nvidia-vulkan-icd:i386",
+        "exit": 0,
+        "i386_packages": 74,
+        "id": "A32-i386",
+        "new": 298
+      },
+      {
+        "command": "install -t trixie-backports nvidia-driver nvidia-kernel-dkms",
+        "driver": "550.163.01-4~bpo13+1",
+        "exit": 0,
+        "from_backports": 47,
+        "id": "B-proprietary",
+        "new": 226
+      },
+      {
+        "command": "install -t trixie-backports nvidia-driver nvidia-open-kernel-dkms",
+        "exit": 0,
+        "id": "B-open",
+        "new": 226
+      },
+      {
+        "command": "install nvidia-driver nvidia-kernel-open-dkms",
+        "contrib_needed": false,
+        "dkms": "3.4.3-1 (NVIDIA, replaces Debian dkms)",
+        "driver": "615.71.09-2",
+        "exit": 0,
+        "id": "C-desktop-open",
+        "new": 143,
+        "origins": {
+          "debian_main": 112,
+          "nvidia": 31
+        }
+      },
+      {
+        "command": "install nvidia-open",
+        "exit": 0,
+        "id": "C-full-open",
+        "new": 227,
+        "origins": {
+          "debian_main": 175,
+          "nvidia": 52
+        }
+      },
+      {
+        "command": "install nvidia-driver=610.57.04-1 nvidia-kernel-dkms=610.57.04-1",
+        "exit": 100,
+        "id": "C-proprietary-610-explicit-versions",
+        "note": "unresolvable without branch pinning (dependencies resolve to 615)"
+      },
+      {
+        "command": "install nvidia-driver nvidia-kernel-dkms with nvidia-driver-pinning-610 preferences",
+        "driver": "610.57.04-1",
+        "exit": 0,
+        "id": "C610-proprietary",
+        "new": 143
+      },
+      {
+        "command": "dist-upgrade after removing the 610 pin (synthetic 610 proprietary installed)",
+        "exit": 0,
+        "id": "C610-unpin-upgrade",
+        "new": 1,
+        "note": "nvidia-kernel-dkms becomes the 615 transitional package and nvidia-kernel-open-dkms is newly installed: silent proprietary-to-open flavor switch",
+        "upgraded": 26
+      },
+      {
+        "command": "dist-upgrade with nvidia-driver-pinning-595 preferences (synthetic 615 installed)",
+        "downgraded": 25,
+        "exit": 0,
+        "id": "C-downgrade-595",
+        "removed": 1,
+        "removed_packages": [
+          "nvidia-powerd"
+        ]
+      },
+      {
+        "command": "purge --autoremove nvidia-driver nvidia-kernel-open-dkms (synthetic installed, auto marks)",
+        "exit": 0,
+        "id": "C-purge-autoremove",
+        "removed": 92
+      },
+      {
+        "command": "dist-upgrade with NVIDIA repo added to a synthetic Debian 550 proprietary install",
+        "exit": 0,
+        "id": "CX-takeover",
+        "new": 9,
+        "note": "all NVIDIA packages and Debian's dkms move to NVIDIA's repository; proprietary 550 becomes open 615",
+        "removed": 10,
+        "upgraded": 33
+      }
+    ]
+  },
+  "sources": [
+    {
+      "id": "debian-tracker",
+      "url": "https://tracker.debian.org/pkg/nvidia-graphics-drivers"
+    },
+    {
+      "id": "debian-security-tracker",
+      "url": "https://security-tracker.debian.org/tracker/source-package/nvidia-graphics-drivers"
+    },
+    {
+      "id": "debian-bts",
+      "url": "https://bugs.debian.org/cgi-bin/pkgreport.cgi?src=nvidia-graphics-drivers"
+    },
+    {
+      "id": "debian-wiki",
+      "url": "https://wiki.debian.org/NvidiaGraphicsDrivers"
+    },
+    {
+      "id": "nvidia-install-guide",
+      "url": "https://docs.nvidia.com/datacenter/tesla/driver-installation-guide/"
+    },
+    {
+      "id": "nvidia-open-modules-readme",
+      "url": "https://github.com/NVIDIA/open-gpu-kernel-modules"
+    },
+    {
+      "id": "nvidia-debian13-repo",
+      "url": "https://developer.download.nvidia.com/compute/cuda/repos/debian13/x86_64/"
+    },
+    {
+      "id": "hyprland-wiki",
+      "url": "https://wiki.hypr.land/Nvidia/"
+    },
+    {
+      "id": "kde-wiki",
+      "url": "https://community.kde.org/Plasma/Wayland/Nvidia"
+    }
+  ],
+  "status": "evidence-only",
+  "strategies": {
+    "A": {
+      "automatic_default": false,
+      "name": "Debian Stable 550 (contrib/non-free)",
+      "recommended": false,
+      "role": "not-recommended",
+      "scores": {
+        "builds_on_current_kernel": 2,
+        "frankendebian_risk": 3,
+        "gpu_coverage": 1,
+        "open_security_issues": 0,
+        "provenance": 3,
+        "secure_boot_independence": 0,
+        "security_update_channel": 0,
+        "wayland": 0
+      }
+    },
+    "B": {
+      "automatic_default": false,
+      "name": "Debian trixie-backports 550",
+      "recommended": false,
+      "role": "not-recommended",
+      "scores": {
+        "builds_on_current_kernel": 0,
+        "frankendebian_risk": 2,
+        "gpu_coverage": 1,
+        "open_security_issues": 0,
+        "provenance": 3,
+        "secure_boot_independence": 0,
+        "security_update_channel": 0,
+        "wayland": 0
+      }
+    },
+    "C": {
+      "automatic_default": false,
+      "conditions": [
+        "D-005 exception accepted by CTO",
+        "P-006 decided",
+        "kernel-update compatibility gate and rollback (M4)",
+        "real-hardware qualification (M7)"
+      ],
+      "name": "NVIDIA official Debian 13 repository",
+      "recommended": true,
+      "role": "opt-in-candidate",
+      "scores": {
+        "builds_on_current_kernel": 2,
+        "frankendebian_risk": 1,
+        "gpu_coverage": 2,
+        "open_security_issues": 2,
+        "provenance": 2,
+        "secure_boot_independence": 0,
+        "security_update_channel": 2,
+        "wayland": 3
+      }
+    },
+    "D": {
+      "automatic_default": false,
+      "name": "Nouveau",
+      "recommended": true,
+      "role": "baseline-fallback-candidate",
+      "scores": {
+        "builds_on_current_kernel": 3,
+        "frankendebian_risk": 3,
+        "gpu_coverage": 1,
+        "open_security_issues": 3,
+        "provenance": 3,
+        "secure_boot_independence": 3,
+        "security_update_channel": 3,
+        "wayland": 2
+      }
+    }
+  },
+  "tiers": [
+    {
+      "mode": "baseline-fallback-candidate",
+      "production_qualified": false,
+      "strategy": "D",
+      "support_classes": [
+        "legacy-older",
+        "legacy-470",
+        "legacy-580",
+        "open-or-proprietary",
+        "open-only"
+      ],
+      "tier": "0"
+    },
+    {
+      "mode": "opt-in",
+      "production_qualified": false,
+      "status": "Proposed",
+      "strategy": "C",
+      "support_classes": [
+        "open-or-proprietary",
+        "open-only"
+      ],
+      "tier": "1-candidate"
+    }
+  ]
+}

@@ -12,9 +12,10 @@ later installation/configuration → later validation
 | [`schemas/rule-v1.schema.json`](schemas/rule-v1.schema.json) | `lubarchy.hardware.rule/v1`: one declarative compatibility rule |
 | [`schemas/plan-v1.schema.json`](schemas/plan-v1.schema.json) | `lubarchy.hardware.plan/v1`: a proposed resolution plan |
 | [`rules/`](rules/) | Production rules: classification baseline (M1-C), CPU microcode mappings (M1-D), device firmware mappings (M1-E, generated) |
-| [`../tools/hwe/`](../tools/hwe/) | Offline qualification tooling: kernel module-alias evidence and firmware rule generation/drift checks (M1-E) |
+| [`../tools/hwe/`](../tools/hwe/) | Offline qualification tooling: kernel module-alias evidence and firmware rule generation/drift checks (M1-E); NVIDIA supported-GPU snapshot normalizer (M1-G, evidence only) |
 | [`probe.py`](probe.py) | Read-only live probe: running system → canonical inventory v1 on stdout (M1-B) |
 | [`resolver.py`](resolver.py), [`resolve.py`](resolve.py) | Production resolver library and CLI: inventory v1 + production rules → canonical plan v1 (M1-C) |
+| [`nvidia/`](nvidia/README.md) | NVIDIA driver strategy evidence and normalized supported-GPU snapshot (M1-G). Evidence only: never read by the resolver or rules; ADR-0002 is Proposed |
 
 All schemas use JSON Schema Draft 2020-12. Each carries its own version and
 changes only by a new schema version, independently of any code.
