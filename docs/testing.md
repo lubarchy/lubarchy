@@ -618,6 +618,8 @@ probes hardware.**
 | [#16 (38372395051)](https://github.com/lubarchy/lubarchy/actions/runs/38372395051) | `d56d6eb4c5a61ab0e10f37b23635cf3a8fa8485c` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks) and hardware firmware (13 checks; 2,517 committed aliases mapped, M1-E rules regenerated from v1 evidence, attribution and collision checks clean) passed; CI container sources `main` only |
 | [#17 (38372865767)](https://github.com/lubarchy/lubarchy/actions/runs/38372865767) | `6798524aaf0f650710c7408ba7e07e98803c29ad` | push | **success**: all seven gates passed (documentation commit) |
 | [#18 (38437605209)](https://github.com/lubarchy/lubarchy/actions/runs/38437605209) | `9beb35d211f5def6b5642d5bb31ef830bf1f6ae4` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks) and hardware NVIDIA strategy (14 checks; committed evidence only, no NVIDIA repository contacted or package installed) passed; CI container sources `main` only |
+| [#19 (38437920398)](https://github.com/lubarchy/lubarchy/actions/runs/38437920398) | `fe75229fb7503083b2bef5dbb82fd42ba847b2c2` | push | **success**: all eight gates passed (documentation commit) |
+| [#20 (38474658686)](https://github.com/lubarchy/lubarchy/actions/runs/38474658686) | `cd8b43fc329a8093c43e97d388689f4386dc3c34` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks) and hardware NVIDIA strategy (19 checks; M1-G evidence and M1-H containment policy from committed fixtures only, no NVIDIA repository contacted or package installed) passed; CI container sources `main` only |
 
 The fix in `ce2462e` trusts exactly `$GITHUB_WORKSPACE` for the gate step
 through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`; no Git
@@ -688,8 +690,23 @@ repository lint, ShellCheck, live-build configuration, hardware contracts,
 hardware probe, hardware resolver, hardware firmware and hardware NVIDIA
 strategy. CI used only committed evidence and synthetic fixtures. It fetched
 packages only from Debian `main`, contacted no NVIDIA repository, installed
-no NVIDIA package and probed no runner hardware. M1-G remains awaiting CTO
-review (not PASS).
+no NVIDIA package and probed no runner hardware. M1-G was subsequently
+accepted by the CTO (PASS).
+
+**M1-H CI qualification:** the M1-H change (inactive NVIDIA repository
+containment policy, rendered preferences, authenticated APT fixtures,
+`tools/hwe/validate-nvidia-apt-policy.py`; gate 8 extended to 19 checks; no
+new dependency) was executed on GitHub by workflow `Static gates`, run ID
+[38474658686](https://github.com/lubarchy/lubarchy/actions/runs/38474658686)
+(run #20), on implementation commit
+`cd8b43fc329a8093c43e97d388689f4386dc3c34`. All eight gates ran and passed.
+CI tested the NVIDIA policy only against committed fixtures and evidence. It
+never contacted the NVIDIA repository, used no live NVIDIA metadata,
+installed no NVIDIA, CUDA or DKMS package, and kept its Debian sources
+`main` only. Containment recommendation: YES — NVIDIA's Debian 13 repository
+can be technically contained as a candidate D-005 exception. M1-H remains
+awaiting CTO review (not PASS); ADR-0002 remains Proposed and the repository
+remains unauthorised. M1-I has not started.
 
 ## Clean rebuild comparison
 

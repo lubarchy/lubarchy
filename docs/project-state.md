@@ -43,7 +43,7 @@ later installation/configuration → later validation.
 | M1-E | Device-specific firmware mapping baseline | PASS (CTO accepted) |
 | M1-F | Second-wave network and Bluetooth firmware qualification | PASS (CTO accepted) |
 | M1-G | NVIDIA driver strategy qualification and architecture decision evidence | PASS (CTO accepted); ADR-0002 remains Proposed |
-| M1-H | NVIDIA repository containment and pinning proof | Implemented locally; awaiting CTO review (ADR-0002 Proposed) |
+| M1-H | NVIDIA repository containment and pinning proof | Published (`cd8b43f`); GitHub CI green (run #20, all eight gates); awaiting CTO review (ADR-0002 Proposed) |
 | M1-I | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
@@ -194,8 +194,11 @@ later installation/configuration → later validation.
   Backports, change the builder's, the ISO's or the CI's APT sources, install
   anything, build DKMS modules, load modules, add `gpu.hybrid`, change the
   hardware schemas, or decide P-006.
-- M1-H — NVIDIA repository containment and pinning proof: **implemented
-  locally; awaiting CTO review** (not PASS, not pushed). It tests whether
+- M1-H — NVIDIA repository containment and pinning proof: **published;
+  awaiting CTO review** (not PASS). Implementation commit
+  `cd8b43fc329a8093c43e97d388689f4386dc3c34`; `Static gates` run #20
+  ([38474658686](https://github.com/lubarchy/lubarchy/actions/runs/38474658686))
+  passed all eight gates on that commit. It tests whether
   NVIDIA's signed Debian 13 repository can be contained by a LUBARCHY-owned,
   **inactive** APT policy: default deny for Origin `NVIDIA` / Label
   `NVIDIA CUDA`, a finite allowlist of the 30 binaries of the
@@ -406,9 +409,13 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-H (NVIDIA repository containment and pinning proof; local
-commit only, not yet pushed or CI-qualified; ADR-0002 Proposed). M1-I has not
-started and waits for a CTO brief.
+CTO review of M1-H (NVIDIA repository containment and pinning proof),
+published as `cd8b43fc329a8093c43e97d388689f4386dc3c34`; `Static gates` run
+#20 passed all eight gates on that commit (see [testing.md](testing.md)).
+Containment recommendation: YES — NVIDIA's Debian 13 repository can be
+technically contained as a candidate D-005 exception. ADR-0002 remains
+Proposed, the NVIDIA repository remains unauthorised and no NVIDIA package is
+installed. M1-I has not started and waits for a CTO brief.
 
 ## PASS rule
 
