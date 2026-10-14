@@ -44,7 +44,7 @@ later installation/configuration → later validation.
 | M1-F | Second-wave network and Bluetooth firmware qualification | PASS (CTO accepted) |
 | M1-G | NVIDIA driver strategy qualification and architecture decision evidence | PASS (CTO accepted); ADR-0002 remains Proposed |
 | M1-H | NVIDIA repository containment and pinning proof | PASS (CTO accepted); ADR-0002 remains Proposed |
-| M1-I | Privileged package apply transaction contract | Implemented locally; awaiting CTO review |
+| M1-I | Privileged package apply transaction contract | Published (`3378afb`); GitHub CI green (run #22, all nine gates); awaiting CTO review |
 | M1-J | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
@@ -229,8 +229,12 @@ later installation/configuration → later validation.
   executor that installs only a validated, source-controlled plan, never
   forwards caller-controlled package names, versions, source selectors or
   APT options, revalidates before mutation and records the transaction.
-- M1-I — privileged package apply transaction contract: **implemented
-  locally; awaiting CTO review** (not PASS, not pushed). New downstream
+- M1-I — privileged package apply transaction contract: **published;
+  awaiting CTO review** (not PASS). Implementation commit
+  `3378afb53bd96644f740e79fb23a2a30f88c874c`; `Static gates` run #22
+  ([38519747096](https://github.com/lubarchy/lubarchy/actions/runs/38519747096))
+  passed all nine gates on that commit, with the package transaction gate at
+  17 checks. New downstream
   contract `lubarchy.hardware.package-transaction/v1`
   (`hardware/schemas/package-transaction-v1.schema.json`; inventory, rule
   and plan v1 unchanged). The compiler (`hardware/package_transaction.py`,
@@ -242,10 +246,10 @@ later installation/configuration → later validation.
   records exact versions, architectures, authorised Debian provenance,
   SHA-256 and intended package marks for the complete closure. Only direct
   requirements become explicit APT targets, so dependencies stay
-  automatic. Stale
-  inputs fail closed. The future privileged executor, its argv and
-  environment contract, the lock and the state machine are documented, not
-  implemented. Gate 9 (`tests/hardware-transaction.py`) runs synthetic only.
+  APT-selected and automatic. Package architecture is bound and verified
+  against the closure simulation. Stale inputs fail closed. The future
+  privileged executor, its argv and environment contract, the lock and the
+  state machine are documented, not implemented. Gate 9 (`tests/hardware-transaction.py`) runs synthetic only.
   Details: [package-transactions.md](package-transactions.md).
 - M1-I does **not** install, upgrade, remove or configure any package,
   activate a source, take a package-manager lock, create a privileged
@@ -436,9 +440,14 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-I (package transaction contract; local commit only, not
-yet pushed or CI-qualified). No package mutation has been implemented or
-executed. M1-J has not started and waits for a CTO brief.
+CTO review of M1-I (package transaction contract), published as
+`3378afb53bd96644f740e79fb23a2a30f88c874c`; `Static gates` run #22 passed all
+nine gates on that commit (see [testing.md](testing.md)). The transaction is
+install-only and compiled from a fresh resolution. It binds the complete
+dependency closure with exact versions, architectures, provenance, hashes and
+APT automatic/manual state. Only direct requirements would become explicit
+APT targets. No privileged package mutation is implemented, no package has
+been installed, and M1-J has not started; it waits for a CTO brief.
 
 ## PASS rule
 

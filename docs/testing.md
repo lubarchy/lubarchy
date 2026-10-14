@@ -719,6 +719,8 @@ probes hardware.**
 | [#18 (38437605209)](https://github.com/lubarchy/lubarchy/actions/runs/38437605209) | `9beb35d211f5def6b5642d5bb31ef830bf1f6ae4` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks) and hardware NVIDIA strategy (14 checks; committed evidence only, no NVIDIA repository contacted or package installed) passed; CI container sources `main` only |
 | [#19 (38437920398)](https://github.com/lubarchy/lubarchy/actions/runs/38437920398) | `fe75229fb7503083b2bef5dbb82fd42ba847b2c2` | push | **success**: all eight gates passed (documentation commit) |
 | [#20 (38474658686)](https://github.com/lubarchy/lubarchy/actions/runs/38474658686) | `cd8b43fc329a8093c43e97d388689f4386dc3c34` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks) and hardware NVIDIA strategy (19 checks; M1-G evidence and M1-H containment policy from committed fixtures only, no NVIDIA repository contacted or package installed) passed; CI container sources `main` only |
+| [#21 (38474917621)](https://github.com/lubarchy/lubarchy/actions/runs/38474917621) | `72ccc8bdb5c7386b282f82b616cf8ed10e7d5b4a` | push | **success**: all eight gates passed (documentation commit) |
+| [#22 (38519747096)](https://github.com/lubarchy/lubarchy/actions/runs/38519747096) | `3378afb53bd96644f740e79fb23a2a30f88c874c` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks), hardware NVIDIA strategy (19 checks) and hardware package transaction (17 checks; committed synthetic fixtures, APT samples and golden transactions only; no runner APT state, no package installed) passed; CI container sources `main` only |
 
 The fix in `ce2462e` trusts exactly `$GITHUB_WORKSPACE` for the gate step
 through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`; no Git
@@ -806,6 +808,24 @@ installed no NVIDIA, CUDA or DKMS package, and kept its Debian sources
 can be technically contained as a candidate D-005 exception. M1-H remains
 awaiting CTO review (not PASS); ADR-0002 remains Proposed and the repository
 remains unauthorised. M1-I has not started.
+
+**M1-I CI qualification:** the M1-I change (package transaction contract
+`lubarchy.hardware.package-transaction/v1`, compiler and read-only CLI,
+`tools/hwe/qualify-transaction.py`; new gate 9 with 17 checks; no new
+dependency) was executed on GitHub by workflow `Static gates`, run ID
+[38519747096](https://github.com/lubarchy/lubarchy/actions/runs/38519747096)
+(run #22), on implementation commit
+`3378afb53bd96644f740e79fb23a2a30f88c874c`. All nine gates ran and passed.
+Gate 9 used only the committed synthetic universe, APT output samples and
+golden transactions. CI never compiled a transaction against the runner's
+APT state, never probed runner hardware, never contacted NVIDIA, and fetched
+Debian packages only in the existing QA dependency step (`main` only). No
+package was installed or changed by the transaction tests, and no apt/dpkg
+mutation exists. In CI's shallow checkout, the gate-9 check that inventory,
+rule and plan v1 are unchanged falls back to the schema identity checks of
+gates 4–6; locally they are byte-identical to `72ccc8b`. M1-I remains
+awaiting CTO review (not PASS). No privileged package mutation is
+implemented and M1-J has not started.
 
 ## Clean rebuild comparison
 
