@@ -45,7 +45,7 @@ later installation/configuration → later validation.
 | M1-G | NVIDIA driver strategy qualification and architecture decision evidence | PASS (CTO accepted); ADR-0002 remains Proposed |
 | M1-H | NVIDIA repository containment and pinning proof | PASS (CTO accepted); ADR-0002 remains Proposed |
 | M1-I | Privileged package apply transaction contract | PASS (CTO accepted) |
-| M1-J | Debian source activation and staged package acquisition | Implemented locally; awaiting CTO review |
+| M1-J | Debian source activation and staged package acquisition | Published (`0fab8f8`); GitHub CI green (run #24, all ten gates); awaiting CTO review |
 | M1-K | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
@@ -259,8 +259,11 @@ later installation/configuration → later validation.
   resolver source policy (`main` + `non-free-firmware`) or the production
   package set (10), or authorise NVIDIA.
 - M1-J — Debian source activation and staged package acquisition:
-  **implemented locally; awaiting CTO review** (not PASS, not pushed).
-  Details: [package-staging.md](package-staging.md).
+  **published; awaiting CTO review** (not PASS). Implementation commit
+  `0fab8f899a356685fc6b33117953e333e30742ac`; `Static gates` run #24
+  ([38539169890](https://github.com/lubarchy/lubarchy/actions/runs/38539169890))
+  passed all ten gates on that commit, with the package staging gate at 19
+  checks. Details: [package-staging.md](package-staging.md).
   - Source activation (`hardware/source_activation.py`, CLI
     `hardware/compile-source-activation.py`; contract
     `lubarchy.packages.source-activation/v1`) realises the accepted D-013
@@ -479,10 +482,20 @@ not be treated as decided:
 ## Immediate next action
 
 CTO review of M1-J (Debian source activation and staged package
-acquisition; local commit only, not yet pushed or CI-qualified). M1-I is
-PASS (CTO accepted). No system source has been activated, no privileged
-package mutation is implemented, no package has been installed and no
-package mark has changed. M1-K has not started and waits for a CTO brief.
+acquisition), published as `0fab8f899a356685fc6b33117953e333e30742ac`;
+`Static gates` run #24 passed all ten gates on that commit (see
+[testing.md](testing.md)). Source activation remains a contract and plan:
+D-013 authorises only Debian `main` + `non-free-firmware`, and LUBARCHY never
+modifies foreign or administrator source files. Staging remains pre-apply
+only. A bundle is bound to its transaction and the authenticated repository
+metadata, and every payload to its SHA-256, size, package, version and
+architecture. Fresh metadata drift makes a bundle stale and requires
+restaging. APT does not re-hash cached payloads, so any future apply must
+re-verify the bundle immediately before mutation. Neither `dpkg -i` nor an
+unsigned or `trusted` local repository is part of the model. No system source
+has been activated, no package mutation is implemented or has been
+performed, and no package mark has changed. M1-I is PASS (CTO accepted).
+M1-K has not started and waits for a CTO brief.
 
 ## PASS rule
 

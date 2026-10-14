@@ -849,6 +849,7 @@ or boots an ISO and never probes hardware.**
 | [#21 (38474917621)](https://github.com/lubarchy/lubarchy/actions/runs/38474917621) | `72ccc8bdb5c7386b282f82b616cf8ed10e7d5b4a` | push | **success**: all eight gates passed (documentation commit) |
 | [#22 (38519747096)](https://github.com/lubarchy/lubarchy/actions/runs/38519747096) | `3378afb53bd96644f740e79fb23a2a30f88c874c` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks), hardware NVIDIA strategy (19 checks) and hardware package transaction (17 checks; committed synthetic fixtures, APT samples and golden transactions only; no runner APT state, no package installed) passed; CI container sources `main` only |
 | [#23 (38520046728)](https://github.com/lubarchy/lubarchy/actions/runs/38520046728) | `f778ee031364d0458b413efac643a1e03b4070e7` | push | **success**: all nine gates passed (documentation commit) |
+| [#24 (38539169890)](https://github.com/lubarchy/lubarchy/actions/runs/38539169890) | `0fab8f899a356685fc6b33117953e333e30742ac` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks), hardware NVIDIA strategy (19 checks), hardware package transaction (17 checks) and hardware package staging (19 checks; synthetic and offline: synthetic source trees and payloads, read-only `dpkg-deb --field`, no `apt-get`, no download, no source activation) passed; CI container sources `main` only |
 
 The fix in `ce2462e` trusts exactly `$GITHUB_WORKSPACE` for the gate step
 through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`; no Git
@@ -956,6 +957,32 @@ gates 4–6; locally they are byte-identical to `72ccc8b`. Documentation run
 CTO (PASS). No privileged package mutation is implemented. Since M1-J, gate
 10 also checks those protected schemas against a committed hash baseline,
 which needs no Git history.
+
+**M1-J CI qualification:** the M1-J change was executed on GitHub by workflow
+`Static gates`, run ID
+[38539169890](https://github.com/lubarchy/lubarchy/actions/runs/38539169890)
+(run #24), on implementation commit
+`0fab8f899a356685fc6b33117953e333e30742ac`. The change comprises:
+- source-activation and staged-bundle contracts;
+- `hardware/source_activation.py` and `hardware/package_staging.py` with
+  their CLIs;
+- `tools/hwe/qualify-staging.py`;
+- new gate 10 with 19 checks.
+
+All ten gates ran and passed. Gate 10 is synthetic and offline:
+- synthetic source trees, the committed builder `sources.list` fixture and
+  the gate-9 universe;
+- synthetic in-memory payloads;
+- `dpkg-deb --field` read-only.
+
+CI never ran `apt-get`, never downloaded a `.deb`, never contacted NVIDIA,
+never read the runner's `/etc/apt` or hardware, never activated a source and
+never installed a package. Packages were installed only in the existing QA
+dependency step. The package names are identical to run #22; the mirror's
+`libcurl3t64-gnutls` moved from `deb13u5` to `deb13u7`, and the workflow
+itself changed only in its header comment. M1-J remains awaiting CTO review
+(not PASS). No system source or package mutation was performed, staging
+remains pre-apply only, and M1-K has not started.
 
 ## Clean rebuild comparison
 
