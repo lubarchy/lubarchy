@@ -46,7 +46,7 @@ later installation/configuration → later validation.
 | M1-H | NVIDIA repository containment and pinning proof | PASS (CTO accepted); ADR-0002 remains Proposed |
 | M1-I | Privileged package apply transaction contract | PASS (CTO accepted) |
 | M1-J | Debian source activation and staged package acquisition | PASS (CTO accepted) |
-| M1-K | Privileged source activation and package apply executor | Implemented locally; awaiting CTO review |
+| M1-K | Privileged source activation and package apply executor | Published (`bee7414`); GitHub CI green (run #26, all eleven gates); awaiting CTO review |
 | M1-L | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
@@ -302,8 +302,28 @@ later installation/configuration → later validation.
   the production rules or the production package set (10), or authorise
   NVIDIA.
 - M1-K — privileged source activation and package apply executor:
-  **implemented locally; awaiting CTO review** (not PASS, not pushed).
-  Details: [package-apply.md](package-apply.md).
+  **published; awaiting CTO review** (not PASS). Implementation commit
+  `bee741485ce2fb6db35d433b8c0102bc59824e9f`; `Static gates` run #26
+  ([38560415459](https://github.com/lubarchy/lubarchy/actions/runs/38560415459))
+  passed all eleven gates on that commit, with the package staging gate at 19
+  checks and the package apply gate at 14. Details:
+  [package-apply.md](package-apply.md).
+  - Qualification: one corrected real privileged package transaction on the rollback-protected
+    builder VM, executed only from the root-owned exact-commit deployment
+    `/root/lubarchy-m1k/bee741485ce2fb6db35d433b8c0102bc59824e9f/`.
+    It performed:
+    - source activation of the LUBARCHY-owned file;
+    - an authenticated metadata refresh;
+    - a fresh transaction and root-owned staging;
+    - an immediate payload re-hash and final stale-state revalidation;
+    - one journaled offline APT apply (`intel-microcode` direct, `iucode-tool`
+      dependency);
+    - package and mark validation, `dpkg --audit` and `apt-get check`;
+    - a reboot validation.
+
+    The VM checkpoint was then restored, and a complete audit matched the
+    pre-M1-K baseline. CI never performs a real mutation: gate 11 uses a fake
+    host and synthetic trees.
   - `hardware/package_apply.py` and the root-only CLI
     `hardware/apply-packages.py` (`apply`, `status`) apply the current
     qualified hardware plan. The executor takes no package, option, source
@@ -522,12 +542,31 @@ not be treated as decided:
 ## Immediate next action
 
 CTO review of M1-K (privileged source activation and package apply
-executor; local commit only, not yet pushed or CI-qualified). M1-J is PASS
-(CTO accepted). The real package-manager mutation is qualified only on the
-rollback-protected builder VM, which is restored to its original baseline
-afterwards. Interrupted-transaction recovery, post-install device validation
-and real-hardware qualification remain open. M1-L has not started and waits
-for a CTO brief.
+executor), published as `bee741485ce2fb6db35d433b8c0102bc59824e9f`; `Static
+gates` run #26 passed all eleven gates on that commit (see
+[testing.md](testing.md)). M1-J is PASS (CTO accepted).
+
+The real package-manager mutation was qualified only on the
+rollback-protected builder VM, from a root-owned exact-commit deployment, and
+the VM was restored to its original baseline. The security findings stand:
+- APT/dpkg mutation is not atomic, and the journal is state evidence, not a
+  filesystem rollback.
+- Cached archives require LUBARCHY's immediate pre-apply re-hash.
+- Failures after APT starts are never repaired automatically, and a
+  non-terminal journal requires recovery.
+- Privileged code must never be executable from a user-writable tree.
+- VM snapshots are test-environment protection, not the product recovery
+  architecture.
+- VM microcode package installation is not physical hardware qualification.
+
+Open work:
+- interrupted-transaction recovery;
+- post-install device validation;
+- Secure Boot/MOK;
+- the NVIDIA ADR;
+- real-hardware qualification.
+
+M1-L has not started and waits for a CTO brief.
 
 ## PASS rule
 

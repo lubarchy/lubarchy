@@ -979,6 +979,29 @@ The only authorised real package-manager mutation runs on the
 Results are recorded in the evidence bundle of the exact commit. VM package
 success is not physical CPU-microcode or real-hardware qualification.
 
+**Result (exact commit `bee741485ce2fb6db35d433b8c0102bc59824e9f`):** one corrected real privileged package transaction on the rollback-protected
+builder VM, executed only from the root-owned exact-commit deployment
+`/root/lubarchy-m1k/bee741485ce2fb6db35d433b8c0102bc59824e9f/`.
+It performed:
+- source activation of the LUBARCHY-owned file;
+- an authenticated metadata refresh;
+- a fresh transaction and root-owned staging;
+- an immediate payload re-hash and final stale-state revalidation;
+- one journaled offline APT apply (`intel-microcode` direct, `iucode-tool`
+  dependency);
+- package and mark validation, `dpkg --audit` and `apt-get check`;
+- a reboot validation.
+
+The VM checkpoint was then restored, and a complete audit matched the
+pre-M1-K baseline. CI never performs a real mutation: gate 11 uses a fake
+host and synthetic trees.
+
+Every LUBARCHY Python file executed as root came from that deployment's
+`tree/`. The developer clone ran only the unprivileged gates and read-only
+captures. An earlier qualification of the superseded unpublished commit
+`5d4fee5` had executed the entrypoint from the user-owned clone; it was
+reverted and repeated as above.
+
 ## GitHub CI
 
 The static gates run as the GitHub Actions workflow
@@ -1018,6 +1041,8 @@ or boots an ISO and never probes hardware.**
 | [#22 (38519747096)](https://github.com/lubarchy/lubarchy/actions/runs/38519747096) | `3378afb53bd96644f740e79fb23a2a30f88c874c` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks), hardware NVIDIA strategy (19 checks) and hardware package transaction (17 checks; committed synthetic fixtures, APT samples and golden transactions only; no runner APT state, no package installed) passed; CI container sources `main` only |
 | [#23 (38520046728)](https://github.com/lubarchy/lubarchy/actions/runs/38520046728) | `f778ee031364d0458b413efac643a1e03b4070e7` | push | **success**: all nine gates passed (documentation commit) |
 | [#24 (38539169890)](https://github.com/lubarchy/lubarchy/actions/runs/38539169890) | `0fab8f899a356685fc6b33117953e333e30742ac` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks), hardware NVIDIA strategy (19 checks), hardware package transaction (17 checks) and hardware package staging (19 checks; synthetic and offline: synthetic source trees and payloads, read-only `dpkg-deb --field`, no `apt-get`, no download, no source activation) passed; CI container sources `main` only |
+| [#25 (38539426185)](https://github.com/lubarchy/lubarchy/actions/runs/38539426185) | `bf145e68530f291f8076ba9660d7924685494e01` | push | **success**: all ten gates passed (documentation commit) |
+| [#26 (38560415459)](https://github.com/lubarchy/lubarchy/actions/runs/38560415459) | `bee741485ce2fb6db35d433b8c0102bc59824e9f` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks), hardware NVIDIA strategy (19 checks), hardware package transaction (17 checks), hardware package staging (19 checks) and hardware package apply (14 checks; fake host and synthetic trees only: no real install, source activation, download, `/var/lib/lubarchy` or `/root/lubarchy-m1k` use, reboot or libvirt) passed; CI container sources `main` only |
 
 The fix in `ce2462e` trusts exactly `$GITHUB_WORKSPACE` for the gate step
 through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`; no Git
@@ -1151,6 +1176,31 @@ dependency step. The package names are identical to run #22; the mirror's
 itself changed only in its header comment. M1-J remains awaiting CTO review
 (not PASS). No system source or package mutation was performed, staging
 remains pre-apply only, and M1-K has not started.
+
+**M1-K CI qualification:** the M1-K change was executed on GitHub by workflow
+`Static gates`, run ID
+[38560415459](https://github.com/lubarchy/lubarchy/actions/runs/38560415459)
+(run #26), on implementation commit
+`bee741485ce2fb6db35d433b8c0102bc59824e9f`. The change comprises:
+- the privileged apply executor and its root-only CLI;
+- the apply-journal schema;
+- the trusted qualification deployment tool;
+- new gate 11 with 14 checks.
+
+All eleven gates ran and passed; gate 10 stayed at 19 checks. CI running as
+root does not authorise mutation, and none occurred:
+- gate 11 drove the executor through its fake host and synthetic trees in a
+  temporary directory;
+- CLI usage probes run in-process with the real host replaced by a sentinel;
+- no package was installed or downloaded, no source was activated, and
+  neither `/var/lib/lubarchy` nor `/root/lubarchy-m1k` was used;
+- there was no reboot, no libvirt use and no NVIDIA contact;
+- the QA dependency set matches run #24.
+
+The real mutation was qualified only on the rollback-protected builder VM
+(see the builder apply qualification above), which was restored to its
+original baseline. M1-K remains awaiting CTO review (not PASS), and M1-L
+has not started.
 
 ## Clean rebuild comparison
 
