@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lubarchy:packages:staged-bundle:v1",
+  "title": "LUBARCHY staged package bundle v1",
+  "description": "Manifest of a finalized staged payload bundle (M1-J): exactly the .deb payloads of one qualified package transaction's complete change set, each bound to the SHA-256 and size from the authenticated Debian index and to its dpkg-deb identity. Binds the transaction digest, the source-activation contract digest and the authenticated repository metadata digest; a change of any of them makes the bundle stale. bundle_digest is the digest of this manifest without bundle_digest. Deterministic: no timestamps, absolute paths, user, host or network identity. A bundle authorises nothing by itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "transaction_schema", "transaction_digest", "repository_state_digest",
+               "source_activation_digest", "repository_metadata_digest", "architecture", "payloads", "direct_targets",
+               "layout", "state", "safety", "bundle_digest"],
+  "properties": {
+    "schema": {"const": "lubarchy.packages.staged-bundle/v1"},
+    "transaction_schema": {"const": "lubarchy.hardware.package-transaction/v1"},
+    "transaction_digest": {"$ref": "#/$defs/digest"},
+    "repository_state_digest": {"$ref": "#/$defs/digest"},
+    "source_activation_digest": {"$ref": "#/$defs/digest"},
+    "repository_metadata_digest": {"$ref": "#/$defs/digest"},
+    "architecture": {"$ref": "#/$defs/architecture"},
+    "payloads": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["package", "architecture", "version", "relation", "automatic_after", "filename", "size", "sha256",
+                     "repositories"],
+        "properties": {
+          "package": {"type": "string", "pattern": "^[a-z0-9][a-z0-9+.-]{1,127}$"},
+          "architecture": {"$ref": "#/$defs/architecture"},
+          "version": {"type": "string", "pattern": "^(?:[0-9]+:)?[0-9][A-Za-z0-9.+~-]{0,127}$"},
+          "relation": {"enum": ["direct", "dependency"]},
+          "automatic_after": {"type": "boolean"},
+          "filename": {"type": "string", "pattern": "^[a-z0-9][a-z0-9+.-]{0,127}_[0-9][A-Za-z0-9.+~%-]{0,140}_[a-z0-9][a-z0-9-]{0,31}\\.deb$"},
+          "size": {"type": "integer", "minimum": 1},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "repositories": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["origin", "label", "codename", "suite", "component"],
+              "properties": {
+                "origin": {"const": "Debian"},
+                "label": {"enum": ["Debian", "Debian-Security"]},
+                "codename": {"enum": ["trixie", "trixie-updates", "trixie-security"]},
+                "suite": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"},
+                "component": {"enum": ["main", "non-free-firmware"]}
+              }
+            }
+          }
+        }
+      }
+    },
+    "direct_targets": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9+.-]{1,127}:[a-z0-9][a-z0-9-]{0,31}=(?:[0-9]+:)?[0-9][A-Za-z0-9.+~-]{0,127}$"}
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest", "payload_directory", "directory_mode", "file_mode"],
+      "properties": {
+        "manifest": {"const": "manifest.json"},
+        "payload_directory": {"const": "archives"},
+        "directory_mode": {"const": "0755"},
+        "file_mode": {"const": "0644"}
+      }
+    },
+    "state": {"const": "finalized"},
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["install_only", "explicit_targets", "payload_trust", "deb_identity_verified",
+                   "unsigned_local_repository", "trusted_option", "dpkg_install", "network_during_apply", "applied"],
+      "properties": {
+        "install_only": {"const": true},
+        "explicit_targets": {"const": "direct_only"},
+        "payload_trust": {"const": "sha256_size_from_authenticated_index"},
+        "deb_identity_verified": {"const": true},
+        "unsigned_local_repository": {"const": false},
+        "trusted_option": {"const": false},
+        "dpkg_install": {"const": false},
+        "network_during_apply": {"const": false},
+        "applied": {"const": false}
+      }
+    },
+    "bundle_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "architecture": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,31}$"}
+  }
+}

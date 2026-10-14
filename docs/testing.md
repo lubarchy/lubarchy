@@ -685,6 +685,132 @@ A before/after audit compares:
 - loaded modules and failed units;
 - APT history.
 
+## M1 hardware package staging gate
+
+`tests/hardware-staging.py` (gate 10 of `tests/run-static.sh`, since M1-J)
+has 19 checks and is synthetic and offline only. Its inputs:
+- APT source trees built in temporary directories;
+- the real builder `sources.list` sample (`tests/fixtures/hardware/staging/`);
+- synthetic Debian packages built deterministically in memory (`ar` with
+  `tar.gz` members and fixed timestamps);
+- the M1-I synthetic universe rendered by the gate-9 fake backend.
+
+The only program it runs is `dpkg-deb --field` on those payloads. It never
+contacts Debian or NVIDIA, never downloads a `.deb`, never runs `apt-get`,
+never reads the runner's `/etc/apt` or hardware and writes only into its own
+temporary directory.
+
+It proves:
+- **Contracts:** both new schemas are meta-valid and closed with no
+  time/host/user/command fields. The protected contract schemas
+  (inventory, rule, plan, package-transaction, source-activation,
+  staged-bundle v1) match a committed SHA-256 baseline, so an accidental
+  change is caught even in a shallow CI checkout.
+- **Source policy:**
+  - The rendering is deterministic, with `main` + `non-free-firmware` only,
+    a fixed field order and mandatory `Signed-By`.
+  - The real builder topology yields `create_owned_source` with exactly the
+    foreign URIs.
+  - These are rejected: a `trusted` option or field, a foreign keyring,
+    `contrib`, `non-free`, Backports, testing, NVIDIA, third-party mirrors,
+    a LUBARCHY repository and `ftp`.
+  - These are rejected too: malformed one-line or deb822 input, `deb-src`,
+    cdrom, options, non-UTF-8 files, symlinks, FIFOs and directories.
+- **Ownership:** partial topologies, duplicate definitions, mixed schemes,
+  unrecognised files, conflicting `Signed-By` values and redundant owned
+  files fail closed. A stale owned file is replaced; foreign files never are.
+  Rendering and isolated configuration write only into workspaces.
+- **Drift:** the pre-state digest ignores comments and whitespace but not
+  semantics. Source, keyring or owned-file drift makes the contract stale,
+  and tampered contracts are rejected.
+- **Metadata evidence:** index targets must equal the post-state and be
+  Debian, `Trusted` and keyring-signed. An absent target is accepted only as
+  an index the signed `InRelease` lists as empty. The metadata digest binds
+  the index contents.
+- **Staging:**
+  - The bundle binds the transaction digest. Its payload list is exactly
+    the install closure: the direct packages end manual, the dependency
+    automatic, and the dependency is never an explicit target.
+  - The manifest, bundle digest and payload bytes are deterministic, and
+    modes are `0755`/`0644`.
+  - These payloads are rejected with no residue: missing, extra, wrong
+    SHA-256, wrong size, symlink, FIFO, directory or renamed.
+  - A `dpkg-deb` package, version or architecture mismatch is rejected even
+    when hash and size match.
+- **Finalized bundle:** replacement, truncation, addition, removal, filename
+  swap, symlink, mode change and manifest edits are all detected.
+- **Freshness:** a changed transaction, source-activation or metadata
+  digest is stale, and so is a newer Debian security candidate; any of
+  them requires restaging.
+- **Authority:**
+  - Library signatures are fixed. The CLIs reject package, version, URI,
+    component, option, root and apply input with exit 64, and system
+    workspaces with exit 5. Staging-root escape and bundle-name traversal
+    are refused.
+  - The command allowlists refuse install, `dpkg -i`, extraction and the
+    shell. The modules contain no shell and no `rmtree`.
+  - The offline argv is constructed only: direct targets, `--no-download`,
+    no forbidden option.
+- **Cleanup:** removal is exact-digest and entry by entry, never follows a
+  link, aborts on an unknown layout and refuses system roots.
+- **Invariants:** the policy is `main` + `non-free-firmware` from Debian
+  releases only, the production package set is 10, and the NVIDIA policy is
+  inactive.
+
+### M1-J mutation suite (builder only)
+
+Each mutation is committed in a throwaway clone, and the full
+`tests/run-static.sh` must fail through a functional assertion. The 36
+mutations:
+- enable `contrib`, `non-free`, Backports or NVIDIA;
+- remove `Signed-By`; accept a `trusted` option; accept an arbitrary mirror;
+- ignore source drift; allow a staging-path escape; allow symlink payloads;
+- skip the SHA-256, size or `dpkg-deb` identity check;
+- accept a missing or an extra package;
+- drop the transaction or repository binding;
+- emit a dependency as an explicit target;
+- allow network retrieval or `dpkg -i` in the offline model;
+- allow an unsigned repository configuration;
+- stop verifying payloads after finalization;
+- allow cleanup outside the bundle; allow a workspace under `/etc`;
+- accept unauthenticated metadata or an unchecked empty index;
+- accept duplicate definitions or mixed schemes;
+- skip the bundle-digest or canonical-manifest check;
+- accept a stale security candidate;
+- add a caller package or source parameter;
+- allow shell execution; make `Signed-By` optional; accept a foreign keyring.
+
+### Builder source activation and staging qualification (M1-J, builder only)
+
+`tools/hwe/qualify-staging.py WORKDIR` runs unprivileged (it refuses root)
+and writes only inside WORKDIR. It:
+- compiles the source-activation contract from the real `/etc/apt` (read
+  only) twice and renders the owned file into WORKDIR;
+- runs two independent chains. Each does an isolated authenticated update
+  (empty `trusted.gpg.d`), a fresh probe and production resolve, a
+  transaction against the isolated state, and staging of the payloads. The
+  tool then compares the transaction, metadata digest, manifest and payload
+  bytes of the two chains;
+- re-verifies the bundle against all its bindings;
+- proves the offline apply model on payload copies:
+  - complete cache with `--no-download` and a black-holed proxy;
+  - `--print-uris` with nothing to fetch;
+  - a missing dependency that fails;
+  - resolver mark decisions;
+  - a non-root no-op-dpkg sandbox with private status and
+    `extended_states` copies;
+  - APT accepting a same-size corrupted cached payload, against LUBARCHY
+    rejecting it;
+- checks tamper detection, final revalidation and the production CLIs;
+- deletes every `.deb`.
+
+A before/after audit covers:
+- dpkg status, package/manual/automatic/hold counts and `extended_states`;
+- every file under `/etc/apt`, including the absence of the owned file;
+- APT history and logs, and the lists and archive caches;
+- loaded modules, running services and failed units;
+- `/var/lib/lubarchy`.
+
 ## GitHub CI
 
 The static gates run as the GitHub Actions workflow
@@ -693,9 +819,10 @@ renamed `Static gates` in M1-A; the file name is unchanged): pinned
 `actions/checkout` commit, pinned `debian:trixie` image digest,
 `contents: read`, no secrets. It installs `git`, `ca-certificates`,
 `shellcheck`, `live-build`, `python3` and `python3-jsonschema` (the last two
-since M1-A) from Debian `main` only and runs `tests/run-static.sh`. **It is
-static/configuration CI only: it never builds or boots an ISO and never
-probes hardware.**
+since M1-A) from Debian `main` only and runs `tests/run-static.sh`. Gate 10
+also uses `dpkg-deb` from the image's essential `dpkg` package, read-only, on
+synthetic payloads. **It is static/configuration CI only: it never builds
+or boots an ISO and never probes hardware.**
 
 | Run | Commit | Event | Conclusion |
 | --- | --- | --- | --- |
@@ -721,6 +848,7 @@ probes hardware.**
 | [#20 (38474658686)](https://github.com/lubarchy/lubarchy/actions/runs/38474658686) | `cd8b43fc329a8093c43e97d388689f4386dc3c34` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks) and hardware NVIDIA strategy (19 checks; M1-G evidence and M1-H containment policy from committed fixtures only, no NVIDIA repository contacted or package installed) passed; CI container sources `main` only |
 | [#21 (38474917621)](https://github.com/lubarchy/lubarchy/actions/runs/38474917621) | `72ccc8bdb5c7386b282f82b616cf8ed10e7d5b4a` | push | **success**: all eight gates passed (documentation commit) |
 | [#22 (38519747096)](https://github.com/lubarchy/lubarchy/actions/runs/38519747096) | `3378afb53bd96644f740e79fb23a2a30f88c874c` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks), hardware NVIDIA strategy (19 checks) and hardware package transaction (17 checks; committed synthetic fixtures, APT samples and golden transactions only; no runner APT state, no package installed) passed; CI container sources `main` only |
+| [#23 (38520046728)](https://github.com/lubarchy/lubarchy/actions/runs/38520046728) | `f778ee031364d0458b413efac643a1e03b4070e7` | push | **success**: all nine gates passed (documentation commit) |
 
 The fix in `ce2462e` trusts exactly `$GITHUB_WORKSPACE` for the gate step
 through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`; no Git
@@ -805,9 +933,9 @@ CI tested the NVIDIA policy only against committed fixtures and evidence. It
 never contacted the NVIDIA repository, used no live NVIDIA metadata,
 installed no NVIDIA, CUDA or DKMS package, and kept its Debian sources
 `main` only. Containment recommendation: YES — NVIDIA's Debian 13 repository
-can be technically contained as a candidate D-005 exception. M1-H remains
-awaiting CTO review (not PASS); ADR-0002 remains Proposed and the repository
-remains unauthorised. M1-I has not started.
+can be technically contained as a candidate D-005 exception. M1-H was
+subsequently accepted by the CTO (PASS); ADR-0002 remains Proposed and the
+repository remains unauthorised.
 
 **M1-I CI qualification:** the M1-I change (package transaction contract
 `lubarchy.hardware.package-transaction/v1`, compiler and read-only CLI,
@@ -823,9 +951,11 @@ Debian packages only in the existing QA dependency step (`main` only). No
 package was installed or changed by the transaction tests, and no apt/dpkg
 mutation exists. In CI's shallow checkout, the gate-9 check that inventory,
 rule and plan v1 are unchanged falls back to the schema identity checks of
-gates 4–6; locally they are byte-identical to `72ccc8b`. M1-I remains
-awaiting CTO review (not PASS). No privileged package mutation is
-implemented and M1-J has not started.
+gates 4–6; locally they are byte-identical to `72ccc8b`. Documentation run
+#23 passed all nine gates on `f778ee0`. M1-I was subsequently accepted by the
+CTO (PASS). No privileged package mutation is implemented. Since M1-J, gate
+10 also checks those protected schemas against a committed hash baseline,
+which needs no Git history.
 
 ## Clean rebuild comparison
 

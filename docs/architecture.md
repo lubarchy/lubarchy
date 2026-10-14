@@ -122,14 +122,19 @@ plan proposal → transaction compilation (fresh probe, fresh resolve,
 install-only APT change set bound to exact versions, architectures,
 authorised Debian provenance, installed state including APT automatic/manual
 marks, and repository state; only direct requirements become explicit APT
-targets) → transaction verification →
-privileged apply boundary (future executor; not implemented) → post-apply
-validation (later).
+targets) → transaction verification → source-state verification and
+activation plan (M1-J: one LUBARCHY-owned deb822 Debian source file realising
+D-013, foreign source files never modified) → authenticated metadata
+snapshot → exact payload acquisition → staged-bundle verification (SHA-256,
+size, `dpkg-deb` identity; bound to the transaction, source-activation and
+metadata digests) → final transaction revalidation → privileged apply
+boundary (future executor; not implemented) → post-apply validation (later).
 
 Package names come only from the freshly recomputed plan, never from a
-caller. Applying a transaction (installation and configuration) and
-validation are **not implemented**. See
-[package-transactions.md](package-transactions.md) and
+caller. System source activation, applying a transaction (installation and
+configuration) and validation are **not implemented**. See
+[package-transactions.md](package-transactions.md),
+[package-staging.md](package-staging.md) and
 [hardware-enablement.md](hardware-enablement.md).
 
 ## Installer boundary (future)

@@ -13,6 +13,7 @@ fresh local hardware observation (hardware/probe.py)
 → canonical plan v1 (a proposal)
 → transaction compiler (hardware/package_transaction.py)
 → transaction verification (recompile and compare)
+→ source activation plan and staged payload bundle (M1-J, docs/package-staging.md)
 → future privileged executor (not implemented)
 → APT/dpkg
 → later post-install validation

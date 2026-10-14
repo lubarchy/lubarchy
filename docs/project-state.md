@@ -44,8 +44,9 @@ later installation/configuration → later validation.
 | M1-F | Second-wave network and Bluetooth firmware qualification | PASS (CTO accepted) |
 | M1-G | NVIDIA driver strategy qualification and architecture decision evidence | PASS (CTO accepted); ADR-0002 remains Proposed |
 | M1-H | NVIDIA repository containment and pinning proof | PASS (CTO accepted); ADR-0002 remains Proposed |
-| M1-I | Privileged package apply transaction contract | Published (`3378afb`); GitHub CI green (run #22, all nine gates); awaiting CTO review |
-| M1-J | Not defined | Not started |
+| M1-I | Privileged package apply transaction contract | PASS (CTO accepted) |
+| M1-J | Debian source activation and staged package acquisition | Implemented locally; awaiting CTO review |
+| M1-K | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
   `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
@@ -229,8 +230,8 @@ later installation/configuration → later validation.
   executor that installs only a validated, source-controlled plan, never
   forwards caller-controlled package names, versions, source selectors or
   APT options, revalidates before mutation and records the transaction.
-- M1-I — privileged package apply transaction contract: **published;
-  awaiting CTO review** (not PASS). Implementation commit
+- M1-I — privileged package apply transaction contract: **PASS** (CTO
+  accepted). Implementation commit
   `3378afb53bd96644f740e79fb23a2a30f88c874c`; `Static gates` run #22
   ([38519747096](https://github.com/lubarchy/lubarchy/actions/runs/38519747096))
   passed all nine gates on that commit, with the package transaction gate at
@@ -249,14 +250,51 @@ later installation/configuration → later validation.
   APT-selected and automatic. Package architecture is bound and verified
   against the closure simulation. Stale inputs fail closed. The future
   privileged executor, its argv and environment contract, the lock and the
-  state machine are documented, not implemented. Gate 9 (`tests/hardware-transaction.py`) runs synthetic only.
-  Details: [package-transactions.md](package-transactions.md).
+  state machine are documented, not implemented. Gate 9
+  (`tests/hardware-transaction.py`) runs synthetic only. Details:
+  [package-transactions.md](package-transactions.md).
 - M1-I does **not** install, upgrade, remove or configure any package,
   activate a source, take a package-manager lock, create a privileged
   daemon/setuid/sudoers/polkit path, change the production rules, the
   resolver source policy (`main` + `non-free-firmware`) or the production
   package set (10), or authorise NVIDIA.
-- M1-J has not started and waits for a CTO brief.
+- M1-J — Debian source activation and staged package acquisition:
+  **implemented locally; awaiting CTO review** (not PASS, not pushed).
+  Details: [package-staging.md](package-staging.md).
+  - Source activation (`hardware/source_activation.py`, CLI
+    `hardware/compile-source-activation.py`; contract
+    `lubarchy.packages.source-activation/v1`) realises the accepted D-013
+    policy (`main` + `non-free-firmware`, Debian archive keyring) without a
+    new policy decision. It inspects `/etc/apt` read-only, normalizes and
+    digests the source pre-state, and renders one LUBARCHY-owned deb822 file
+    (`/etc/apt/sources.list.d/lubarchy-debian.sources`). Foreign files are
+    never modified, and ambiguous or unrecognised topologies fail closed. On
+    the builder (installer one-line `sources.list`, `main` only, no
+    `Signed-By`) the plan adds exactly `non-free-firmware` for the same URIs
+    with `Signed-By`. The plan is rendered and authenticated only in
+    isolated workspaces; `/etc/apt` is not written.
+  - Staging (`hardware/package_staging.py`, CLI `hardware/stage-packages.py`;
+    manifest `lubarchy.packages.staged-bundle/v1`) acquires exactly the
+    complete change set of a qualified M1-I transaction. Each payload is
+    verified by type, APT file name, SHA-256 and size from the
+    authenticated index, and `dpkg-deb` identity. The bundle binds the
+    transaction, source-activation and repository metadata digests, and any
+    change of one of them requires restaging.
+  - The future offline apply model (`--no-download`, direct targets only,
+    APT archive cache pointed at the verified bundle) was proven on the
+    builder in simulation and in a non-root no-op-dpkg sandbox, with marks
+    preserved. APT 3.0.3 does not re-hash cached archives, so LUBARCHY's
+    bundle verification is the authoritative integrity control.
+  - Gate 10 (`tests/hardware-staging.py`) is synthetic and offline. It also
+    carries a committed hash baseline of the protected contract schemas,
+    which is shallow-CI safe.
+- M1-J does **not** activate a source, write `/etc/apt` or
+  `/var/lib/lubarchy`, install, upgrade, remove or configure any package,
+  change a package mark, implement or run the privileged apply path, change
+  the inventory, rule, plan or package-transaction contracts, the resolver,
+  the production rules or the production package set (10), or authorise
+  NVIDIA.
+- M1-K has not started and waits for a CTO brief.
 
 ## M0 — Minimal reproducible ISO (closed)
 
@@ -440,14 +478,11 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-I (package transaction contract), published as
-`3378afb53bd96644f740e79fb23a2a30f88c874c`; `Static gates` run #22 passed all
-nine gates on that commit (see [testing.md](testing.md)). The transaction is
-install-only and compiled from a fresh resolution. It binds the complete
-dependency closure with exact versions, architectures, provenance, hashes and
-APT automatic/manual state. Only direct requirements would become explicit
-APT targets. No privileged package mutation is implemented, no package has
-been installed, and M1-J has not started; it waits for a CTO brief.
+CTO review of M1-J (Debian source activation and staged package
+acquisition; local commit only, not yet pushed or CI-qualified). M1-I is
+PASS (CTO accepted). No system source has been activated, no privileged
+package mutation is implemented, no package has been installed and no
+package mark has changed. M1-K has not started and waits for a CTO brief.
 
 ## PASS rule
 

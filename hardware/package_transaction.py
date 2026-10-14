@@ -390,9 +390,11 @@ class SystemBackend:
 
     Production (hardware/compile-transaction.py) uses SystemBackend() with no
     argument: the system's own APT configuration and dpkg database, a fixed
-    environment and fixed binaries. `apt_config` exists only for isolated
-    builder qualification (tools/hwe/qualify-transaction.py); no production
-    entry point exposes it."""
+    environment and fixed binaries. `apt_config` is never caller input: it is
+    used for isolated builder qualification (tools/hwe/qualify-transaction.py)
+    and, since M1-J, by hardware/stage-packages.py with the isolated
+    configuration it generates itself from a verified source-activation
+    contract (source_activation.isolated_update)."""
 
     def __init__(self, apt_config=None):
         self._env = dict(COMMAND_ENV)

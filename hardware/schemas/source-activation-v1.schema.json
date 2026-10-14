@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lubarchy:packages:source-activation:v1",
+  "title": "LUBARCHY Debian source activation v1",
+  "description": "Deterministic plan that realises the accepted Debian source policy (D-013: official Debian archives, Debian archive keyring, components main and non-free-firmware) on an installed system (M1-J). It binds the normalized APT source pre-state, the ownership model, the rendered LUBARCHY-owned deb822 source file and the effective post-state. Deterministic, security-relevant facts only: no timestamps, commands, output, user, host or network identity. A contract authorises nothing by itself; it is recompiled and compared immediately before any future activation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "architecture", "source_policy", "keyring_sha256", "pre_state", "pre_state_digest", "model",
+               "ownership", "action", "owned_source", "post_state", "post_state_digest", "safety"],
+  "properties": {
+    "schema": {"const": "lubarchy.packages.source-activation/v1"},
+    "architecture": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,31}$"},
+    "source_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "components", "archives", "schemes", "default_scheme", "signed_by", "keyring"],
+      "properties": {
+        "decision": {"const": "D-013"},
+        "components": {"const": ["main", "non-free-firmware"]},
+        "archives": {"const": [
+          {"host": "deb.debian.org", "path": "/debian", "suites": ["trixie", "trixie-updates"]},
+          {"host": "security.debian.org", "path": "/debian-security", "suites": ["trixie-security"]}
+        ]},
+        "schemes": {"const": ["http", "https"]},
+        "default_scheme": {"const": "https"},
+        "signed_by": {"const": ["/usr/share/keyrings/debian-archive-keyring.gpg",
+                                "/usr/share/keyrings/debian-archive-keyring.pgp"]},
+        "keyring": {"const": "/usr/share/keyrings/debian-archive-keyring.pgp"}
+      }
+    },
+    "keyring_sha256": {"$ref": "#/$defs/sha256"},
+    "pre_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files", "ignored_files"],
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "class", "format", "entries"],
+            "properties": {
+              "path": {"type": "string", "pattern": "^/etc/apt/(sources\\.list|sources\\.list\\.d/[A-Za-z0-9_.+-]{1,128}\\.(list|sources))$"},
+              "class": {"enum": ["foreign", "owned"]},
+              "format": {"enum": ["one-line", "deb822"]},
+              "sha256": {"$ref": "#/$defs/sha256"},
+              "entries": {"type": "array", "items": {"$ref": "#/$defs/entry"}}
+            }
+          }
+        },
+        "ignored_files": {"type": "array", "items": {"type": "string", "pattern": "^[^/\\u0000]{1,255}$"}}
+      }
+    },
+    "pre_state_digest": {"$ref": "#/$defs/digest"},
+    "model": {"enum": ["complement_foreign_baseline", "owned_complete"]},
+    "ownership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owned_path", "owned_mode", "owned_owner", "foreign_paths", "foreign_files_modified"],
+      "properties": {
+        "owned_path": {"const": "/etc/apt/sources.list.d/lubarchy-debian.sources"},
+        "owned_mode": {"const": "0644"},
+        "owned_owner": {"const": "root:root"},
+        "foreign_paths": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^/etc/apt/"}},
+        "foreign_files_modified": {"const": false}
+      }
+    },
+    "action": {"enum": ["already_satisfied", "create_owned_source", "replace_owned_source"]},
+    "owned_source": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["stanzas", "sha256", "size"],
+          "properties": {
+            "stanzas": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["uri", "suites", "components", "signed_by"],
+                "properties": {
+                  "uri": {"$ref": "#/$defs/uri"},
+                  "suites": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/suite"}},
+                  "components": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/component"}},
+                  "signed_by": {"$ref": "#/$defs/keyring"}
+                }
+              }
+            },
+            "sha256": {"$ref": "#/$defs/sha256"},
+            "size": {"type": "integer", "minimum": 1}
+          }
+        }
+      ]
+    },
+    "post_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targets"],
+      "properties": {
+        "targets": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["uri", "suite", "component", "signed_by"],
+            "properties": {
+              "uri": {"$ref": "#/$defs/uri"},
+              "suite": {"$ref": "#/$defs/suite"},
+              "component": {"$ref": "#/$defs/component"},
+              "signed_by": {"$ref": "#/$defs/keyring"}
+            }
+          }
+        }
+      }
+    },
+    "post_state_digest": {"$ref": "#/$defs/digest"},
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system_written", "foreign_files_modified", "trusted_option", "signed_by_required",
+                   "keys_downloaded", "components"],
+      "properties": {
+        "system_written": {"const": false},
+        "foreign_files_modified": {"const": false},
+        "trusted_option": {"const": false},
+        "signed_by_required": {"const": true},
+        "keys_downloaded": {"const": false},
+        "components": {"const": ["main", "non-free-firmware"]}
+      }
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "uri": {"enum": ["http://deb.debian.org/debian", "https://deb.debian.org/debian",
+                     "http://security.debian.org/debian-security", "https://security.debian.org/debian-security"]},
+    "suite": {"enum": ["trixie", "trixie-updates", "trixie-security"]},
+    "component": {"enum": ["main", "non-free-firmware"]},
+    "keyring": {"enum": ["/usr/share/keyrings/debian-archive-keyring.gpg",
+                         "/usr/share/keyrings/debian-archive-keyring.pgp"]},
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri", "suite", "components", "signed_by"],
+      "properties": {
+        "uri": {"$ref": "#/$defs/uri"},
+        "suite": {"$ref": "#/$defs/suite"},
+        "components": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/component"}},
+        "signed_by": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/keyring"}]}
+      }
+    }
+  }
+}

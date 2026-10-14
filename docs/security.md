@@ -159,6 +159,37 @@ implemented.**
   - **Root/administrator boundary:** these controls govern
     LUBARCHY-managed transactions. A root administrator acting directly on
     APT/dpkg is outside this boundary.
+- Source activation and payload staging (M1-J; no system activation or
+  apply implemented). Details: [package-staging.md](package-staging.md).
+  - **Source authority:** only the accepted D-013 policy (official Debian
+    archives, `main` + `non-free-firmware`, Debian archive keyring). URIs,
+    suites, components and keyrings are never caller input. A `trusted`
+    option, a foreign keyring, `contrib`, `non-free`, Backports, NVIDIA and
+    third-party sources are rejected.
+  - **Ownership:** LUBARCHY owns only
+    `/etc/apt/sources.list.d/lubarchy-debian.sources` and never modifies a
+    foreign source file. Ambiguous topologies fail closed: duplicates, mixed
+    schemes, partial suites, unknown files, symlinks and malformed input.
+  - **Authentication:** isolated metadata refreshes use an empty
+    `trusted.gpg.d`, so only the `Signed-By` keyring authenticates. Every
+    index target must be Debian, `Trusted` and keyring-signed. An absent
+    target is accepted only if the signed `InRelease` lists it as empty.
+  - **Payload integrity:** APT 3.0.3 does not re-hash pre-existing files in
+    its archive cache, so LUBARCHY's bundle verification is authoritative:
+    regular file, APT name, SHA-256 and size from the authenticated index,
+    and `dpkg-deb` identity. It must run immediately before any future apply,
+    against a root-owned location no unprivileged user can write.
+  - **No weakened trust:** no unsigned or `trusted` local repository and no
+    `dpkg -i`. The future offline apply uses APT with `--no-download`,
+    direct targets only and the verified bundle as its archive cache, which
+    preserves the direct/manual and dependency/automatic marks.
+  - **Freshness:** a bundle is accepted only if the fresh transaction,
+    source-activation and repository metadata digests equal its bindings.
+    Otherwise it is restaged, so a superseded security update is never
+    installed silently.
+  - **Filesystem:** caller-owned workspaces outside every system path,
+    `O_NOFOLLOW`/`O_NONBLOCK` opens, exclusive writes with fsync, atomic
+    finalization and bounded entry-by-entry cleanup.
 
 ## Network exposure policy
 

@@ -874,7 +874,14 @@ contract is in [package-transactions.md](package-transactions.md).
   manual) and APT adds `iucode-tool` (automatic)
   (`main`). This was compiled only in an isolated qualification environment.
   The builder's own `main`-only APT configuration makes the production
-  `compile` fail closed (exit 6). Source activation is later work.
+  `compile` fail closed (exit 6).
+- Since M1-J a source-activation contract realises the accepted D-013
+  policy. On the builder it is one LUBARCHY-owned deb822 file adding
+  `non-free-firmware` with `Signed-By`, and the foreign `sources.list` stays
+  untouched. The transaction's payloads can be staged into a verified bundle
+  bound to it. Both run only in isolated workspaces: no system source is
+  activated and nothing is installed. See
+  [package-staging.md](package-staging.md).
 - Every current production package family (10 packages, no NVIDIA) compiles
   against the synthetic universe of gate 9.
 

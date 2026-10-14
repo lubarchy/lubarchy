@@ -45,3 +45,9 @@ Used by `tests/hardware-transaction.py` (gate 9):
 | `transaction/universe.json` | Synthetic package universe: the 10 production packages, `iucode-tool`, a synthetic recommended helper, Debian repository identities in the shape of `apt-get indextargets`. Versions, sizes and SHA-256 values are synthetic |
 | `transaction/expected/` | Reviewed canonical transactions for 10 firmware fixtures (all 10 production packages), regenerated only with `tests/hardware-transaction.py --write-expected` and reviewed |
 | `transaction/apt-samples/` | Real `apt-cache policy`, `apt-get --simulate`, `apt-get indextargets` (Packages targets, local paths removed), `dpkg-query` and `apt-config` output captured on the Debian builder, used to test the production parsers |
+
+Used by `tests/hardware-staging.py` (gate 10):
+
+| Path | Content |
+| --- | --- |
+| `staging/builder-sources.list` | The Debian builder's real `/etc/apt/sources.list` (installer one-line format, `main` only, no `Signed-By`), used to test topology recognition. Other source trees and all `.deb` payloads are generated synthetically by the gate |
