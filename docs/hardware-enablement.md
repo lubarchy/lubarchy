@@ -882,6 +882,15 @@ contract is in [package-transactions.md](package-transactions.md).
   bound to it. Both run only in isolated workspaces: no system source is
   activated and nothing is installed. See
   [package-staging.md](package-staging.md).
+- Since M1-K the root-only executor (`hardware/apply-packages.py apply`)
+  applies the current qualified plan on a real system. It activates the
+  owned source, refreshes the authenticated metadata, compiles a fresh
+  transaction, stages it in the root-owned staging root, re-verifies it and
+  runs one offline APT install of the direct targets, then validates the
+  package, source and file state. This was qualified only on the
+  rollback-protected builder VM. Package installation is not device
+  validation: the VM does not prove that physical microcode was updated.
+  See [package-apply.md](package-apply.md).
 - Every current production package family (10 packages, no NVIDIA) compiles
   against the synthetic universe of gate 9.
 

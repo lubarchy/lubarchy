@@ -128,13 +128,19 @@ D-013, foreign source files never modified) → authenticated metadata
 snapshot → exact payload acquisition → staged-bundle verification (SHA-256,
 size, `dpkg-deb` identity; bound to the transaction, source-activation and
 metadata digests) → final transaction revalidation → privileged apply
-boundary (future executor; not implemented) → post-apply validation (later).
+executor (M1-K, root only: LUBARCHY lock, durable journal, owned-source
+activation, authenticated refresh, fresh transaction, root-owned staging,
+immediate re-hash, one offline APT install of the direct targets) →
+package/source/file validation → later device validation.
 
 Package names come only from the freshly recomputed plan, never from a
-caller. System source activation, applying a transaction (installation and
-configuration) and validation are **not implemented**. See
+caller. APT/dpkg installation is not atomic: the journal records phases, and
+a failure after APT has started is never repaired automatically.
+Interrupted-transaction recovery, device-level validation and the supplier
+of privilege (installer/system service) are later work. See
 [package-transactions.md](package-transactions.md),
-[package-staging.md](package-staging.md) and
+[package-staging.md](package-staging.md),
+[package-apply.md](package-apply.md) and
 [hardware-enablement.md](hardware-enablement.md).
 
 ## Installer boundary (future)

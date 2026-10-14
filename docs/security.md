@@ -72,7 +72,8 @@ The threat model will be refined as the architecture develops.
   The vendor's pinning package has no default deny and must not own the
   trust boundary. Key material is never committed for this evidence, and
   `trusted=yes` is never used.
-- Privileged package boundary (future M1 requirement, not implemented):
+- Privileged package boundary (M1 requirement; implemented by the M1-K
+  executor, [package-apply.md](package-apply.md)):
   untrusted or user request → LUBARCHY resolver and approved plan →
   privileged bounded package executor → APT. The executor:
   - accepts only a validated plan;
@@ -126,7 +127,8 @@ implemented.**
 - Administrative actions require explicit authentication.
 - Hardware enablement and recovery tools must not grant broader privileges
   than needed.
-- Package mutation boundary (M1-I contract, executor not implemented):
+- Package mutation boundary (M1-I contract; executor implemented in M1-K,
+  see [package-apply.md](package-apply.md)):
   untrusted or user request → LUBARCHY resolver and approved plan →
   transaction compiler and verification → privileged bounded package
   executor → APT/dpkg. Details:
@@ -159,8 +161,39 @@ implemented.**
   - **Root/administrator boundary:** these controls govern
     LUBARCHY-managed transactions. A root administrator acting directly on
     APT/dpkg is outside this boundary.
-- Source activation and payload staging (M1-J; no system activation or
-  apply implemented). Details: [package-staging.md](package-staging.md).
+- Privileged apply executor (M1-K). Details:
+  [package-apply.md](package-apply.md).
+  - **Root only, no escalation:** the executor requires effective UID 0 and
+    adds no sudo, setuid, sudoers, polkit rule or daemon. Privilege is
+    supplied externally later.
+  - **No caller authority:** the CLI accepts only `apply`/`status`, with no
+    packages, versions, options, sources, paths or environment.
+  - **Commands:** an exact command allowlist with absolute binaries, a
+    literal environment (C locale, fixed `PATH`,
+    `DEBIAN_FRONTEND=noninteractive`, `HOME=/root`) and `shell=False`. The
+    only `-o` is LUBARCHY's own archive-cache option for the attempt.
+  - **Concurrency:** one root-owned `flock` at
+    `/run/lubarchy/package-transaction.lock`, never deleted. APT/dpkg locks
+    are never touched.
+  - **Freshness:** the final stale-state revalidation and an immediate
+    re-hash of every staged payload run before APT, because APT 3.0.3 does
+    not re-hash cached archives.
+  - **Failure:** APT/dpkg is not atomic. A failure after APT has started is
+    journaled and never repaired automatically, and later runs report
+    `recovery_required`.
+  - **Root/administrator boundary:** a root administrator acting directly
+    on APT/dpkg remains outside this boundary.
+  - **Trusted deployment:** root never executes LUBARCHY code from a tree
+    that an unprivileged user can write. Code must come from a root-owned,
+    unprivileged-nonwritable deployment, reached through non-writable
+    ancestors without symlinks and derived content-addressed from the exact
+    reviewed commit. It is verified before execution and launched with an
+    empty environment and `python3 -I -B`. For qualification this is
+    `/root/lubarchy-m1k/<commit>/`, created by root with `git`/`tar`;
+    production will use package-owned paths.
+- Source activation and payload staging (M1-J; since M1-K used by the
+  executor for the real system). Details:
+  [package-staging.md](package-staging.md).
   - **Source authority:** only the accepted D-013 policy (official Debian
     archives, `main` + `non-free-firmware`, Debian archive keyring). URIs,
     suites, components and keyrings are never caller input. A `trusted`

@@ -14,7 +14,7 @@ fresh local hardware observation (hardware/probe.py)
 → transaction compiler (hardware/package_transaction.py)
 → transaction verification (recompile and compare)
 → source activation plan and staged payload bundle (M1-J, docs/package-staging.md)
-→ future privileged executor (not implemented)
+→ privileged apply executor (M1-K, docs/package-apply.md)
 → APT/dpkg
 → later post-install validation
 ```
@@ -162,7 +162,14 @@ makes it stale, and stale fails closed:
 Debian mirrors move, so a transaction is not a historical snapshot: metadata
 drift → stale → recompile.
 
-## Future privileged executor (not implemented)
+## Privileged executor
+
+Implemented in M1-K by `hardware/package_apply.py` /
+`hardware/apply-packages.py`; see [package-apply.md](package-apply.md). It
+realises the properties below, with one documented refinement: the executor
+generates exactly one internal APT option (the attempt's
+`Dir::Cache::archives`) together with `--no-download`. Caller-controlled
+`-o`/`APT_CONFIG` stay impossible.
 
 The future caller API is *apply the current qualified hardware plan*, never
 *install packages X Y Z*. The privileged side re-observes and revalidates

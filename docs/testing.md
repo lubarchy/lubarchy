@@ -811,6 +811,174 @@ A before/after audit covers:
 - loaded modules, running services and failed units;
 - `/var/lib/lubarchy`.
 
+## M1 hardware package apply gate
+
+`tests/hardware-apply.py` (gate 11 of `tests/run-static.sh`, since M1-K)
+has 14 checks.
+
+It drives `hardware/package_apply.py` through a **fake host** rooted in a
+temporary directory:
+- a Debian-installer-style `sources.list`;
+- the M1-I universe, whose `non-free-firmware` packages become visible only
+  after a simulated `apt-get update`;
+- synthetic `.deb` payloads, read only with `dpkg-deb --field`;
+- a simulated APT install that changes only the fake dpkg state;
+- hooks that inject drift and tampering at exact points.
+
+It never writes `/etc`, `/run` or `/var/lib/lubarchy`, never runs an
+installing APT or a mutating dpkg, needs no root (CI runs it as root
+safely), and never contacts a network or inspects the runner. CLI usage
+probes run in-process with the real host replaced by a sentinel, so even a
+regression cannot reach the real executor in CI.
+
+It proves:
+- **End to end:**
+  - The 11 phases are reached in order, and the journal shows `applying` on
+    disk while APT runs.
+  - Exactly one APT install runs, with the exact argv: direct targets only,
+    `--no-download`, `--no-install-recommends`, `--no-remove`, the internal
+    cache option and nothing forbidden.
+  - Direct packages end manual and the dependency automatic.
+  - The root-owned bundle is created, all digests are journaled, and the
+    owned source has the exact rendered bytes and mode `0644`. The foreign
+    tree is byte-identical.
+  - A satisfied plan completes as `nothing_to_apply` without APT.
+- **Privilege and API:**
+  - Root is required.
+  - The CLI rejects package, option, URI, component, staging-root and
+    extra arguments.
+  - A held lock gives `busy`.
+  - A symlinked, wrongly-moded or world-writable lock path is refused, and
+    the lock file is never deleted.
+- **Source activation:**
+  - `contrib`, NVIDIA and partial topologies fail before any command.
+  - An injected write failure leaves no residue and restores a pre-existing
+    owned file byte for byte.
+  - A stale owned file is replaced.
+  - A symlinked `sources.list.d` is refused.
+  - The executor's only durable writes are the owned file and the journal.
+- **Refresh and freshness:**
+  - A failed `apt-get update` stops before staging.
+  - No transaction is compiled before the refresh.
+  - An unsafe upgrade is rejected.
+  - A newer candidate appearing after staging is stale.
+- **Staging and re-hash:**
+  - A symlinked or writable staging root is refused.
+  - Same-size payload corruption and an identity swap introduced after
+    staging are caught by the immediate re-hash before APT.
+  - An identity mismatch or an acquisition failure at staging is rejected.
+  - The cache option outside the attempt directory is not allowlisted.
+- **Stale state:** seven kinds of drift between staging and apply stop the
+  transaction before APT: inventory, installed state, marks, holds, source
+  state, metadata and manifest.
+- **Journal:**
+  - Each write fsyncs the file and the directory, mode `0600`, with no
+    temporary residue.
+  - A non-terminal journal or a post-APT failure gives `recovery_required`
+    and nothing runs.
+  - A failed `applying` write means APT never runs.
+  - A failure before APT does not block the next attempt.
+  - A malformed journal fails closed.
+  - The journal holds no command output or environment, and phases never go
+    backwards.
+  - The schema matches its baseline hash. Gate 10's protected table also
+    holds it.
+- **APT failure:** a non-zero exit is journaled `failed` with
+  `apply_started`, nothing else runs, and the next invocation is
+  `recovery_required`. The executor source contains no remove, purge, `-f`,
+  `--fix-broken`, `--configure` or `dpkg -i`.
+- **Post-apply validation** fails on each of these: an extra package, a
+  removal, a downgrade, a hold change, a dependency marked manual, a direct
+  package marked automatic, a half-configured package, `dpkg --audit`
+  output, an `apt-get check` failure, a missing package file, or a changed
+  owned source.
+- **Commands:**
+  - The literal environment and `shell=False` hold even with `APT_CONFIG`,
+    proxy, locale and `PYTHONPATH` set by the caller.
+  - The allowlist refuses install without the cache option, `update -o`,
+    `dpkg -i`, `-f`, remove, the shell, relative binaries, `--fix-broken`,
+    `apt-mark`, foreign `-o` options and forbidden flags.
+  - The modules contain no shell, `rmtree`, setuid, sudo or polkit.
+- **Trusted deployment:** a real content-addressed deployment is built in
+  a temporary directory (git repository, bare clone, `ls-tree` manifest,
+  `git archive` with `tar.umask=0022`) and verified.
+  - These are rejected: wrong owner, a group-writable file, an
+    other-writable directory, a writable ancestor, content mismatch,
+    untracked code, executable-bit drift, a symlinked file or deployment
+    component, a wrong tree or commit, a tampered manifest, and the
+    developer checkout itself.
+  - The privileged argv is exactly `env -i python3 -I -B <deployment>/tree/
+    hardware/apply-packages.py apply`.
+  - Imports cannot be redirected by `PYTHONPATH`, `PYTHONHOME`, the current
+    directory or decoy modules, while an unisolated control does load the
+    decoy.
+  - The import probe writes no bytecode.
+  - The launcher execs only a verified deployment and refuses a tampered
+    one.
+- **Policy:** no NVIDIA, `contrib` or Backports path. The policy is `main`
+  + `non-free-firmware`, the production package set is 10, and the NVIDIA
+  policy is inactive.
+
+### M1-K mutation suite
+
+Each mutation is committed in a throwaway clone, and the full
+`tests/run-static.sh` must fail through a functional assertion. The 46
+mutations:
+- **Privilege and boundary:** no root check; CLI accepting extra
+  arguments; no lock; a lock that follows symlinks; lock-file deletion; a
+  caller staging root.
+- **Source:** no source-state recheck; modifying a foreign source; no
+  owned-source restore; allowing an NVIDIA archive.
+- **Freshness:** skipping the metadata refresh; reusing a pre-activation
+  transaction; allowing unsafe transactions; skipping the installed-state,
+  marks or metadata revalidation.
+- **Payload integrity:** skipping the immediate re-hash; size-only
+  verification; skipping `dpkg-deb` verification.
+- **Journal:** no journal fsync; no `applying` phase; permitting a second
+  active journal; marking `complete` before validation; skipping
+  validation.
+- **Command and environment:** enabling the shell; inheriting `APT_CONFIG`
+  or proxies.
+- **APT argv:** an explicit dependency target; removing `--no-download` or
+  `--no-remove`; enabling recommends; adding `--allow-unauthenticated`,
+  `--allow-downgrades` or `--force-yes`; using `dpkg -i`.
+- **Recovery:** automatic `apt-get -f install` after a failure.
+- **Trusted deployment:** skipping the owner, writability, symlink,
+  ancestor, content, untracked-file or Git-identity check; launching from
+  the developer clone; dropping `-I`; launching without verification.
+
+### Builder apply qualification (M1-K, builder only)
+
+The only authorised real package-manager mutation runs on the
+`lubarchy-builder` VM, under this procedure:
+1. The builder is shut off. A host-level libvirt checkpoint of all writable
+   VM state (system disk and UEFI NVRAM) is created, and its restoration is
+   proven before any mutation.
+2. Boot. Capture the pre-state:
+   - the source tree;
+   - dpkg state, marks, holds and package counts;
+   - the APT cache and history;
+   - services and modules.
+3. Root creates the trusted deployment `/root/lubarchy-m1k/<commit>/` from
+   a bundle of the exact commit, using system `git`/`tar` only. Root then
+   runs `tools/hwe/trusted-deployment.py verify` and `imports` from that
+   deployment, and launches `run-apply` once. The user-owned clone is never
+   executed by root; it only runs the unprivileged gates and read-only
+   captures.
+4. Validate the post-apply state:
+   - packages, versions, architectures and marks;
+   - the source post-state and the foreign files;
+   - `dpkg --audit`, `apt-get check`;
+   - the journal transitions;
+   - no network fetch during apply.
+5. Run one controlled reboot, then re-validate.
+6. Shut down, restore the checkpoint, boot and run a read-only audit that
+   must match the original baseline. Then shut down with autostart
+   disabled.
+
+Results are recorded in the evidence bundle of the exact commit. VM package
+success is not physical CPU-microcode or real-hardware qualification.
+
 ## GitHub CI
 
 The static gates run as the GitHub Actions workflow

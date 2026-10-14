@@ -45,8 +45,9 @@ later installation/configuration → later validation.
 | M1-G | NVIDIA driver strategy qualification and architecture decision evidence | PASS (CTO accepted); ADR-0002 remains Proposed |
 | M1-H | NVIDIA repository containment and pinning proof | PASS (CTO accepted); ADR-0002 remains Proposed |
 | M1-I | Privileged package apply transaction contract | PASS (CTO accepted) |
-| M1-J | Debian source activation and staged package acquisition | Published (`0fab8f8`); GitHub CI green (run #24, all ten gates); awaiting CTO review |
-| M1-K | Not defined | Not started |
+| M1-J | Debian source activation and staged package acquisition | PASS (CTO accepted) |
+| M1-K | Privileged source activation and package apply executor | Implemented locally; awaiting CTO review |
+| M1-L | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
   `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
@@ -259,7 +260,10 @@ later installation/configuration → later validation.
   resolver source policy (`main` + `non-free-firmware`) or the production
   package set (10), or authorise NVIDIA.
 - M1-J — Debian source activation and staged package acquisition:
-  **published; awaiting CTO review** (not PASS). Implementation commit
+  **PASS** (CTO accepted). The source-activation contract, the staged-bundle
+  contract, exact authenticated payload staging and the offline
+  (`--no-download`) future apply model are qualified. No source or package
+  mutation had occurred before M1-K. Implementation commit
   `0fab8f899a356685fc6b33117953e333e30742ac`; `Static gates` run #24
   ([38539169890](https://github.com/lubarchy/lubarchy/actions/runs/38539169890))
   passed all ten gates on that commit, with the package staging gate at 19
@@ -297,7 +301,43 @@ later installation/configuration → later validation.
   the inventory, rule, plan or package-transaction contracts, the resolver,
   the production rules or the production package set (10), or authorise
   NVIDIA.
-- M1-K has not started and waits for a CTO brief.
+- M1-K — privileged source activation and package apply executor:
+  **implemented locally; awaiting CTO review** (not PASS, not pushed).
+  Details: [package-apply.md](package-apply.md).
+  - `hardware/package_apply.py` and the root-only CLI
+    `hardware/apply-packages.py` (`apply`, `status`) apply the current
+    qualified hardware plan. The executor takes no package, option, source
+    or path input and never escalates privilege itself.
+  - Chain: LUBARCHY transaction lock → durable journal
+    (`lubarchy.packages.apply-journal/v1`) → activation of the
+    LUBARCHY-owned Debian source file only → authenticated `apt-get update`
+    → fresh probe, resolve and transaction → root-owned staging → final
+    stale-state revalidation and immediate payload re-hash → one offline APT
+    install (direct targets only, `--no-download`, `--no-remove`, no
+    recommends) → validation of the exact package, mark, hold, source and
+    file state.
+  - APT/dpkg installation is not atomic. Failures after APT has started are
+    journaled and never repaired automatically; later runs report
+    `recovery_required`.
+  - Privileged LUBARCHY code runs only from a root-owned,
+    unprivileged-nonwritable, content-addressed deployment of the exact
+    reviewed commit (`tools/hwe/trusted-deployment.py`; qualification-only
+    location `/root/lubarchy-m1k/<commit>/`). It never runs from a
+    user-writable checkout.
+  - Gate 11 (`tests/hardware-apply.py`) uses a fake host and never mutates
+    anything. The first real package-manager mutation is authorised only on
+    the rollback-protected builder VM. The procedure is a libvirt checkpoint,
+    one real apply of the exact commit, post-apply and reboot validation,
+    then restoring the checkpoint ([testing.md](testing.md)). Results are
+    recorded in the evidence bundle for the exact commit. Package success on
+    a VM is not physical hardware validation.
+- M1-K does **not** add a privilege-escalation path (sudo, setuid, sudoers,
+  polkit, daemon), implement interrupted-transaction recovery, support
+  NVIDIA, `contrib`, `non-free`, Backports or third-party sources, change the
+  inventory, rule, plan, package-transaction, source-activation or
+  staged-bundle contracts, the resolver, the production rules or the
+  production package set (10).
+- M1-L has not started and waits for a CTO brief.
 
 ## M0 — Minimal reproducible ISO (closed)
 
@@ -481,21 +521,13 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-J (Debian source activation and staged package
-acquisition), published as `0fab8f899a356685fc6b33117953e333e30742ac`;
-`Static gates` run #24 passed all ten gates on that commit (see
-[testing.md](testing.md)). Source activation remains a contract and plan:
-D-013 authorises only Debian `main` + `non-free-firmware`, and LUBARCHY never
-modifies foreign or administrator source files. Staging remains pre-apply
-only. A bundle is bound to its transaction and the authenticated repository
-metadata, and every payload to its SHA-256, size, package, version and
-architecture. Fresh metadata drift makes a bundle stale and requires
-restaging. APT does not re-hash cached payloads, so any future apply must
-re-verify the bundle immediately before mutation. Neither `dpkg -i` nor an
-unsigned or `trusted` local repository is part of the model. No system source
-has been activated, no package mutation is implemented or has been
-performed, and no package mark has changed. M1-I is PASS (CTO accepted).
-M1-K has not started and waits for a CTO brief.
+CTO review of M1-K (privileged source activation and package apply
+executor; local commit only, not yet pushed or CI-qualified). M1-J is PASS
+(CTO accepted). The real package-manager mutation is qualified only on the
+rollback-protected builder VM, which is restored to its original baseline
+afterwards. Interrupted-transaction recovery, post-install device validation
+and real-hardware qualification remain open. M1-L has not started and waits
+for a CTO brief.
 
 ## PASS rule
 

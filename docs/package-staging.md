@@ -20,7 +20,7 @@ repository and every third-party source stay unauthorised.
 fresh probe → resolver → package transaction (M1-I) → source-state
 verification and activation plan → authenticated metadata snapshot → exact
 package acquisition → staged bundle verification → final transaction
-revalidation → *future privileged apply* (not implemented).
+revalidation → privileged apply (M1-K, [package-apply.md](package-apply.md)).
 
 | Piece | Code | Contract |
 | --- | --- | --- |
@@ -383,6 +383,9 @@ Exit codes:
 - `64`: usage error.
 
 ## Not in M1-J
+
+(Since M1-K, privileged source activation and the apply executor exist; see
+[package-apply.md](package-apply.md).)
 
 - privileged source activation;
 - the privileged apply executor;

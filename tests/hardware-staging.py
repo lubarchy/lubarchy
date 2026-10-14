@@ -59,6 +59,7 @@ PROTECTED_SCHEMAS = {
     "package-transaction-v1.schema.json": "894e7f2481db99a5dd8df310f15a564dcbbe9592bc217ba6523018171333d5dc",
     "source-activation-v1.schema.json": "8e72a8e2257de9d5292436a4cfae7f00f4fa6db9fafd7dcb34900c218f14f077",
     "staged-bundle-v1.schema.json": "f226f04aeee9b316141704c7d0df975e876181d268e14bccc45c048c198ea3a1",
+    "apply-journal-v1.schema.json": "904469c0bb857803f4c2a909760a7382d03756d8cc67ad3d2e12bdb468314c7d",
 }
 KEYRING_SHA = "506b815cbb32d9b6066b4a2aa524071e071761e7e7f68c3ac74f3061ba852017"   # debian-archive-keyring 2025.1
 ACT_DIGEST = "sha256:" + "a" * 64
@@ -257,7 +258,7 @@ def schemas_meta_valid_closed_and_protected():
     for name, want in PROTECTED_SCHEMAS.items():
         got = hashlib.sha256((HARDWARE / "schemas" / name).read_bytes()).hexdigest()
         expect(got == want, f"protected contract {name} changed ({got})")
-    return f"2 new schemas meta-valid and closed; {len(PROTECTED_SCHEMAS)} protected contract hashes match"
+    return f"2 M1-J schemas meta-valid and closed; {len(PROTECTED_SCHEMAS)} protected contract hashes match"
 
 
 # ---------------------------------------------------------------------------

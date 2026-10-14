@@ -431,7 +431,13 @@ def _remove_bundle_dir(path, allow_empty_dirs=False):
 def stage_bundle(tx, source_activation_digest, repository_metadata_digest, root, acquirer, inspector):
     """Acquire, verify and atomically finalize the bundle for `tx` under the
     caller-owned workspace `root`. Returns (bundle_path, manifest, results)."""
-    root = check_staging_root(root)
+    return _stage_into(check_staging_root(root), tx, source_activation_digest, repository_metadata_digest,
+                       acquirer, inspector)
+
+
+def _stage_into(root, tx, source_activation_digest, repository_metadata_digest, acquirer, inspector):
+    """Staging into an already validated root (a checked caller workspace, or
+    since M1-K the root-owned STAGING_ROOT validated by package_apply)."""
     manifest = build_manifest(tx, source_activation_digest, repository_metadata_digest)
     final = os.path.join(root, bundle_name(manifest["transaction_digest"]))
     if _lstat(final) is not None:

@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lubarchy:packages:apply-journal:v1",
+  "title": "LUBARCHY package apply journal v1",
+  "description": "Durable runtime journal of one privileged hardware-package apply attempt (M1-K), stored as /var/lib/lubarchy/package-transactions/<attempt>/journal.json and replaced atomically at every phase change. It records phase evidence, bound digests, the expected direct targets and closure, the result and a failure code. It is not a canonical resolution contract (phase times are wall-clock UTC) and it is not a rollback log: APT/dpkg installation is not atomic. It never contains command output, environment, secrets or caller text.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "attempt_id", "phase", "result", "failure", "apply_started", "phases", "source_activation",
+               "digests", "expected", "post_state"],
+  "properties": {
+    "schema": {"const": "lubarchy.packages.apply-journal/v1"},
+    "attempt_id": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+    "phase": {"$ref": "#/$defs/phase"},
+    "result": {"enum": [null, "complete", "nothing_to_apply", "failed"]},
+    "failure": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "phase"],
+          "properties": {
+            "code": {"type": "string", "pattern": "^[a-z_]{1,64}$"},
+            "phase": {"$ref": "#/$defs/phase"}
+          }
+        }
+      ]
+    },
+    "apply_started": {"type": "boolean"},
+    "phases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["phase", "at"],
+        "properties": {
+          "phase": {"$ref": "#/$defs/phase"},
+          "at": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"}
+        }
+      }
+    },
+    "source_activation": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "model", "pre_state_digest", "post_state_digest"],
+          "properties": {
+            "action": {"enum": ["already_satisfied", "create_owned_source", "replace_owned_source"]},
+            "model": {"enum": ["complement_foreign_baseline", "owned_complete"]},
+            "pre_state_digest": {"$ref": "#/$defs/digest"},
+            "post_state_digest": {"$ref": "#/$defs/digest"}
+          }
+        }
+      ]
+    },
+    "digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_activation_digest", "repository_metadata_digest", "transaction_digest", "bundle_digest",
+                   "installed_state_digest_before"],
+      "properties": {
+        "source_activation_digest": {"$ref": "#/$defs/optional_digest"},
+        "repository_metadata_digest": {"$ref": "#/$defs/optional_digest"},
+        "transaction_digest": {"$ref": "#/$defs/optional_digest"},
+        "bundle_digest": {"$ref": "#/$defs/optional_digest"},
+        "installed_state_digest_before": {"$ref": "#/$defs/optional_digest"}
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["direct", "closure"],
+      "properties": {
+        "direct": {"type": "array", "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9+.-]{1,127}:[a-z0-9][a-z0-9-]{0,31}=(?:[0-9]+:)?[0-9][A-Za-z0-9.+~-]{0,127}$"}},
+        "closure": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["package", "architecture", "version", "relation"],
+            "properties": {
+              "package": {"$ref": "#/$defs/package"},
+              "architecture": {"$ref": "#/$defs/architecture"},
+              "version": {"$ref": "#/$defs/version"},
+              "relation": {"enum": ["direct", "dependency"]}
+            }
+          }
+        }
+      }
+    },
+    "post_state": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["packages", "reboot_required"],
+          "properties": {
+            "packages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["package", "architecture", "version", "automatic", "status", "relation"],
+                "properties": {
+                  "package": {"$ref": "#/$defs/package"},
+                  "architecture": {"$ref": "#/$defs/architecture"},
+                  "version": {"$ref": "#/$defs/version"},
+                  "automatic": {"type": "boolean"},
+                  "status": {"const": "install ok installed"},
+                  "relation": {"enum": ["direct", "dependency"]}
+                }
+              }
+            },
+            "reboot_required": {"type": "boolean"}
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "phase": {"enum": ["prepared", "locked", "source_activated", "metadata_refreshed", "transaction_revalidated",
+                       "bundle_staged", "bundle_verified", "applying", "applied", "validated", "complete", "failed"]},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "optional_digest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]},
+    "package": {"type": "string", "pattern": "^[a-z0-9][a-z0-9+.-]{1,127}$"},
+    "architecture": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,31}$"},
+    "version": {"type": "string", "pattern": "^(?:[0-9]+:)?[0-9][A-Za-z0-9.+~-]{0,127}$"}
+  }
+}
