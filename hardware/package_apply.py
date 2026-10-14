@@ -96,7 +96,7 @@ ERROR_EXIT = {
     "contract_failure": EXIT_CONTRACT, "backend_failure": EXIT_CONTRACT, "source_activation_failed": EXIT_CONTRACT,
     "metadata_refresh_failed": EXIT_CONTRACT, "journal_failure": EXIT_CONTRACT,
     "busy": EXIT_BUSY, "recovery_required": EXIT_RECOVERY,
-    "apply_failed": EXIT_APPLY_FAILED, "validation_failed": EXIT_APPLY_FAILED,
+    "apply_failed": EXIT_APPLY_FAILED, "validation_failed": EXIT_APPLY_FAILED, "recovery_failed": EXIT_APPLY_FAILED,
     "not_root": EXIT_NOT_ROOT,
 }
 
@@ -199,6 +199,12 @@ def allowed_command(argv, root="/"):
         return True
     if len(argv) == 3 and argv[:2] == [DPKG_QUERY, "--listfiles"]:
         return bool(pt.PACKAGE_NAME.match(argv[2].split(":")[0]))
+    # M1-L bounded recovery: configure with trigger processing suppressed (fixed internal option),
+    # or trigger processing; exact package names only (never "all pending" forms or other options)
+    for head in ([DPKG, "--configure", "--no-triggers"], [DPKG, "--triggers-only"]):
+        if len(argv) > len(head) and argv[:len(head)] == head:
+            names = argv[len(head):]
+            return len(set(names)) == len(names) and all(pt.PACKAGE_NAME.match(n) for n in names)
     return allowed_apply_argv(argv, root)
 
 
@@ -349,7 +355,7 @@ class Journal:
                     "digests": {"source_activation_digest": None, "repository_metadata_digest": None,
                                 "transaction_digest": None, "bundle_digest": None,
                                 "installed_state_digest_before": None},
-                    "expected": {"direct": [], "closure": []}, "post_state": None}
+                    "expected": {"direct": [], "closure": []}, "recovery_evidence": None, "post_state": None}
         self.transition("prepared")
 
     def transition(self, phase, **updates):
@@ -367,6 +373,8 @@ class Journal:
             else:
                 doc[k] = v
         if phase == "applying":
+            if not doc.get("recovery_evidence"):
+                raise ApplyError("journal_failure", "recovery evidence must be durable before applying")
             doc["apply_started"] = True
         doc["phase"] = phase
         doc["phases"].append({"phase": phase, "at": self.host.now()})
@@ -412,7 +420,12 @@ def prior_attempts(host):
 
 
 def require_no_pending(host):
+    resolved, blocking = _pr.resolution_state(host)
+    if blocking:
+        raise ApplyError("recovery_required", blocking)
     for name, phase, started in prior_attempts(host):
+        if name in resolved:
+            continue
         if phase not in TERMINAL:
             raise ApplyError("recovery_required", f"attempt {name} stopped in phase {phase}")
         if phase == "failed" and started:
@@ -604,11 +617,15 @@ def apply_current_plan(host):
             journal.transition("complete", result="nothing_to_apply")
             return journal.doc
 
-        # Root-owned staging.
+        # Root-owned staging (an existing bundle of this transaction is reused only if it
+        # re-verifies against the fresh bindings; a stale one is removed and restaged).
         staging = _ensure_dir(host, STAGING_DIR, 0o755)
-        bundle, manifest, _results = ps._stage_into(staging, tx, sa.activation_digest(contract),
-                                                    metadata["repository_metadata_digest"],
-                                                    host.acquirer(), host.inspector())
+        bundle, manifest = _reuse_or_clear_bundle(host, staging, tx, sa.activation_digest(contract),
+                                                  metadata["repository_metadata_digest"])
+        if bundle is None:
+            bundle, manifest, _results = ps._stage_into(staging, tx, sa.activation_digest(contract),
+                                                        metadata["repository_metadata_digest"],
+                                                        host.acquirer(), host.inspector())
         journal.transition("bundle_staged", digests={"bundle_digest": manifest["bundle_digest"]})
 
         # Final stale-state revalidation, then the immediate bundle re-hash.
@@ -627,7 +644,9 @@ def apply_current_plan(host):
         cache = _apply_cache(host, journal, bundle, manifest)
         ps.verify_bundle(bundle, host.inspector(), expected=fresh, tx=f_tx)
         ps.verify_payloads(cache, manifest["payloads"], host.inspector(), check_modes=True)
-        journal.transition("bundle_verified")
+        # M1-L: durable pre-apply recovery evidence (dpkg log cursor, trigger-interest records)
+        # bound with the verified bundle, before `applying`.
+        journal.transition("bundle_verified", recovery_evidence=_pr.bind_recovery_evidence(host, before))
         os.mkdir(os.path.join(cache, "partial"), 0o700)
 
         # Apply: journal first, then exactly one APT run. No recovery after this point.
@@ -682,6 +701,24 @@ def apply_current_plan(host):
         lock.release()
 
 
+def _reuse_or_clear_bundle(host, staging, tx, activation, metadata):
+    """(bundle, manifest) of an existing, fully re-verified bundle of this exact
+    transaction; (None, None) if there is none or a stale one was removed."""
+    path = os.path.join(staging, ps.bundle_name(pt.transaction_digest(tx)))
+    if not os.path.lexists(path):
+        return None, None
+    try:
+        manifest, _results = ps.verify_bundle(path, host.inspector(), tx=tx, expected={
+            "transaction_digest": pt.transaction_digest(tx), "source_activation_digest": activation,
+            "repository_metadata_digest": metadata})
+        return path, manifest
+    except ps.StagingError as e:
+        if e.code != "stale_bundle":
+            raise
+    ps._remove_bundle_dir(path)          # stale bindings: entry-by-entry removal of a valid bundle layout
+    return None, None
+
+
 def _apply_cache(host, journal, bundle, manifest):
     """The attempt's APT archive cache: hard links to the verified bundle payloads
     (same root-owned filesystem; no copy, no download)."""
@@ -709,7 +746,17 @@ def apply_argv(manifest, cache, root="/"):
 
 
 def status(host):
-    """Read-only summary of the journals (root only, like apply)."""
+    """Read-only summary of the apply and recovery journals (root only, like apply)."""
     if host.euid() != 0:
         raise ApplyError("not_root", "journal status requires effective UID 0")
-    return [{"attempt": a, "phase": p, "apply_started": s} for a, p, s in prior_attempts(host)]
+    pr = _pr
+    resolved, _blocking = pr.resolution_state(host)
+    return {"attempts": [{"attempt": a, "phase": p, "apply_started": s, "resolved_by_recovery": a in resolved}
+                         for a, p, s in prior_attempts(host)],
+            "recoveries": [{"recovery": n, "phase": d["phase"], "classification": d["classification"],
+                            "attempt": (d["original"] or {}).get("attempt_id")} for n, d in pr.recovery_records(host)]}
+
+
+# M1-L recovery journals gate new transactions (imported last: package_recovery
+# imports this module and uses it only at call time).
+import package_recovery as _pr  # noqa: E402

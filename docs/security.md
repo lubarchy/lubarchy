@@ -191,6 +191,37 @@ implemented.**
     empty environment and `python3 -I -B`. For qualification this is
     `/root/lubarchy-m1k/<commit>/`, created by root with `git`/`tar`;
     production will use package-owned paths.
+- Interrupted transaction recovery (M1-L). Details:
+  [package-recovery.md](package-recovery.md).
+  - The real package state is authoritative and the journal is evidence.
+    Attribution requires reconstructing the bound pre-state digest and
+    re-verifying the original root-owned bundle.
+  - The transaction closure and the recovery impact set are kept apart. A
+    package outside the closure can be a recovery target only if durable
+    evidence bound before `applying` (dpkg log cursor and prefix digest,
+    pre-apply trigger-interest records) and the dpkg log after it prove that
+    this exact transaction activated its trigger. Declared trigger interest
+    alone, names, current state or timestamps never qualify.
+  - The only recovery mutation is exact-package `dpkg --configure`/
+    `--triggers-only`, and its targets must be an exact subset of the
+    authorised set: non-final closure packages plus non-final attributed
+    impact packages.
+  - Exact target naming alone is not containment, because dpkg's configure
+    also processes pending triggers. Recovery configures with the fixed
+    internal `--no-triggers` option (qualified on the builder), and trigger
+    processing is a separately authorised `--triggers-only` phase. Each
+    command's own dpkg log delta and the re-inspected state must show no
+    execution or change outside the authorised set. Recovery never broadens
+    its own authorisation: trigger work it newly causes in another package
+    is left unexecuted and ends in manual recovery. APT, downloads, `apt-get -f install`,
+    `dpkg --configure -a`/`--pending`, upgrades, removals and mark changes are
+    never used.
+  - Unrelated pending or damaged packages, any version, architecture, mark
+    or hold deviation, bundle or source drift, and untrusted or ambiguous
+    journals all require manual recovery.
+  - Recovery shares the transaction lock, never removes native dpkg locks,
+    runs root only from the trusted deployment, and writes a durable
+    recovery journal that gates later applies.
 - Source activation and payload staging (M1-J; since M1-K used by the
   executor for the real system). Details:
   [package-staging.md](package-staging.md).

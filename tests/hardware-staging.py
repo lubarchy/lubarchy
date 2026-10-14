@@ -59,7 +59,8 @@ PROTECTED_SCHEMAS = {
     "package-transaction-v1.schema.json": "894e7f2481db99a5dd8df310f15a564dcbbe9592bc217ba6523018171333d5dc",
     "source-activation-v1.schema.json": "8e72a8e2257de9d5292436a4cfae7f00f4fa6db9fafd7dcb34900c218f14f077",
     "staged-bundle-v1.schema.json": "f226f04aeee9b316141704c7d0df975e876181d268e14bccc45c048c198ea3a1",
-    "apply-journal-v1.schema.json": "904469c0bb857803f4c2a909760a7382d03756d8cc67ad3d2e12bdb468314c7d",
+    "apply-journal-v1.schema.json": "54879c723ecb5d69ce23792a695788b37d5f01d37a6ed43885839f9eba7f59ac",
+    "recovery-journal-v1.schema.json": "e675420f8bcbd5617347d49c83014c2f51aa9dc8dd477a55fb8f7e449eebef9e",
 }
 KEYRING_SHA = "506b815cbb32d9b6066b4a2aa524071e071761e7e7f68c3ac74f3061ba852017"   # debian-archive-keyring 2025.1
 ACT_DIGEST = "sha256:" + "a" * 64

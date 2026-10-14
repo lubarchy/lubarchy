@@ -135,7 +135,18 @@ package/source/file validation → later device validation.
 
 Package names come only from the freshly recomputed plan, never from a
 caller. APT/dpkg installation is not atomic: the journal records phases, and
-a failure after APT has started is never repaired automatically.
+a failure after APT has started is never repaired automatically. Since M1-L,
+`recover` classifies an interrupted attempt from the real package state.
+- It finalizes attempts that changed nothing.
+- It validates a complete post-state without re-running anything.
+- It completes a provably bounded interrupted dpkg run with exact-package
+  `dpkg --configure --no-triggers`, then `--triggers-only`, only. Targets
+  are limited to the
+  transaction closure plus a recovery impact set of packages whose trigger
+  the exact transaction provably activated (dpkg log evidence bound before
+  `applying`).
+- Everything else is left to manual recovery
+  ([package-recovery.md](package-recovery.md)).
 Interrupted-transaction recovery, device-level validation and the supplier
 of privilege (installer/system service) are later work. See
 [package-transactions.md](package-transactions.md),

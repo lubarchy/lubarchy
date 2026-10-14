@@ -167,11 +167,27 @@ transaction_revalidated → bundle_staged → bundle_verified → applying →
 applied → validated → complete`, or `failed` from any phase. A plan with
 nothing to install completes as `nothing_to_apply` without running APT.
 
+**Pre-apply recovery evidence (M1-L).** The `bundle_verified` transition
+also records `recovery_evidence`: the dpkg log cursor (size and SHA-256 of
+`/var/log/dpkg.log` at that moment) and the package, architecture, version,
+status and declaration digest of every installed package that declares dpkg
+trigger interest. The journal refuses `applying` unless this evidence is
+already durable. Recovery uses it to attribute trigger impact to the exact
+transaction ([package-recovery.md](package-recovery.md#transaction-closure-and-recovery-impact-set)).
+
 **No automatic resume.** A journal in a non-terminal phase, or a `failed`
 attempt whose APT phase had started, makes every later invocation fail with
 `recovery_required` (exit 9) before doing anything. A journal that cannot
-be read fails closed the same way. Interrupted-transaction recovery is later
-work.
+be read fails closed the same way. Since M1-L, the explicit
+`apply-packages.py recover` operation resolves such an attempt
+conservatively ([package-recovery.md](package-recovery.md)). Apply stays
+blocked until a recovery ends `complete` or `abandoned`.
+
+**Bundle reuse.** An existing bundle of the same transaction is reused only
+if it fully re-verifies against the fresh transaction, activation and
+metadata digests. Otherwise, a stale bundle with the valid layout is removed
+entry by entry and restaged. This is an M1-L refinement: without it, a retry
+after a post-staging failure could never stage again.
 
 ## Source activation
 
@@ -321,14 +337,15 @@ evidence, not a transactional rollback.
 | 6 | payload, metadata or provenance mismatch |
 | 7 | contract or internal failure (including source activation, metadata refresh, journal) |
 | 8 | busy: another LUBARCHY transaction holds the lock |
-| 9 | recovery required |
-| 10 | APT apply or post-apply validation failed |
+| 9 | recovery required (or `recover`: manual recovery required) |
+| 10 | APT apply, recovery or post-apply validation failed |
 | 64 | usage |
 | 77 | not root |
 
 ## Not in M1-K
 
-- interrupted transaction recovery and its user experience;
+- the operator user experience of manual recovery (M1-L implements
+  automatic classification and bounded recovery);
 - post-install device and function validation;
 - staging and journal garbage collection;
 - installer and system-service integration (the supplier of privilege);

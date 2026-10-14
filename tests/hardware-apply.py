@@ -52,7 +52,7 @@ gate9 = _load("gate9", "hardware-transaction.py")
 gate10 = _load("gate10", "hardware-staging.py")
 sys.path.remove(str(HARDWARE))
 
-JOURNAL_SCHEMA_SHA256 = "904469c0bb857803f4c2a909760a7382d03756d8cc67ad3d2e12bdb468314c7d"
+JOURNAL_SCHEMA_SHA256 = "54879c723ecb5d69ce23792a695788b37d5f01d37a6ed43885839f9eba7f59ac"
 KEYRING_SHA = gate10.KEYRING_SHA
 BASELINE = ("deb https://deb.debian.org/debian trixie main\n"
             "deb https://security.debian.org/debian-security trixie-security main\n"
@@ -663,12 +663,22 @@ def journal_durability_and_recovery():
         seq = ["locked", "source_activated", "metadata_refreshed", "transaction_revalidated", "bundle_staged",
                "bundle_verified", "applying"]
         for p in seq[:{"applying": 7, "bundle_staged": 5, "failed": 7}[phase]]:
-            j.transition(p)
+            j.transition(p, **({"recovery_evidence": pa._pr.bind_recovery_evidence(h, {})}
+                               if p == "bundle_verified" else {}))
         if phase == "failed":
             j.fail(pa.ApplyError("apply_failed", "x"))
         h.commands.clear()
         rejects("recovery_required", run_apply, h)
         expect(not h.commands and len(journals(h)) == 1, "recovery_required run did something")
+    # M1-L: `applying` is refused unless the pre-apply recovery evidence is already durable
+    h = FakeHost("no-evidence")
+    pa._ensure_dir(h, pa.LUBARCHY_STATE, 0o755)
+    j = pa.Journal(h)
+    for p in seq[:6]:
+        j.transition(p)
+    rejects("journal_failure", j.transition, "applying")
+    expect(journals(h)[-1]["phase"] == "bundle_verified" and not journals(h)[-1]["apply_started"],
+           "applying recorded without recovery evidence")
     # a journal write failure at "applying" means APT never runs
     h = FakeHost("journal-write")
     real_replace = pa.durable_replace
@@ -733,9 +743,15 @@ def apt_failure_is_journaled_without_recovery():
     rejects("recovery_required", run_apply, h)
     expect(h.commands == [], "recovery_required ran commands")
     src = (HARDWARE / "package_apply.py").read_text(encoding="utf-8")
-    for pat in (r"\"remove\"", r"\"purge\"", r"--fix-broken", r"\"-f\"", r"--configure", r"\"autoremove\"",
-                r"\"-i\"", r"--install\b", r"\"--unpack\""):
+    for pat in (r"\"remove\"", r"\"purge\"", r"--fix-broken", r"\"-f\"", r"\"autoremove\"",
+                r"\"-i\"", r"--install\b", r"\"--unpack\"", r"--pending", r"\"-a\""):
         expect(not re.search(pat, src), f"executor contains recovery/dpkg action {pat}")
+    # dpkg --configure exists only in the M1-L recovery allowlist, never in the apply flow
+    tree = ast.parse(src)
+    flow = "".join(ast.get_source_segment(src, n) for n in tree.body if isinstance(n, ast.FunctionDef) and
+                   n.name in ("apply_current_plan", "apply_argv", "_apply_cache", "_reuse_or_clear_bundle",
+                              "activate_source", "package_files_present"))
+    expect("--configure" not in flow and "--triggers-only" not in flow, "the apply flow runs a dpkg configure")
     return "APT exit 100 -> failed (apply_started) and nothing else runs; next invocation recovery_required"
 
 

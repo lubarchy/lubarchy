@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:lubarchy:packages:apply-journal:v1",
   "title": "LUBARCHY package apply journal v1",
-  "description": "Durable runtime journal of one privileged hardware-package apply attempt (M1-K), stored as /var/lib/lubarchy/package-transactions/<attempt>/journal.json and replaced atomically at every phase change. It records phase evidence, bound digests, the expected direct targets and closure, the result and a failure code. It is not a canonical resolution contract (phase times are wall-clock UTC) and it is not a rollback log: APT/dpkg installation is not atomic. It never contains command output, environment, secrets or caller text.",
+  "description": "Durable runtime journal of one privileged hardware-package apply attempt (M1-K), stored as /var/lib/lubarchy/package-transactions/<attempt>/journal.json and replaced atomically at every phase change. It records phase evidence, bound digests, the expected direct targets and closure, the pre-apply recovery evidence (M1-L; dpkg log cursor and the pre-apply record of every trigger-interest package, durable before `applying`), the result and a failure code. It is not a canonical resolution contract (phase times are wall-clock UTC) and it is not a rollback log: APT/dpkg installation is not atomic. It never contains command output, environment, secrets or caller text.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema", "attempt_id", "phase", "result", "failure", "apply_started", "phases", "source_activation",
@@ -90,6 +90,39 @@
           }
         }
       }
+    },
+    "recovery_evidence": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["dpkg_log", "trigger_interest"],
+          "properties": {
+            "dpkg_log": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["size", "sha256"],
+              "properties": {"size": {"type": "integer", "minimum": 0}, "sha256": {"$ref": "#/$defs/digest"}}
+            },
+            "trigger_interest": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["package", "architecture", "version", "status", "triggers_sha256"],
+                "properties": {
+                  "package": {"$ref": "#/$defs/package"},
+                  "architecture": {"$ref": "#/$defs/architecture"},
+                  "version": {"$ref": "#/$defs/version"},
+                  "status": {"type": "string", "pattern": "^[a-z]+ [a-z]+ [a-z-]+$"},
+                  "triggers_sha256": {"$ref": "#/$defs/digest"}
+                }
+              }
+            }
+          }
+        }
+      ]
     },
     "post_state": {
       "oneOf": [

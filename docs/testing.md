@@ -1002,6 +1002,201 @@ captures. An earlier qualification of the superseded unpublished commit
 `5d4fee5` had executed the entrypoint from the user-owned clone; it was
 reverted and repeated as above.
 
+## M1 hardware package recovery gate
+
+`tests/hardware-recovery.py` (gate 12 of `tests/run-static.sh`, since M1-L)
+has 15 checks.
+
+It drives `hardware/package_recovery.py` through the gate-11 fake host. Its
+interrupted attempts are modelled on the states measured on the builder:
+- an interrupted initramfs-tools trigger (closure installed, initramfs-tools
+  half-configured);
+- an interruption at the start of `dpkg --unpack` (no package changed);
+- interruptions before `applying` and after APT completed;
+- unpacked, half-installed and partially absent closure packages, and
+  unrelated damage.
+
+The fake host writes `/var/log/dpkg.log` in the sequence measured on the
+builder (unpack with man-db's file trigger activated, configure with
+intel-microcode activating `update-initramfs`, then trigger processing),
+cuts it where each simulated SIGKILL lands, and derives the fake package
+state by replaying exactly the logged prefix, so log and package database
+agree as they do on a real system. Process death is simulated by an
+exception the executor cannot catch, so journals stay exactly where a real
+SIGKILL leaves them. Fake exact-package dpkg commands change only fake
+state and log their own lines. The fake dpkg follows the measured
+semantics: a configure runs the postinst (intel-microcode's and
+initramfs-tools' activate `update-initramfs`) and, unless `--no-triggers`
+is given, then processes every pending trigger; `--triggers-only <names>`
+processes only the named packages; every executed handler is recorded. The gate never runs APT or a mutating
+dpkg and needs no root.
+
+It proves:
+- **Contract:** the recovery-journal schema is meta-valid, closed and
+  matches its protected baseline (also in gate 10's table).
+- **Stopped before applying:** classified `no_mutation` and abandoned.
+  - The attempt's apply cache and `.staging-*` are removed; the journal and
+    the owned source are kept.
+  - A resolved attempt no longer blocks apply. A stale retained bundle is
+    restaged and a valid one reused.
+  - A stray entry in the apply cache aborts cleanup without touching the
+    bundle.
+  - A changed package state despite no mutation is manual.
+- **APT started without a package change:** `no_package_change`, proven by
+  the pre-state digest.
+- **Complete post-state:** `applied_but_unvalidated`. It is validated and
+  closed with no APT and no dpkg configure.
+- **Bounded completions:**
+  - an interrupted trigger → `dpkg --configure --no-triggers
+    initramfs-tools`, then `dpkg --triggers-only initramfs-tools`;
+  - killed right after the `update-initramfs` activation →
+    `--triggers-only initramfs-tools man-db` (both triggers attributed).
+
+  Each re-verifies the original bundle against the journal's digests, runs
+  only that argv and no APT, leaves native dpkg lock files untouched and
+  unblocks apply.
+- **Recovery impact set (attributed):** the apply journal binds the dpkg log
+  cursor and the trigger-interest records in `bundle_verified`, before
+  `applying`. Recovery records the closure (three packages) and, separately,
+  the impact set: initramfs-tools (activated during
+  `configure intel-microcode:amd64`, events triggers-pending → trigproc →
+  half-configured, interest `update-initramfs`) and man-db (activated
+  during `install iucode-tool:amd64`, completed). The authorised targets and
+  the argv are `initramfs-tools` only; the post-state includes both sets. A
+  recovery that changes a closure package fails validation.
+- **29 unattributable, tampered or missing-evidence cases** →
+  `manual_recovery_required`, zero mutation, apply blocked:
+  - an unrelated unpacked package (state only, and with its own dpkg log
+    lines); an unrelated half-configured package; an unrelated package
+    declaring trigger interest but never activated;
+  - an impact package unhealthy before apply; impact version or
+    architecture drift; an impact state that is not its last logged state;
+  - a tampered log prefix, a truncated or rotated log, a tampered cursor,
+    a tampered pre-apply record, a changed trigger declaration, a forged
+    hitchhiker line, a non-trigger operation on an impact package, a
+    closure line with the wrong version, a closure state disagreeing with
+    the log, an incomplete or unknown line, an impact line before the
+    first closure operation, an impact package with no activation, a
+    symlinked log;
+  - missing evidence (field absent or null) and a deleted log;
+  - a second trigger package trying to hitchhike (an attributed but
+    completed package set back to half-configured, and an unbound trigger
+    package left pending);
+  - a failed recovery whose own dpkg run already logged activity.
+- **Trigger execution containment (15 cases):** the real case runs exactly
+  two contained phases (handlers `configure initramfs-tools`, then
+  `trigproc initramfs-tools`; per-step cursors, delta digests and pending
+  sets journaled; every other package unchanged; repeated recover is
+  `nothing_to_recover`). Manual recovery, with the unauthorised handler
+  never executed and the authorisation never expanded, when: configuring
+  the target activates an unrelated trigger; trigger processing activates
+  one; configuring an unpacked closure activates `update-initramfs` of an
+  initramfs-tools that the original transaction never touched; the
+  command's log delta shows an unauthorised `trigproc` or `configure`, or a
+  `trigproc` in the configure phase; an authorised package is still pending
+  after phase B; an authorised package's mark or an unrelated package
+  changes during a command.
+- **Bounded argv:** an argv widened beyond the authorised set (an unrelated
+  name, `-a`, `--pending`, an empty list, a complete closure package, a
+  non-target trigger package, `apt-get -f install`, `--remove`) is a
+  `contract_failure` before any mutation, and apply stays blocked.
+- **17 fail-closed states** → `manual_recovery_required`, with no command
+  run and apply kept blocked:
+  - an unrelated pending package, a half-installed closure, a partially
+    absent closure;
+  - a change outside the closure, a hold, a mark of an unrelated package;
+  - a closure version, architecture or mark deviation;
+  - a non-trigger package left half-configured;
+  - a corrupt or missing payload;
+  - a journal transaction-digest, bundle-digest or closure mismatch;
+  - owned or foreign source drift.
+- **Journals:**
+  - a garbled apply journal is rejected;
+  - two interrupted attempts are manual;
+  - an interrupted recovery is closed as failed and re-inspected;
+  - a failing dpkg command gives a durable failed recovery with no retry or
+    repair, and apply stays blocked;
+  - a deviating post-recovery state fails.
+- **Boundaries:**
+  - the shared lock (recovery and apply mutually exclusive), root only, a
+    CLI with no input;
+  - the allowlist rejects `-a`, `--pending`, options, `-i`, `--remove`,
+    `--purge`, `apt-get -f install`, `apt-mark` and duplicates;
+  - the recovery module has no subprocess, shell, `rmtree`, install,
+    remove, purge, update, download, NVIDIA, `contrib` or Backports;
+  - the environment is literal;
+  - recovery is launched only as `env -i python3 -I -B <verified
+    deployment>/tree/hardware/apply-packages.py recover`.
+
+### M1-L mutation suite
+
+Each mutation is committed in a throwaway clone, and the full
+`tests/run-static.sh` must fail. The 51 mutations:
+- **Unrelated damage and provenance:** ignore unrelated broken packages;
+  skip the bundle re-hash; allow a missing payload; ignore a bundle-digest
+  or closure mismatch; allow foreign source drift.
+- **Unwanted actions:** re-run on a complete state; refresh over the
+  network; allow a version change; allow a removal command; run a generic
+  `apt-get -f install`; run unrestricted `dpkg --configure -a`.
+- **Locks and inputs:** skip the recovery lock; remove native dpkg locks;
+  accept arbitrary CLI input; recover from the user-writable tree.
+- **Journals:** erase the recovery journal after a failure; let cleanup
+  erase the apply journal; mark `complete` before health checks.
+- **Attribution:** treat every non-final package as impact without evidence;
+  skip the pre-state reconstruction; abandon despite changes; ignore a mark
+  deviation; let apply ignore an unresolved recovery.
+- **Recovery impact set (amendment):** ignore unrelated non-final packages;
+  ignore the log prefix digest or truncation; accept an impact line before
+  the first closure operation; accept an impact package unhealthy before
+  apply; accept an impact package without activation; allow non-trigger
+  operations on impact packages; ignore impact version drift; ignore the
+  last logged impact state; ignore a changed trigger declaration; drop the
+  argv authorisation; apply without binding the evidence; enter `applying`
+  without durable evidence; accept unbound log packages; ignore unexpected
+  closure log operations; ignore closure/log disagreement; accept an
+  incomplete log line; accept missing evidence; drop impact membership and
+  normalise every non-final package to installed.
+- **Trigger execution boundary:** configure without `--no-triggers`; let
+  the allowlist accept a plain configure; ignore step containment; accept
+  an unauthorised trigger activation; expand the authorisation
+  dynamically; ignore an unrelated state change; ignore an unauthorised
+  handler; ignore a package still pending after recovery; ignore an
+  authorised package's identity change.
+
+The 46 M1-K mutations are re-run on the same commit.
+
+### Builder recovery qualification (M1-L, builder only)
+
+Run from a fresh M1-L checkpoint of the shut-off builder (disk and UEFI
+NVRAM). The fault injector (`interrupt.sh`, qualification only):
+- launches the trusted-deployment `run-apply`;
+- records the launcher's descendant tree;
+- SIGKILLs only that tree at the trigger point.
+
+APT puts dpkg in its own session, so matching is by parent-PID ancestry,
+never by name across the system.
+
+Every recovery runs as root from the root-owned exact-commit deployment
+(`run-recover`). The scenarios:
+1. **Before applying.** Killed while staging, the journal before
+   `applying`. Expected: `no_mutation` / `abandoned`, with bounded cleanup.
+2. **Applied but unvalidated.** Killed right after `apt-get` exits.
+   Expected: `applied_but_unvalidated` / `complete`, with nothing re-run.
+3. **Real partial interruption.** Killed during the initramfs-tools trigger.
+   Expected: `bounded_incomplete_transaction`, with the closure
+   (`intel-microcode`, `iucode-tool`) and the recovery impact set
+   (initramfs-tools half-configured, man-db complete) recorded separately
+   with their dpkg-log evidence, recovered with
+   `dpkg --configure --no-triggers initramfs-tools`, re-inspected, then
+   `dpkg --triggers-only initramfs-tools`, each contained by its own log
+   cursor, then a reboot.
+4. **Unrelated damage.** Like 3, plus an unrelated unpacked package.
+   Expected: `manual_recovery_required` and no mutation.
+
+The VM is restored from the checkpoint and audited against the original
+baseline. Results are in the evidence bundle of the exact commit. VM package
+success is not physical CPU-microcode or real-hardware qualification.
+
 ## GitHub CI
 
 The static gates run as the GitHub Actions workflow

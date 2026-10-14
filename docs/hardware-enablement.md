@@ -891,6 +891,16 @@ contract is in [package-transactions.md](package-transactions.md).
   rollback-protected builder VM. Package installation is not device
   validation: the VM does not prove that physical microcode was updated.
   See [package-apply.md](package-apply.md).
+- Since M1-L an interrupted apply is recovered conservatively from the real
+  package state. Trigger processing interrupted by the transaction (for
+  example, initramfs-tools while the initrd is regenerated for
+  `intel-microcode`) is completed with exact-package `dpkg --configure
+  --no-triggers` and then `dpkg --triggers-only`, but
+  only for packages proven by durable dpkg-log evidence to have been
+  activated by the exact interrupted transaction (the recovery impact set,
+  kept separate from the transaction closure). Unrelated or unattributable
+  damage requires manual recovery. See
+  [package-recovery.md](package-recovery.md).
 - Every current production package family (10 packages, no NVIDIA) compiles
   against the synthetic universe of gate 9.
 

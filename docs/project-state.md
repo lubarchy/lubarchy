@@ -46,8 +46,9 @@ later installation/configuration → later validation.
 | M1-H | NVIDIA repository containment and pinning proof | PASS (CTO accepted); ADR-0002 remains Proposed |
 | M1-I | Privileged package apply transaction contract | PASS (CTO accepted) |
 | M1-J | Debian source activation and staged package acquisition | PASS (CTO accepted) |
-| M1-K | Privileged source activation and package apply executor | Published (`bee7414`); GitHub CI green (run #26, all eleven gates); awaiting CTO review |
-| M1-L | Not defined | Not started |
+| M1-K | Privileged source activation and package apply executor | PASS (CTO accepted) |
+| M1-L | Interrupted package transaction recovery | Implemented locally; awaiting CTO review |
+| M1-M | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
   `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
@@ -302,7 +303,16 @@ later installation/configuration → later validation.
   the production rules or the production package set (10), or authorise
   NVIDIA.
 - M1-K — privileged source activation and package apply executor:
-  **published; awaiting CTO review** (not PASS). Implementation commit
+  **PASS** (CTO accepted). Qualified:
+  - root-owned exact-commit privileged execution;
+  - source activation and an authenticated metadata refresh;
+  - exact staged payloads, the immediate pre-apply re-hash and the final
+    stale-state revalidation;
+  - the transaction lock and the durable journal;
+  - one real APT apply, post-apply validation and a reboot;
+  - VM baseline restoration.
+
+  Implementation commit
   `bee741485ce2fb6db35d433b8c0102bc59824e9f`; `Static gates` run #26
   ([38560415459](https://github.com/lubarchy/lubarchy/actions/runs/38560415459))
   passed all eleven gates on that commit, with the package staging gate at 19
@@ -357,7 +367,43 @@ later installation/configuration → later validation.
   inventory, rule, plan, package-transaction, source-activation or
   staged-bundle contracts, the resolver, the production rules or the
   production package set (10).
-- M1-L has not started and waits for a CTO brief.
+- M1-L — interrupted package transaction recovery: **implemented locally;
+  awaiting CTO review** (not PASS, not pushed). Details:
+  [package-recovery.md](package-recovery.md).
+  - `hardware/package_recovery.py` and `hardware/apply-packages.py recover`
+    classify an interrupted attempt from the real dpkg/APT state. The
+    attempt is attributed to the transaction by reconstructing the bound
+    pre-state digest and re-verifying the original root-owned bundle. The
+    classifications are `no_mutation`, `no_package_change`,
+    `applied_but_unvalidated`, `bounded_incomplete_transaction` and
+    `manual_recovery_required`.
+  - The transaction closure stays the M1-I install closure. Packages
+    outside it whose trigger the exact transaction activated form a separate
+    recovery impact set, proven from evidence bound in the apply journal
+    before `applying` (dpkg log cursor and prefix digest, pre-apply
+    trigger-interest records) and the dpkg log written after it.
+  - The only recovery mutation is exact-package `dpkg --configure
+    --no-triggers` (trigger processing suppressed), then a separately
+    authorised `dpkg --triggers-only`, limited to non-final closure packages
+    plus non-final impact-set packages. Each command is contained by its own
+    dpkg log cursor and a re-inspection; recovery-induced work in any other
+    package ends in manual recovery, never in automatic execution. It was measured on the builder: an APT
+    rerun, `apt-get -f install` and `dpkg --configure -a` all touch unrelated
+    pending packages, so none of them is used.
+  - A complete post-state is validated without re-running anything.
+    Unrelated, unattributable or unprovable damage fails closed to manual
+    recovery.
+  - The durable recovery journal (`lubarchy.packages.recovery-journal/v1`)
+    and the shared transaction lock gate new applies until the attempt is
+    resolved.
+  - Gate 12 (`tests/hardware-recovery.py`) is synthetic. Real interruption
+    scenarios are qualified only on the rollback-protected builder VM
+    ([testing.md](testing.md)).
+- M1-L does **not** perform generic package repair, run APT or a download
+  during recovery, upgrade, downgrade or remove a package, change a package
+  mark, re-unpack half-installed packages, add privilege escalation, or
+  support NVIDIA, `contrib`, `non-free` or Backports.
+- M1-M has not started and waits for a CTO brief.
 
 ## M0 — Minimal reproducible ISO (closed)
 
@@ -541,32 +587,26 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-K (privileged source activation and package apply
-executor), published as `bee741485ce2fb6db35d433b8c0102bc59824e9f`; `Static
-gates` run #26 passed all eleven gates on that commit (see
-[testing.md](testing.md)). M1-J is PASS (CTO accepted).
+CTO review of M1-L (interrupted package transaction recovery; local commit
+only, not yet pushed or CI-qualified). M1-K is PASS (CTO accepted).
 
-The real package-manager mutation was qualified only on the
-rollback-protected builder VM, from a root-owned exact-commit deployment, and
-the VM was restored to its original baseline. The security findings stand:
-- APT/dpkg mutation is not atomic, and the journal is state evidence, not a
-  filesystem rollback.
-- Cached archives require LUBARCHY's immediate pre-apply re-hash.
-- Failures after APT starts are never repaired automatically, and a
-  non-terminal journal requires recovery.
-- Privileged code must never be executable from a user-writable tree.
-- VM snapshots are test-environment protection, not the product recovery
-  architecture.
-- VM microcode package installation is not physical hardware qualification.
+Real interruption scenarios are qualified only on the rollback-protected
+builder VM, which is restored to its original baseline. The security
+findings stand:
+- APT/dpkg mutation is not atomic, and the journals are evidence, not a
+  rollback.
+- Recovery never performs a generic repair, upgrade or removal.
+- Unrelated or unprovable damage requires manual recovery.
 
 Open work:
-- interrupted-transaction recovery;
 - post-install device validation;
+- garbage collection;
+- installer/service integration;
 - Secure Boot/MOK;
 - the NVIDIA ADR;
 - real-hardware qualification.
 
-M1-L has not started and waits for a CTO brief.
+M1-M has not started and waits for a CTO brief.
 
 ## PASS rule
 

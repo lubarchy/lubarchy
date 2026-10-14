@@ -4,6 +4,7 @@
     trusted-deployment.py verify    --root DIR --commit SHA --tree SHA
     trusted-deployment.py imports   --root DIR --commit SHA --tree SHA --hostile DIR
     trusted-deployment.py run-apply --root DIR --commit SHA --tree SHA
+    trusted-deployment.py run-recover --root DIR --commit SHA --tree SHA
 
 A privileged process must never execute LUBARCHY code from a tree an
 unprivileged user can write. For qualification, root creates an ephemeral
@@ -34,7 +35,9 @@ imports    runs the interpreter exactly as the privileged launch does
            (/usr/bin/env -i /usr/bin/python3 -I -B, cwd = --hostile, with
            PYTHONPATH and a decoy package_apply.py/resolver.py in the hostile
            directory) and requires every LUBARCHY module to load from tree/.
-run-apply  verifies, then execs the privileged apply entrypoint of tree/
+run-apply / run-recover
+           verifies, then execs the privileged entrypoint of tree/ (`apply`
+           or `recover`)
            with an empty environment, `python3 -I -B` (no bytecode written
            into the deployment) and cwd /.
 """
@@ -195,11 +198,13 @@ def verify(root, commit, tree_sha, owner_uid=0, stop="/"):
     return evidence
 
 
-def privileged_argv(root):
+def privileged_argv(root, operation="apply"):
     """The privileged launch: empty environment, isolated interpreter, the
     deployment's entrypoint. Never a path outside the verified tree."""
+    if operation not in ("apply", "recover"):
+        _fail("unknown privileged operation")
     entry = os.path.join(os.path.normpath(root), "tree", ENTRYPOINT)
-    return [ENV, "-i", PYTHON, "-I", "-B", entry, "apply"]
+    return [ENV, "-i", PYTHON, "-I", "-B", entry, operation]
 
 
 IMPORT_PROBE = (
@@ -240,7 +245,7 @@ def check_imports(root, hostile):
 
 
 def main(argv):
-    cmds = {"verify": 6, "imports": 8, "run-apply": 6}
+    cmds = {"verify": 6, "imports": 8, "run-apply": 6, "run-recover": 6}
     if len(argv) < 1 or argv[0] not in cmds or len(argv) != cmds[argv[0]] + 1:
         sys.stderr.write(__doc__)
         return 64
@@ -257,8 +262,8 @@ def main(argv):
             print(json.dumps(check_imports(opts["--root"], opts["--hostile"]), indent=2, sort_keys=True))
             return 0
         if os.geteuid() != 0:
-            _fail("run-apply must be started as root")
-        launch = privileged_argv(opts["--root"])
+            _fail("run-apply/run-recover must be started as root")
+        launch = privileged_argv(opts["--root"], "recover" if argv[0] == "run-recover" else "apply")
         if launch[5] != evidence["entrypoint"]:
             _fail("launch path is not the verified entrypoint")
         os.chdir("/")

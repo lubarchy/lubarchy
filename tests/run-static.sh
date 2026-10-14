@@ -11,6 +11,7 @@
 #   9. tests/hardware-transaction.py (M1-I install-only package transaction contract; synthetic only)
 #  10. tests/hardware-staging.py (M1-J source activation and staged package bundle; synthetic and offline only)
 #  11. tests/hardware-apply.py (M1-K privileged apply executor; fake host, never mutates or needs root)
+#  12. tests/hardware-recovery.py (M1-L interrupted transaction recovery; fake host, never mutates or needs root)
 # Stops at the first failing gate. Never builds an image, touches libvirt or
 # probes the host's hardware; needs git, shellcheck, live-build, python3 and
 # python3-jsonschema but not root.
@@ -70,4 +71,5 @@ run_gate "hardware NVIDIA strategy" tests/nvidia-strategy.py
 run_gate "hardware package transaction" tests/hardware-transaction.py
 run_gate "hardware package staging" tests/hardware-staging.py
 run_gate "hardware package apply" tests/hardware-apply.py
+run_gate "hardware package recovery" tests/hardware-recovery.py
 echo "PASS: all static gates"
