@@ -147,8 +147,17 @@ a failure after APT has started is never repaired automatically. Since M1-L,
   `applying`).
 - Everything else is left to manual recovery
   ([package-recovery.md](package-recovery.md)).
-Interrupted-transaction recovery, device-level validation and the supplier
-of privilege (installer/system service) are later work. See
+
+Since M1-M, a separate read-only stage validates the result:
+`hardware/validate-hardware.py validate` compares the running system with
+what the freshly resolved plan implies. It checks devices, bound drivers,
+firmware load failures, interfaces, packages, package-manager and system
+health, and root storage, attributes every check to an inventory device
+identity, and reports PASS, FAIL, LIMITED or NOT_TESTED in a result bound to
+the inventory, rules, plan, installed state and boot. It installs and
+repairs nothing ([hardware-validation.md](hardware-validation.md)).
+The supplier of privilege (installer/system service) and real-hardware
+qualification are later work. See
 [package-transactions.md](package-transactions.md),
 [package-staging.md](package-staging.md),
 [package-apply.md](package-apply.md) and

@@ -65,7 +65,7 @@ A clean rebuild must succeed from the same commit.
 | --- | --- |
 | Repository lint | `tests/repo-lint.sh` (M0-I) |
 | shellcheck | Every tracked shell script, via `tests/run-static.sh` (M0-I) |
-| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I); hardware contracts added in M1-A; hardware probe added in M1-B; hardware resolver added in M1-C; hardware firmware added in M1-E; hardware NVIDIA strategy added in M1-G; hardware package transaction added in M1-I |
+| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I); hardware contracts added in M1-A; hardware probe added in M1-B; hardware resolver added in M1-C; hardware firmware added in M1-E; hardware NVIDIA strategy added in M1-G; hardware package transaction added in M1-I; hardware package staging (M1-J), package apply (M1-K), package recovery (M1-L) and post-install validation (M1-M) added since |
 | GitHub CI | `.github/workflows/m0-static.yml` runs `tests/run-static.sh` on GitHub Actions (green since M0-J) |
 | `live-build` configuration validation | `tests/live-build-config.sh` (M0-E) |
 | ISO build | Manual, from the committed configuration (M0-F) |
@@ -1226,6 +1226,146 @@ Before that, the same state was measured with manual commands:
 so the separately authorised trigger phase is required
 ([package-recovery.md](package-recovery.md#trigger-execution-boundary)).
 CI never performs a real mutation: gate 12 uses a fake host.
+
+## M1 hardware post-install validation gate
+
+`tests/hardware-validation.py` (gate 13 of `tests/run-static.sh`, since M1-M)
+has 13 checks. It drives `hardware/hardware_validation.py` and
+`hardware/validate-hardware.py` with synthetic inputs only:
+- inventories from the resolver fixtures, plus devices instantiated from
+  the committed firmware alias evidence (the firmware gate's helpers):
+  Intel, Realtek, MediaTek and Atheros Wi-Fi, Intel and AMD GPUs, an
+  Atheros USB Bluetooth controller, Intel and AMD CPUs;
+- synthetic normalized runtime evidence: an all-healthy document, then one
+  perturbation per case;
+- a synthetic sysfs/procfs tree and a fake command runner for the
+  collector.
+
+It never reads the runner's hardware, kernel log, packages or services,
+runs no command and needs no root.
+
+It proves:
+- **Contract:** the result schema is meta-valid, closed, protected (also in
+  gate 10's table) and its reason codes equal the module's.
+- **Profile:**
+  - it covers exactly the production classifications and package rules;
+  - the embedded firmware-family modules semantically equal the canonical
+    `tools/hwe/firmware-mappings.json`, and six kinds of drift (module or
+    family added or removed, policy for an unknown family, an entry without
+    evidence or with a bad requirement) are detected;
+  - the microcode vendors equal the rules; NVIDIA stays unqualified;
+  - the production firmware requirement policy is reported.
+- **Healthy machines PASS** (Intel/AMD CPU with each Wi-Fi family, GPU and
+  Bluetooth; Ethernet, USB Bluetooth, NVMe and AMD fixtures), attributed to
+  the exact inventory identity, canonical and independent of input order.
+- **Device failures:**
+  - wrong driver (`driver_mismatch`), no driver (`expected_driver_not_bound`,
+    dependents `NOT_TESTED`), missing device, changed identity;
+  - a firmware request failure of the target is `LIMITED`
+    (`firmware_requirement_unclassified`, the production policy has no
+    entries), while failures of another device or unattributed ones are
+    ignored for it;
+  - missing wireless interface, DRM node or HCI controller; a Bluetooth
+    device bound to the wrong driver;
+  - an unrelated, unvalidated device that disappears does not affect the
+    result.
+- **Firmware requirement semantics:** a TEST-ONLY policy is installed
+  temporarily, and the cases are:
+  - required → FAIL; optional → LIMITED; unknown or unnamed → LIMITED,
+    never PASS or FAIL;
+  - required is never downgraded, and unknown outranks optional;
+  - an optional failure does not mask a missing wireless interface; an
+    unknown failure does not mask a wrong or missing driver;
+  - unrelated or foreign failures are ignored, and another device's failure
+    or another family's policy cannot affect the target;
+  - an ambiguous policy fails closed;
+  - a caller cannot supply a classification (an evidence field is rejected;
+    there is no parameter);
+  - a policy change changes the profile digest and makes an existing result
+    stale.
+- **LIMITED and NOT_TESTED are never PASS:**
+  - an unavailable kernel log, a VM, a container and the same boot give
+    `LIMITED`; a microcode loader error gives `FAIL`; a silent loader is
+    `LIMITED`;
+  - NVIDIA with `nouveau` or `nvidia` bound is `NOT_TESTED` and never
+    PASS, with no DRM check;
+  - the aggregation table (FAIL outranks LIMITED; advisory failures cap at
+    LIMITED); a result with an inconsistent status is rejected.
+- **Packages and system:** a missing or half-configured package, a version
+  mismatch against the apply journal, `dpkg --audit` and `apt-get check`
+  failures, an unavailable `apt-get check` (LIMITED), a critical unit
+  failure (FAIL) versus unrelated failed units (advisory), maintenance and
+  starting states, a read-only root, a missing root block device, and ext4
+  error counters.
+- **Freshness:** the inventory, rule set, plan, installed state (version
+  and mark), boot and profile are bound; each change makes a result stale,
+  and a tampered binding is not current.
+- **Continuity:** a revalidation after a reboot passes when devices remain;
+  a device gone after the reboot is `device_missing_after_reboot`; a
+  previous result from another profile is rejected.
+- **Evidence integrity:** 17 malformed, duplicated, ambiguous or smuggling
+  evidence documents are rejected, including two inventory devices on one
+  sysfs device and a firmware failure carrying an extra raw-text field.
+- **Collector:**
+  - it normalizes the driver, module, wireless interface, root block device
+    attribution, units, marks and install times;
+  - it attributes kernel firmware failures to the device;
+  - it treats a permission-denied kernel log as unavailable and a
+    permission-denied `apt-get check` as unavailable;
+  - it leaks no MAC address, serial number, hostname, interface name, uid,
+    boot ID or path;
+  - it leaves the tree byte-for-byte unchanged;
+  - it runs only seven fixed argv lists with `shell=False` and a literal
+    environment, refusing any other command.
+- **No caller input:** the CLI refuses device IDs, paths, drivers,
+  packages, checks and commands (exit 64) before anything runs.
+- **Read-only module:** no write, unlink, mkdir, chmod, exec or shell; the
+  imports are limited; no install, configure, source activation or
+  modprobe.
+
+### M1-M mutation suite
+
+Each mutation is committed in a throwaway clone, and the full
+`tests/run-static.sh` must fail. The 43 mutations:
+- **Status semantics:** always PASS; LIMITED counts as PASS; NOT_TESTED
+  counts as PASS.
+- **Devices:** ignore a wrong driver, a missing driver, a missing device or
+  an identity change; ignore a firmware failure; accept unattributed or
+  other devices' firmware evidence; drop device continuity; drop the
+  wireless check from the profile.
+- **Firmware requirements:** ignore a known-required failure; downgrade it
+  to LIMITED; let unknown outrank required; treat an unknown failure as
+  PASS or as FAIL; treat an optional failure as FAIL; accept a
+  caller-supplied requirement; omit the policy from the profile digest;
+  accept drift of the embedded module mapping.
+- **Freshness:** skip the installed-state or boot binding; accept a stale
+  result.
+- **Privacy:** keep unit instance names; store raw kernel log lines.
+- **Boundaries:** accept a caller path or a caller command; invoke a shell;
+  inherit the caller's environment; install a package during validation;
+  write a file from the collector; accept smuggled extra evidence fields.
+- **Health:** ignore a dpkg, APT, critical-unit, system-state or read-only
+  root failure; skip the package presence or version check.
+- **Limitations:** VM microcode PASS; same-boot microcode PASS; assume an
+  available kernel log; NVIDIA PASS without qualification.
+
+The M1-L (51) and M1-K (46) mutations are re-run on the same commit.
+
+### Builder validation qualification (M1-M, builder only, read-only)
+
+The builder VM qualifies only the validator's runtime: no snapshot is
+created, because nothing is mutated. From the exact commit (a fresh
+clone), boot the shut-off builder and run `validate`, `evidence` and
+`check-current` as the unprivileged builder user, and `validate` as root.
+Results are measured, not predicted:
+- **Expected on a VM:** physical microcode `LIMITED`; physical radio and
+  GPU function not claimed.
+- **Restored baseline:** it has no hardware package installed, so the plan
+  packages are expected to fail.
+
+A reboot then shows the boot binding: the earlier result becomes stale,
+and a revalidation reports continuity. The builder is shut down again. VM
+results are not real-hardware qualification.
 
 ## GitHub CI
 

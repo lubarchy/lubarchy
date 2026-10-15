@@ -222,6 +222,30 @@ implemented.**
   - Recovery shares the transaction lock, never removes native dpkg locks,
     runs root only from the trusted deployment, and writes a durable
     recovery journal that gates later applies.
+- Post-install hardware validation (M1-M). Details:
+  [hardware-validation.md](hardware-validation.md).
+  - It is read-only: no install, configuration, module load, binding,
+    file write, repair or policy change. It reads sysfs/procfs and runs
+    seven fixed read-only commands with a literal environment and
+    `shell=False`. The CLI takes no device, package, driver, path, command
+    or check input.
+  - It is unprivileged by default. Root only adds the kernel log on
+    restricted systems and the root-only apply journal. Without root these
+    observations are `LIMITED`; `kernel.dmesg_restrict`, journal
+    permissions, sudoers and Polkit are never changed, and no privilege
+    mechanism is added.
+  - Results never contain MAC addresses, serial numbers, disk UUIDs,
+    hostnames, user names, IP addresses, raw kernel log lines, interface
+    names or sysfs paths; the boot ID is stored only as a digest.
+  - A result is bound to the inventory, rule set, plan, installed state,
+    boot and profile; a stale result is never reused as a current PASS.
+    A VM observation is never promoted to a physical-hardware claim, and
+    NVIDIA drivers are reported `NOT_TESTED`.
+  - Firmware request failures are evidence, not proof. Only a known-required
+    file in the source-controlled policy fails; optional or unclassified
+    ones are `LIMITED`, so fail-closed never produces a factually wrong FAIL,
+    while independently observed device, driver and interface failures still
+    fail. The policy is digest-bound and never caller supplied.
 - Source activation and payload staging (M1-J; since M1-K used by the
   executor for the real system). Details:
   [package-staging.md](package-staging.md).

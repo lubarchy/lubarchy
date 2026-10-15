@@ -901,6 +901,21 @@ contract is in [package-transactions.md](package-transactions.md).
   kept separate from the transaction closure). Unrelated or unattributable
   damage requires manual recovery. See
   [package-recovery.md](package-recovery.md).
+- Since M1-M the result is validated separately and read-only
+  ([hardware-validation.md](hardware-validation.md)). Each plan target is
+  checked for presence (same identity), a bound kernel driver (one of the
+  firmware family's kernel modules when a firmware rule matched), firmware
+  request failures attributed to that device, and its interface, DRM node or
+  HCI controller.
+- A firmware request failure is classified by a source-controlled
+  requirement policy. A known-required file fails; a known-optional or
+  unclassified file is LIMITED. The production policy has no entries yet,
+  so every such failure is unclassified until real-hardware qualification
+  supplies evidence. The validator's firmware-family module lists are
+  derived from, and gate-enforced equal to, the canonical
+  `tools/hwe/firmware-mappings.json`. Plan packages, package-manager and system health and the
+  root filesystem are checked as well. CPU microcode in a VM, physical radio
+  and GPU function and NVIDIA drivers are never claimed as PASS.
 - Every current production package family (10 packages, no NVIDIA) compiles
   against the synthetic universe of gate 9.
 

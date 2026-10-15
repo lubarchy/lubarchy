@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lubarchy:hardware:validation-result:v1",
+  "title": "LUBARCHY post-install hardware validation result v1",
+  "description": "Deterministic result of validating the running system against the qualified hardware-enablement plan (M1-M). It binds the inventory, rule set, plan, installed package state, boot identity and validation profile it was computed from; any change of a binding makes it stale. Checks are attributed to inventory device identities and carry PASS, FAIL, LIMITED or NOT_TESTED with a machine-readable reason. It contains no raw logs, no timestamps, and no serial numbers, MAC addresses, disk UUIDs, hostnames, user names or IP addresses.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "profile", "mode", "privilege", "platform", "bindings", "checks", "limitations",
+               "unvalidated_targets", "summary", "status"],
+  "properties": {
+    "schema": {"const": "lubarchy.hardware.validation-result/v1"},
+    "profile": {
+      "type": "object", "additionalProperties": false, "required": ["id", "digest"],
+      "properties": {"id": {"const": "lubarchy.hardware.validation-profile/v1"}, "digest": {"$ref": "#/$defs/digest"}}
+    },
+    "mode": {"enum": ["current", "revalidation"]},
+    "privilege": {"enum": ["root", "unprivileged"]},
+    "platform": {
+      "type": "object", "additionalProperties": false,
+      "required": ["architecture", "virtualization", "boot_firmware", "kernel_release"],
+      "properties": {
+        "architecture": {"const": "amd64"},
+        "virtualization": {"enum": ["none", "vm", "container"]},
+        "boot_firmware": {"enum": ["uefi", "bios"]},
+        "kernel_release": {"type": "string", "pattern": "^[0-9A-Za-z][0-9A-Za-z.+_~-]{0,63}$"}
+      }
+    },
+    "bindings": {
+      "type": "object", "additionalProperties": false,
+      "required": ["inventory_digest", "rule_set_digest", "plan_digest", "plan_status", "installed_state_digest",
+                   "package_transaction", "boot", "previous"],
+      "properties": {
+        "inventory_digest": {"$ref": "#/$defs/digest"},
+        "rule_set_digest": {"$ref": "#/$defs/digest"},
+        "plan_digest": {"$ref": "#/$defs/digest"},
+        "plan_status": {"enum": ["resolved", "partial"]},
+        "installed_state_digest": {"$ref": "#/$defs/digest"},
+        "package_transaction": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "object", "additionalProperties": false, "required": ["attempt_id", "transaction_digest"],
+             "properties": {"attempt_id": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+                            "transaction_digest": {"$ref": "#/$defs/digest"}}}
+          ]
+        },
+        "boot": {
+          "type": "object", "additionalProperties": false, "required": ["boot_id_digest", "relation"],
+          "properties": {"boot_id_digest": {"$ref": "#/$defs/digest"},
+                         "relation": {"enum": ["post_reboot", "same_boot", "not_applicable"]}}
+        },
+        "previous": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "object", "additionalProperties": false, "required": ["result_digest", "boot_changed"],
+             "properties": {"result_digest": {"$ref": "#/$defs/digest"}, "boot_changed": {"type": "boolean"}}}
+          ]
+        }
+      }
+    },
+    "checks": {"type": "array", "maxItems": 4096, "items": {"$ref": "#/$defs/check"}},
+    "limitations": {
+      "type": "array", "maxItems": 256,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["code", "status", "checks"],
+        "properties": {"code": {"$ref": "#/$defs/reason"}, "status": {"enum": ["LIMITED", "NOT_TESTED"]},
+                       "checks": {"type": "integer", "minimum": 0}}
+      }
+    },
+    "unvalidated_targets": {"type": "array", "maxItems": 4096, "items": {"$ref": "#/$defs/target"}},
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["PASS", "FAIL", "LIMITED", "NOT_TESTED", "critical_failures", "advisory_failures"],
+      "properties": {
+        "PASS": {"type": "integer", "minimum": 0}, "FAIL": {"type": "integer", "minimum": 0},
+        "LIMITED": {"type": "integer", "minimum": 0}, "NOT_TESTED": {"type": "integer", "minimum": 0},
+        "critical_failures": {"type": "integer", "minimum": 0},
+        "advisory_failures": {"type": "integer", "minimum": 0}
+      }
+    },
+    "status": {"$ref": "#/$defs/status"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "status": {"enum": ["PASS", "FAIL", "LIMITED", "NOT_TESTED"]},
+    "target": {"type": "string", "pattern": "^(cpu|root|system|dpkg|apt|[a-z0-9][a-z0-9+.-]{1,127}|pci:[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\\.[0-7]|usb:[1-9][0-9]{0,2}-[1-9][0-9]{0,2}(\\.[1-9][0-9]{0,2}){0,6})$"},
+    "reason": {"enum": ["ok", "device_missing", "device_missing_after_reboot", "device_identity_changed",
+                        "expected_driver_not_bound", "driver_mismatch", "required_firmware_load_failed",
+                        "optional_firmware_unavailable", "firmware_requirement_unclassified",
+                        "expected_interface_missing", "expected_wireless_interface_missing",
+                        "expected_drm_device_missing", "expected_controller_missing", "package_missing",
+                        "package_version_mismatch", "dpkg_unhealthy", "apt_unhealthy", "service_failed",
+                        "system_critical_unit_failed", "system_not_running", "system_starting",
+                        "observation_unavailable", "kernel_log_unavailable", "virtualized_cpu",
+                        "container_platform", "reboot_required", "microcode_load_failed",
+                        "microcode_state_unreported", "nvidia_not_qualified", "prerequisite_failed",
+                        "root_not_mounted", "root_read_only", "root_block_device_missing", "filesystem_errors",
+                        "apply_journal_unreadable", "physical_function_not_exercised"]},
+    "value": {
+      "oneOf": [
+        {"type": "null"}, {"type": "boolean"}, {"type": "integer"},
+        {"type": "string", "maxLength": 160, "pattern": "^[ -~]*$"},
+        {"type": "array", "maxItems": 32, "items": {"type": "string", "maxLength": 160, "pattern": "^[ -~]*$"}}
+      ]
+    },
+    "facts": {
+      "type": "object", "maxProperties": 16,
+      "propertyNames": {"pattern": "^[a-z_]{1,32}$"},
+      "additionalProperties": {"$ref": "#/$defs/value"}
+    },
+    "identity": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "object", "additionalProperties": false, "minProperties": 1,
+         "properties": {
+           "vendor_id": {"type": "string", "pattern": "^[0-9a-f]{4}$"},
+           "device_id": {"type": "string", "pattern": "^[0-9a-f]{4}$"},
+           "subsystem_vendor_id": {"type": "string", "pattern": "^[0-9a-f]{4}$"},
+           "subsystem_device_id": {"type": "string", "pattern": "^[0-9a-f]{4}$"},
+           "class_id": {"type": "string", "pattern": "^[0-9a-f]{6}$"},
+           "product_id": {"type": "string", "pattern": "^[0-9a-f]{4}$"},
+           "vendor": {"type": "string", "pattern": "^[!-~]{1,12}$"}
+         }}
+      ]
+    },
+    "check": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "class", "target", "identity", "criticality", "status", "reason", "expected", "observed"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z_.]{1,48}(:[A-Za-z0-9:.+_-]{1,160})?$"},
+        "class": {"enum": ["package", "cpu", "gpu", "wifi", "bluetooth", "network", "storage", "device", "system",
+                           "package-manager"]},
+        "target": {"$ref": "#/$defs/target"},
+        "identity": {"$ref": "#/$defs/identity"},
+        "criticality": {"enum": ["critical", "advisory"]},
+        "status": {"$ref": "#/$defs/status"},
+        "reason": {"$ref": "#/$defs/reason"},
+        "expected": {"$ref": "#/$defs/facts"},
+        "observed": {"$ref": "#/$defs/facts"}
+      }
+    }
+  }
+}

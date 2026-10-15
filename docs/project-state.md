@@ -47,8 +47,9 @@ later installation/configuration → later validation.
 | M1-I | Privileged package apply transaction contract | PASS (CTO accepted) |
 | M1-J | Debian source activation and staged package acquisition | PASS (CTO accepted) |
 | M1-K | Privileged source activation and package apply executor | PASS (CTO accepted) |
-| M1-L | Interrupted package transaction recovery | Implemented; CI-qualified (run #28); awaiting CTO review |
-| M1-M | Not defined | Not started |
+| M1-L | Interrupted package transaction recovery | PASS (CTO accepted) |
+| M1-M | Post-install hardware validation and health | Implemented locally; awaiting CTO review |
+| M1-N | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
   `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
@@ -367,11 +368,14 @@ later installation/configuration → later validation.
   inventory, rule, plan, package-transaction, source-activation or
   staged-bundle contracts, the resolver, the production rules or the
   production package set (10).
-- M1-L — interrupted package transaction recovery: **implemented and
-  CI-qualified; awaiting CTO review** (not PASS). Implementation commit
+- M1-L — interrupted package transaction recovery: **PASS** (CTO accepted).
+  Implementation commit
   `3b0ec8869a3034c7df38c25c004387bf99750d7b`; workflow `Static gates` run #28
   ([38666440151](https://github.com/lubarchy/lubarchy/actions/runs/38666440151)): all twelve gates passed (gate 10: 19, gate 11: 14,
-  gate 12: 15 checks). Details:
+  gate 12: 15 checks); documentation commit
+  `2610a1db5f1ec49ffe99e19eedad07bbeea5b592`, run #29
+  ([38666799577](https://github.com/lubarchy/lubarchy/actions/runs/38666799577)).
+  The qualification snapshot was deleted after closure. Details:
   [package-recovery.md](package-recovery.md).
   - `hardware/package_recovery.py` and `hardware/apply-packages.py recover`
     classify an interrupted attempt from the real dpkg/APT state. The
@@ -406,7 +410,38 @@ later installation/configuration → later validation.
   during recovery, upgrade, downgrade or remove a package, change a package
   mark, re-unpack half-installed packages, add privilege escalation, or
   support NVIDIA, `contrib`, `non-free` or Backports.
-- M1-M has not started and waits for a CTO brief.
+- M1-M — post-install hardware validation and health: **implemented
+  locally; awaiting CTO review** (not PASS, not pushed). Details:
+  [hardware-validation.md](hardware-validation.md).
+  - `hardware/hardware_validation.py` and `hardware/validate-hardware.py`
+    answer whether the qualified plan resulted in a healthy system. A fresh
+    probe and the existing resolver give the plan; a source-controlled
+    validation profile (keyed by the plan's classifications and package
+    rules, with firmware-family kernel modules from the committed firmware
+    evidence) says which properties each implies; the running system is
+    compared against it.
+  - The result contract `lubarchy.hardware.validation-result/v1` binds the
+    inventory, rule set, plan, installed package state, boot identity and
+    profile; any change makes a result stale. Checks are attributed to
+    inventory device identities and report PASS, FAIL, LIMITED or
+    NOT_TESTED with a machine-readable reason; a critical FAIL fails the
+    whole result and LIMITED/NOT_TESTED are never promoted to PASS.
+  - Firmware request failures are classified by a source-controlled
+    requirement policy (known-required → FAIL, known-optional or
+    unclassified → LIMITED). The production policy is empty, so every
+    attributed failure is unclassified until real-hardware qualification. The
+    embedded firmware-family module lists are a derived, gate-enforced copy
+    of the canonical `tools/hwe/firmware-mappings.json` (CTO-accepted
+    coupling).
+  - It is read-only and unprivileged by default; root only adds the kernel
+    log on restricted systems and the LUBARCHY apply journal (exact
+    versions). A VM never proves physical microcode, radio or GPU function,
+    and NVIDIA drivers are not qualified (NOT_TESTED).
+  - Gate 13 (`tests/hardware-validation.py`) is synthetic.
+- M1-M does **not** install, configure, load or bind anything, repair
+  packages, change hardware policy or rules, add privilege escalation,
+  qualify NVIDIA, or replace real-hardware qualification.
+- M1-N has not started and waits for a CTO brief.
 
 ## M0 — Minimal reproducible ISO (closed)
 
@@ -562,7 +597,8 @@ not be treated as decided:
 - ISO builds in CI (CI runs static/configuration gates only)
 - LUBARCHY package repository
 - Desktop stack
-- Inventory persistence and diagnostics
+- Inventory persistence and user-facing diagnostics (M1-M adds a
+  read-only validation result only)
 - Device firmware mappings deferred by M1-E/M1-F: Realtek Ethernet,
   `btusb`-based Bluetooth (Realtek, MediaTek, Intel, Broadcom), `ath11k`/
   `ath12k`, NVIDIA, Intel sound, BCMA/SDIO/serial devices such as `brcmsmac`
@@ -590,27 +626,26 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-L (interrupted package transaction recovery; published as
-`3b0ec8869a3034c7df38c25c004387bf99750d7b`, CI run #28 passed all twelve gates). M1-K is PASS (CTO
-accepted).
+CTO review of M1-M (post-install hardware validation and health; local
+commit only, not yet pushed or CI-qualified). M1-L is PASS (CTO accepted).
 
-Real interruption scenarios are qualified only on the rollback-protected
-builder VM, which is restored to its original baseline. The security
-findings stand:
+The security findings stand:
 - APT/dpkg mutation is not atomic, and the journals are evidence, not a
   rollback.
 - Recovery never performs a generic repair, upgrade or removal.
-- Unrelated or unprovable damage requires manual recovery.
+- Validation is read-only; VM observations are not physical-hardware
+  claims.
 
 Open work:
-- post-install device validation;
 - garbage collection;
 - installer/service integration;
 - Secure Boot/MOK;
 - the NVIDIA ADR;
+- hybrid/multi-GPU;
+- user-facing diagnostics;
 - real-hardware qualification.
 
-M1-M has not started and waits for a CTO brief.
+M1-N has not started and waits for a CTO brief.
 
 ## PASS rule
 
