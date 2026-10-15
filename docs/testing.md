@@ -65,7 +65,7 @@ A clean rebuild must succeed from the same commit.
 | --- | --- |
 | Repository lint | `tests/repo-lint.sh` (M0-I) |
 | shellcheck | Every tracked shell script, via `tests/run-static.sh` (M0-I) |
-| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I); hardware contracts added in M1-A; hardware probe added in M1-B; hardware resolver added in M1-C; hardware firmware added in M1-E; hardware NVIDIA strategy added in M1-G; hardware package transaction added in M1-I; hardware package staging (M1-J), package apply (M1-K), package recovery (M1-L) and post-install validation (M1-M) added since |
+| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I); hardware contracts added in M1-A; hardware probe added in M1-B; hardware resolver added in M1-C; hardware firmware added in M1-E; hardware NVIDIA strategy added in M1-G; hardware package transaction added in M1-I; hardware package staging (M1-J), package apply (M1-K), package recovery (M1-L), post-install validation (M1-M) and package state garbage collection (M1-N) added since |
 | GitHub CI | `.github/workflows/m0-static.yml` runs `tests/run-static.sh` on GitHub Actions (green since M0-J) |
 | `live-build` configuration validation | `tests/live-build-config.sh` (M0-E) |
 | ISO build | Manual, from the committed configuration (M0-F) |
@@ -1395,6 +1395,131 @@ exact-commit deployment.
 - **Clean-up:** everything placed on the VM was removed, the home listing and
   the baseline audit matched exactly, and the builder ended shut off with
   autostart disabled and 0 snapshots.
+
+## M1 hardware package state GC gate
+
+`tests/hardware-gc.py` (gate 14 of `tests/run-static.sh`, since M1-N) has 8
+checks.
+
+It drives `hardware/package_gc.py`, `apply-packages.py gc-plan`/`gc` and the
+trusted-deployment launcher against package state created by the **real**
+apply executor on the gate-11 fake host (a temporary root): a complete
+attempt with its bundle and hard-linked apply cache. It then adds variants:
+- journal phases;
+- cloned and corrupted bundles;
+- recovery journals written through the real recovery journal class;
+- temporary staging directories;
+- hostile objects.
+
+It never touches the runner's `/var/lib`, APT or dpkg state and needs no
+root.
+
+It proves:
+- **Contracts:** both schemas are meta-valid, closed, protected (gate 10's
+  table) and their codes equal the module's; the four fixed roots are
+  unchanged.
+- **Retention graph:**
+  - a complete bundle is `eligible_complete`;
+  - nonterminal, applied-but-unvalidated and bundle-verified attempts are
+    `protected_active`;
+  - failed-after-APT is `protected_recovery`;
+  - failed-before-APT is `eligible_abandoned`;
+  - recoveries ending `manual` or `failed` are protected; `complete` and
+    `abandoned` make the bundle eligible;
+  - a nonterminal recovery protects everything; the strongest reference
+    wins;
+  - unreferenced bundles, and corrupt, missing or unexpected journals, are
+    `protected_unknown`;
+  - the plan is deterministic.
+- **Integrity cases retained** (`invalid_or_ambiguous`):
+  - a corrupt, missing or extra payload; an extra entry;
+  - a manifest, digest or name mismatch;
+  - a symlink or FIFO payload; a group-writable directory;
+  - a hard link outside the attempt caches; unexpected cache entries;
+  - a copied (not linked) cache file;
+  - a symlinked bundle and a mount crossing.
+
+  A wrong owner or a symlinked root is refused.
+- **Temporary and unrecognized entries:**
+  - a safe temporary directory is eligible; one a staging attempt may own is
+    protected;
+  - temporaries with a symlink, a nested directory, mode 0777, a symlinked
+    `archives`, or a foreign owner are retained;
+  - look-alike names, foreign files and directories and symlinks are
+    preserved, untouched.
+- **Execution:**
+  - it removes exactly the eligible bundles (with the payload links of their
+    caches) and the safe temporary, keeping APT's `lock`;
+  - the manual-recovery bundle stays verifiable and apply stays blocked;
+  - the corrupt bundle, a sentinel, every journal and the APT cache, dpkg
+    and source state are untouched;
+  - the durable receipt equals the result;
+  - a second run is `nothing_to_collect` and writes no receipt.
+- **Races and failures** (injected after the plan, under the lock):
+  - a changed journal, a replaced bundle, a replaced or symlinked payload, an
+    extra file, a vanished candidate, a changed cache and a changed temporary
+    all fail closed before any unlink;
+  - a partial failure gives a durable `partial` receipt with exact counts;
+  - a crash leaves a `deleting` receipt, never a success;
+  - a receipt that cannot be written (disk full) prevents all deletion.
+- **Lock:** GC and plan are refused while the shared lock is held; apply,
+  recovery and GC are refused while GC holds it; both operations are root
+  only.
+- **No caller control:**
+  - the CLI refuses a path, age, attempt ID, force, recursive option, plan
+    file, size or delete list (exit 64);
+  - the launcher operations are fixed;
+  - there is no rmtree, shell, subprocess, time, mtime, environment or argv
+    in the module, and no APT cache, dpkg or source path;
+  - deletion is descriptor-relative; journals are never deleted.
+
+### M1-N mutation suite
+
+Each mutation is committed in a throwaway clone, and the full
+`tests/run-static.sh` must fail. The 25 mutations:
+- **Retention:** delete an unresolved bundle; delete manual-recovery
+  evidence; delete a corrupt bundle; delete an unknown directory; treat an
+  ambiguous graph as eligible; delete a temporary a staging attempt may own;
+  ignore hard-link ambiguity; skip the bundle verification.
+- **Time and caller input:** trust mtimes; accept a caller plan; accept a
+  caller-selected transaction; permit an environment-supplied root.
+- **Lock and races:** skip the lock; skip the post-lock identity
+  revalidation; skip the journal recheck; ignore an extra file; follow a
+  symlink; ignore ownership; ignore mount crossing.
+- **Deletion:** use recursive deletion; delete journals; touch the APT cache;
+  delete APT's cache lock file; write the receipt only after deletion;
+  report success after a partial failure.
+
+The M1-M (43), M1-L (51) and M1-K (46) mutations are re-run on the same
+commit.
+
+### Builder GC qualification (M1-N, builder only)
+
+Real deletion is qualified only on the builder under a fresh rollback
+checkpoint `pre-m1n`: disk and UEFI NVRAM, the builder shut off, created
+with an individual Polkit approval.
+
+1. **Fixture.** From the root-owned exact-commit deployment, a
+   qualification-only fixture is created by root under the production roots
+   (not part of the product or the CLI):
+   - a complete attempt with its verified bundle and apply cache;
+   - a failed-after-APT attempt with a manual-recovery journal and its
+     bundle;
+   - a complete attempt whose bundle is corrupt;
+   - a temporary staging directory;
+   - a foreign sentinel.
+
+   No real hardware package is installed.
+2. **Plan and GC.** `run-gc-plan`, then `run-gc`, then `run-gc` again
+   (idempotence) and `run-gc-plan`.
+3. **Checks.** The eligible bundle, its cache links and the temporary
+   directory are removed. The recovery bundle (still verifiable, `status`
+   and `apply` still report recovery required), the corrupt bundle, the
+   sentinel and every journal remain. APT, dpkg and source state are
+   unchanged.
+4. **Restore.** The VM is reverted to `pre-m1n`, booted and audited against
+   the original baseline, then shut down. The checkpoint is kept until
+   publication closure.
 
 ## GitHub CI
 

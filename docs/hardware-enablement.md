@@ -901,6 +901,10 @@ contract is in [package-transactions.md](package-transactions.md).
   kept separate from the transaction closure). Unrelated or unattributable
   damage requires manual recovery. See
   [package-recovery.md](package-recovery.md).
+- Since M1-N, staged payloads of complete or no-mutation attempts are
+  reclaimed conservatively by `apply-packages.py gc`; everything a pending,
+  failed or manual recovery could need is retained
+  ([package-garbage-collection.md](package-garbage-collection.md)).
 - Since M1-M the result is validated separately and read-only
   ([hardware-validation.md](hardware-validation.md)). Each plan target is
   checked for presence (same identity), a bound kernel driver (one of the

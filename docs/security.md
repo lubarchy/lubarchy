@@ -222,6 +222,21 @@ implemented.**
   - Recovery shares the transaction lock, never removes native dpkg locks,
     runs root only from the trusted deployment, and writes a durable
     recovery journal that gates later applies.
+- Package state garbage collection (M1-N). Details:
+  [package-garbage-collection.md](package-garbage-collection.md).
+  - Only fixed LUBARCHY roots; no caller path, ID, age, size, force or plan.
+    Deletion requires proof from the journals; unknown, corrupt, ambiguous,
+    unresolved and manual-recovery state is retained. Journals are never
+    deleted, and neither are APT/dpkg/source state, APT's lock files or
+    receipts. Time and mtimes are never authority.
+  - Root only, under the shared transaction lock; the plan is recomputed
+    under the lock and each candidate re-verified (journal digests, object
+    identity, exact listings) immediately before descriptor-relative,
+    no-follow, non-recursive deletion. Symlinks, special files, foreign
+    owners, group/other-writable objects, mount crossings and unexplained
+    hard links are never deleted.
+  - A durable receipt precedes the first deletion; a crash or partial
+    failure is never reported as success; disk-full fails closed.
 - Post-install hardware validation (M1-M). Details:
   [hardware-validation.md](hardware-validation.md).
   - It is read-only: no install, configuration, module load, binding,

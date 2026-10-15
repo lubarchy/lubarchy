@@ -49,7 +49,8 @@ later installation/configuration → later validation.
 | M1-K | Privileged source activation and package apply executor | PASS (CTO accepted) |
 | M1-L | Interrupted package transaction recovery | PASS (CTO accepted) |
 | M1-M | Post-install hardware validation and health | PASS (CTO accepted) |
-| M1-N | Not defined | Not started |
+| M1-N | Package state retention and safe garbage collection | Implemented locally; awaiting CTO review |
+| M1-O | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
   `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
@@ -455,7 +456,29 @@ later installation/configuration → later validation.
 - M1-M does **not** install, configure, load or bind anything, repair
   packages, change hardware policy or rules, add privilege escalation,
   qualify NVIDIA, or replace real-hardware qualification.
-- M1-N has not started and waits for a CTO brief.
+- M1-N — package state retention and safe garbage collection:
+  **implemented locally; awaiting CTO review** (not PASS, not pushed).
+  Details: [package-garbage-collection.md](package-garbage-collection.md).
+  - `hardware/package_gc.py` with `apply-packages.py gc-plan` and `gc` (root
+    only, no caller input) classifies every staging bundle and temporary
+    staging directory from the apply and recovery journals: protected
+    (active, recovery, unknown), eligible (complete, abandoned) or
+    invalid/ambiguous, with reason codes.
+  - Only eligible state is deleted: verified bundles together with the
+    payload links of their attempt caches, and exact-pattern temporary
+    staging directories. Journals, unknown, corrupt, ambiguous and
+    recovery-relevant state, APT's cache lock file and everything outside
+    the fixed roots are preserved; time and mtimes are never authority.
+  - `gc` recomputes the plan under the shared transaction lock,
+    re-verifies each candidate's identity immediately before deleting it
+    through directory descriptors without following links, and writes a
+    durable receipt (`lubarchy.packages.gc-receipt/v1`) before the first
+    deletion; partial failures are recorded as such.
+  - Gate 14 (`tests/hardware-gc.py`) is synthetic. Real GC is qualified
+    only on the builder under the `pre-m1n` rollback checkpoint.
+- M1-N does **not** delete journals or receipts, use time-based cleanup,
+  touch APT/dpkg/source state, add a privilege mechanism, or start M1-O.
+- M1-O has not started and waits for a CTO brief.
 
 ## M0 — Minimal reproducible ISO (closed)
 
@@ -640,8 +663,9 @@ not be treated as decided:
 
 ## Immediate next action
 
-A CTO brief for M1-N, which has not been defined or started. M1-M is PASS
-(CTO accepted; implementation `59793b6dcdaddf73946dcdd9a6681ac58b2fc644`, CI run #30); M1-L is PASS (CTO accepted).
+CTO review of M1-N (package state retention and safe garbage collection;
+local commit only, not yet pushed or CI-qualified). M1-M is PASS (CTO
+accepted; implementation `59793b6dcdaddf73946dcdd9a6681ac58b2fc644`, CI run #30); M1-L is PASS (CTO accepted).
 
 M1-M limitations that remain in force:
 - the current builder's own validation result is `FAIL`, because
@@ -662,15 +686,14 @@ The security findings stand:
   claims.
 
 Open work:
-- garbage collection;
-- installer/service integration;
+- installer/service orchestration and persistence;
 - Secure Boot/MOK;
 - the NVIDIA ADR;
 - hybrid/multi-GPU;
 - user-facing diagnostics;
 - real-hardware qualification.
 
-M1-N has not started and waits for a CTO brief.
+M1-O has not started and waits for a CTO brief.
 
 ## PASS rule
 

@@ -4,6 +4,8 @@
     hardware/apply-packages.py apply
     hardware/apply-packages.py status
     hardware/apply-packages.py recover
+    hardware/apply-packages.py gc-plan
+    hardware/apply-packages.py gc
 
 apply   applies the current qualified hardware plan of this machine:
         LUBARCHY transaction lock -> journal -> activation of the
@@ -22,6 +24,15 @@ recover recovers the interrupted LUBARCHY hardware-package transaction
         exact-package `dpkg --configure`/`--triggers-only`, and otherwise
         records manual_recovery_required without mutating anything. It
         never runs APT, `apt-get -f install` or `dpkg --configure -a`.
+gc-plan prints the read-only package-state GC plan (M1-N): every staging
+        bundle and temporary staging directory classified from the apply and
+        recovery journals (protected / eligible / invalid, with reasons).
+gc      garbage-collects provably obsolete LUBARCHY package payload state:
+        recomputes the plan under the shared transaction lock, deletes only
+        eligible bundles (with the payload links of their attempt caches) and
+        safe temporary staging directories, identity-checked and without
+        following links, and records a durable receipt. Journals, unknown,
+        corrupt, ambiguous and recovery-relevant state are never deleted.
 
 It accepts no package, version, architecture, URI, suite, component, APT or
 dpkg option, environment setting, staging root or source path: everything
@@ -33,11 +44,12 @@ journaled as `failed` and nothing is rolled back or repaired automatically;
 later invocations then report recovery_required.
 
 Exit status: 0 complete, nothing to apply, recovered, abandoned (no package
-mutation) or nothing to recover; 2 malformed state; 3 stale;
+mutation), nothing to recover, GC plan printed or GC complete/nothing to
+collect; 2 malformed state; 3 stale;
 4 unauthorised source or plan rejected; 5 unsafe change set or path;
 6 payload/metadata/provenance mismatch; 7 contract/internal failure;
 8 another transaction holds the lock; 9 recovery required / manual recovery
-required; 10 apply, recovery or post-apply validation failed; 64 usage;
+required; 10 apply, recovery, post-apply validation or GC deletion failed (partial); 64 usage;
 77 not root. On error stderr has one
 line 'apply-packages: error: <code>: <message>'.
 """
@@ -51,12 +63,12 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 import package_apply as pa  # noqa: E402
 import resolver  # noqa: E402
 
-USAGE = "usage: apply-packages.py apply | status | recover\n"
+USAGE = "usage: apply-packages.py apply | status | recover | gc-plan | gc\n"
 
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    if argv not in (["apply"], ["status"], ["recover"]):
+    if argv not in (["apply"], ["status"], ["recover"], ["gc-plan"], ["gc"]):
         sys.stderr.write(USAGE)
         return pa.EXIT_USAGE
     try:
@@ -70,6 +82,13 @@ def main(argv=None):
                 sys.stdout.buffer.write(resolver.canonical_json(out) + b"\n")
                 sys.stderr.write("apply-packages: error: manual_recovery_required: " + (out.get("reason") or "") + "\n")
                 return pa.EXIT_RECOVERY
+        elif argv in (["gc-plan"], ["gc"]):
+            import package_gc as gc
+            out = gc.plan(host) if argv == ["gc-plan"] else gc.collect_garbage(host)
+            if out.get("result") in ("partial", "failed"):
+                sys.stdout.buffer.write(resolver.canonical_json(out) + b"\n")
+                sys.stderr.write(f"apply-packages: error: gc_{out['result']}: deletion stopped; see the receipt\n")
+                return pa.EXIT_APPLY_FAILED
         else:
             out = pa.status(host)
     except pa.ApplyError as e:

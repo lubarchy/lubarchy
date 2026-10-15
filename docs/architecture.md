@@ -156,6 +156,11 @@ health, and root storage, attributes every check to an inventory device
 identity, and reports PASS, FAIL, LIMITED or NOT_TESTED in a result bound to
 the inventory, rules, plan, installed state and boot. It installs and
 repairs nothing ([hardware-validation.md](hardware-validation.md)).
+Since M1-N, `apply-packages.py gc` reclaims LUBARCHY package payload state
+proven obsolete by the apply and recovery journals (complete or no-mutation
+attempts only), under the same transaction lock, identity-checked and
+without following links; journals and anything unknown, corrupt or needed
+for recovery are kept ([package-garbage-collection.md](package-garbage-collection.md)).
 The supplier of privilege (installer/system service) and real-hardware
 qualification are later work. See
 [package-transactions.md](package-transactions.md),

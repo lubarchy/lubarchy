@@ -1,0 +1,361 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lubarchy:packages:gc-plan:v1",
+  "title": "LUBARCHY package-state garbage-collection plan v1",
+  "description": "Deterministic, read-only classification of LUBARCHY-owned package payload state (M1-N): the reference graph derived from the apply and recovery journals, and every staging-root entry classified as protected, eligible or invalid with a reason code. It is never accepted as input: the GC executor recomputes it under the shared transaction lock. It contains no timestamps, no command output and no secrets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "roots",
+    "graph",
+    "candidates",
+    "unrecognized",
+    "summary"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lubarchy.packages.gc-plan/v1"
+    },
+    "roots": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "staging",
+        "transactions",
+        "recoveries",
+        "receipts"
+      ],
+      "properties": {
+        "staging": {
+          "const": "/var/lib/lubarchy/package-staging"
+        },
+        "transactions": {
+          "const": "/var/lib/lubarchy/package-transactions"
+        },
+        "recoveries": {
+          "const": "/var/lib/lubarchy/package-recoveries"
+        },
+        "receipts": {
+          "const": "/var/lib/lubarchy/package-gc"
+        }
+      }
+    },
+    "graph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "complete",
+        "settled",
+        "unreadable",
+        "attempts",
+        "recoveries"
+      ],
+      "properties": {
+        "complete": {
+          "type": "boolean"
+        },
+        "settled": {
+          "type": "boolean"
+        },
+        "unreadable": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": {
+            "type": "string",
+            "pattern": "^package-(transactions|recoveries)/([A-Za-z0-9._+-]{1,128}|sha256:[0-9a-f]{64})$"
+          }
+        },
+        "attempts": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "attempt_id",
+              "state",
+              "phase",
+              "transaction_digest",
+              "bundle_digest",
+              "journal_digest"
+            ],
+            "properties": {
+              "attempt_id": {
+                "$ref": "#/$defs/id"
+              },
+              "state": {
+                "enum": [
+                  "complete",
+                  "nothing_to_apply",
+                  "resolved_complete",
+                  "resolved_abandoned",
+                  "failed_before_apply",
+                  "nonterminal",
+                  "recovery_required",
+                  "manual_recovery_required",
+                  "recovery_failed"
+                ]
+              },
+              "phase": {
+                "enum": [
+                  "prepared",
+                  "locked",
+                  "source_activated",
+                  "metadata_refreshed",
+                  "transaction_revalidated",
+                  "bundle_staged",
+                  "bundle_verified",
+                  "applying",
+                  "applied",
+                  "validated",
+                  "complete",
+                  "failed"
+                ]
+              },
+              "transaction_digest": {
+                "$ref": "#/$defs/optional_digest"
+              },
+              "bundle_digest": {
+                "$ref": "#/$defs/optional_digest"
+              },
+              "journal_digest": {
+                "$ref": "#/$defs/digest"
+              }
+            }
+          }
+        },
+        "recoveries": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "recovery_id",
+              "phase",
+              "attempt_id",
+              "journal_digest"
+            ],
+            "properties": {
+              "recovery_id": {
+                "$ref": "#/$defs/id"
+              },
+              "phase": {
+                "enum": [
+                  "prepared",
+                  "locked",
+                  "inspected",
+                  "classified",
+                  "verified",
+                  "recovering",
+                  "processing_triggers",
+                  "recovered",
+                  "validated",
+                  "complete",
+                  "abandoned",
+                  "manual_recovery_required",
+                  "failed"
+                ]
+              },
+              "attempt_id": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/$defs/id"
+                  }
+                ]
+              },
+              "journal_digest": {
+                "$ref": "#/$defs/digest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "name",
+          "classification",
+          "reason",
+          "referenced_by",
+          "apply_caches",
+          "bytes"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/$defs/kind"
+          },
+          "name": {
+            "$ref": "#/$defs/candidate_name"
+          },
+          "classification": {
+            "$ref": "#/$defs/classification"
+          },
+          "reason": {
+            "$ref": "#/$defs/reason"
+          },
+          "referenced_by": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/id"
+            }
+          },
+          "apply_caches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/id"
+            }
+          },
+          "bytes": {
+            "$ref": "#/$defs/count"
+          }
+        }
+      }
+    },
+    "unrecognized": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "type"
+        ],
+        "properties": {
+          "name": {
+            "$ref": "#/$defs/entry_name"
+          },
+          "type": {
+            "enum": [
+              "file",
+              "directory",
+              "symlink",
+              "other"
+            ]
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protected_active",
+        "protected_recovery",
+        "protected_unknown",
+        "eligible_complete",
+        "eligible_abandoned",
+        "invalid_or_ambiguous",
+        "eligible_bytes",
+        "unrecognized"
+      ],
+      "properties": {
+        "protected_active": {
+          "$ref": "#/$defs/count"
+        },
+        "protected_recovery": {
+          "$ref": "#/$defs/count"
+        },
+        "protected_unknown": {
+          "$ref": "#/$defs/count"
+        },
+        "eligible_complete": {
+          "$ref": "#/$defs/count"
+        },
+        "eligible_abandoned": {
+          "$ref": "#/$defs/count"
+        },
+        "invalid_or_ambiguous": {
+          "$ref": "#/$defs/count"
+        },
+        "eligible_bytes": {
+          "$ref": "#/$defs/count"
+        },
+        "unrecognized": {
+          "$ref": "#/$defs/count"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "optional_digest": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/digest"
+        }
+      ]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{16}$"
+    },
+    "candidate_name": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{64}|\\.staging-[a-z0-9_]{8})$"
+    },
+    "entry_name": {
+      "type": "string",
+      "pattern": "^([A-Za-z0-9._+-]{1,128}|sha256:[0-9a-f]{64})$"
+    },
+    "kind": {
+      "enum": [
+        "bundle",
+        "temporary"
+      ]
+    },
+    "classification": {
+      "enum": [
+        "protected_active",
+        "protected_recovery",
+        "protected_unknown",
+        "eligible_complete",
+        "eligible_abandoned",
+        "invalid_or_ambiguous"
+      ]
+    },
+    "reason": {
+      "enum": [
+        "complete_validated",
+        "resolved_by_recovery",
+        "resolved_without_mutation",
+        "failed_before_apply",
+        "abandoned_temporary",
+        "nonterminal_apply",
+        "nonterminal_recovery",
+        "recovery_required",
+        "manual_recovery_required",
+        "recovery_failed",
+        "unreferenced",
+        "reference_graph_incomplete",
+        "temporary_possibly_owned",
+        "bundle_verification_failed",
+        "binding_mismatch",
+        "apply_cache_unexpected",
+        "hard_link_ambiguity",
+        "unsafe_object"
+      ]
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

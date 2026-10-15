@@ -13,6 +13,7 @@
 #  11. tests/hardware-apply.py (M1-K privileged apply executor; fake host, never mutates or needs root)
 #  12. tests/hardware-recovery.py (M1-L interrupted transaction recovery; fake host, never mutates or needs root)
 #  13. tests/hardware-validation.py (M1-M post-install hardware validation; synthetic evidence and sysfs, read-only)
+#  14. tests/hardware-gc.py (M1-N package-state garbage collection; fake host roots only, never the runner's state)
 # Stops at the first failing gate. Never builds an image, touches libvirt or
 # probes the host's hardware; needs git, shellcheck, live-build, python3 and
 # python3-jsonschema but not root.
@@ -74,4 +75,5 @@ run_gate "hardware package staging" tests/hardware-staging.py
 run_gate "hardware package apply" tests/hardware-apply.py
 run_gate "hardware package recovery" tests/hardware-recovery.py
 run_gate "hardware post-install validation" tests/hardware-validation.py
+run_gate "hardware package state garbage collection" tests/hardware-gc.py
 echo "PASS: all static gates"

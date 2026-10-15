@@ -2,15 +2,16 @@
 # configuration, hardware contracts, hardware probe, hardware resolver,
 # hardware firmware, hardware NVIDIA strategy, hardware package transaction,
 # hardware package staging, hardware package apply, hardware package
-# recovery, hardware post-install validation). Static checks only: this
-# workflow never builds an ISO, never probes or validates the runner's
-# hardware, never reads the runner kernel's module aliases or kernel log,
-# never contacts NVIDIA or a Debian mirror from the gates, never runs a
-# package transaction, the apply executor or a recovery against the runner,
-# never activates a source and never downloads, installs or repairs a package
-# (the hardware gates use synthetic inputs, fake hosts and committed
-# evidence), uses no secrets, needs no privileges and publishes nothing. The
-# file name is kept from M0 to avoid churn.
+# recovery, hardware post-install validation, hardware package state garbage
+# collection). Static checks only: this workflow never builds an ISO, never
+# probes or validates the runner's hardware, never reads the runner kernel's
+# module aliases or kernel log, never contacts NVIDIA or a Debian mirror from
+# the gates, never runs a package transaction, the apply executor, a recovery
+# or a GC against the runner, never activates a source and never downloads,
+# installs, repairs or deletes a package (the hardware gates use synthetic
+# inputs, fake hosts and committed evidence), uses no secrets, needs no
+# privileges and publishes nothing. The file name is kept from M0 to avoid
+# churn.
 name: Static gates
 
 on:

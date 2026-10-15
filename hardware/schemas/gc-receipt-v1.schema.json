@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lubarchy:packages:gc-receipt:v1",
+  "title": "LUBARCHY package-state garbage-collection receipt v1",
+  "description": "Durable record of one GC execution (M1-N), stored as /var/lib/lubarchy/package-gc/<receipt>.json and replaced atomically: written with phase 'deleting' before the first deletion and finalized afterwards, so a crash never leaves a success receipt. It binds the plan digest and records exactly what was eligible, removed, failed or not attempted, the bytes reclaimed and what was retained with its reason. Receipts are never collected by GC. No timestamps, command output or secrets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "receipt_id",
+    "plan_digest",
+    "phase",
+    "result",
+    "eligible",
+    "removed",
+    "failed",
+    "not_attempted",
+    "bytes_reclaimed",
+    "retained",
+    "protected_count",
+    "unrecognized_count"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lubarchy.packages.gc-receipt/v1"
+    },
+    "receipt_id": {
+      "$ref": "#/$defs/id"
+    },
+    "plan_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "phase": {
+      "enum": [
+        "deleting",
+        "complete",
+        "partial",
+        "failed"
+      ]
+    },
+    "result": {
+      "enum": [
+        null,
+        "complete",
+        "partial",
+        "failed"
+      ]
+    },
+    "eligible": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "name",
+          "classification",
+          "bytes"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/$defs/kind"
+          },
+          "name": {
+            "$ref": "#/$defs/candidate_name"
+          },
+          "classification": {
+            "enum": [
+              "eligible_complete",
+              "eligible_abandoned"
+            ]
+          },
+          "bytes": {
+            "$ref": "#/$defs/count"
+          }
+        }
+      }
+    },
+    "removed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "name",
+          "bytes"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/$defs/kind"
+          },
+          "name": {
+            "$ref": "#/$defs/candidate_name"
+          },
+          "bytes": {
+            "$ref": "#/$defs/count"
+          }
+        }
+      }
+    },
+    "failed": {
+      "type": "array",
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "name",
+          "reason"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/$defs/kind"
+          },
+          "name": {
+            "$ref": "#/$defs/candidate_name"
+          },
+          "reason": {
+            "$ref": "#/$defs/reason"
+          }
+        }
+      }
+    },
+    "not_attempted": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/candidate_name"
+      }
+    },
+    "bytes_reclaimed": {
+      "$ref": "#/$defs/count"
+    },
+    "retained": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "name",
+          "classification",
+          "reason"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/$defs/kind"
+          },
+          "name": {
+            "$ref": "#/$defs/candidate_name"
+          },
+          "classification": {
+            "enum": [
+              "protected_active",
+              "protected_recovery",
+              "protected_unknown",
+              "invalid_or_ambiguous"
+            ]
+          },
+          "reason": {
+            "$ref": "#/$defs/reason"
+          }
+        }
+      }
+    },
+    "protected_count": {
+      "$ref": "#/$defs/count"
+    },
+    "unrecognized_count": {
+      "$ref": "#/$defs/count"
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "optional_digest": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/digest"
+        }
+      ]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{16}$"
+    },
+    "candidate_name": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{64}|\\.staging-[a-z0-9_]{8})$"
+    },
+    "entry_name": {
+      "type": "string",
+      "pattern": "^([A-Za-z0-9._+-]{1,128}|sha256:[0-9a-f]{64})$"
+    },
+    "kind": {
+      "enum": [
+        "bundle",
+        "temporary"
+      ]
+    },
+    "classification": {
+      "enum": [
+        "protected_active",
+        "protected_recovery",
+        "protected_unknown",
+        "eligible_complete",
+        "eligible_abandoned",
+        "invalid_or_ambiguous"
+      ]
+    },
+    "reason": {
+      "enum": [
+        "complete_validated",
+        "resolved_by_recovery",
+        "resolved_without_mutation",
+        "failed_before_apply",
+        "abandoned_temporary",
+        "nonterminal_apply",
+        "nonterminal_recovery",
+        "recovery_required",
+        "manual_recovery_required",
+        "recovery_failed",
+        "unreferenced",
+        "reference_graph_incomplete",
+        "temporary_possibly_owned",
+        "bundle_verification_failed",
+        "binding_mismatch",
+        "apply_cache_unexpected",
+        "hard_link_ambiguity",
+        "unsafe_object"
+      ]
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}
