@@ -1521,6 +1521,32 @@ with an individual Polkit approval.
    the original baseline, then shut down. The checkpoint is kept until
    publication closure.
 
+**Result (exact commit `1eec088956d73cdc53bf450a76d860cbe4ec7e41`):** `pre-m1n` was created with the builder
+shut off (atomic, internal disk plus UEFI NVRAM). The root-owned deployment
+verified (189 files, no non-root, writable or symlinked entries).
+- **Plan:** the complete bundle was `eligible_complete`, the temporary
+  directory `eligible_abandoned`, the manual-recovery bundle
+  `protected_recovery`, the corrupt bundle `invalid_or_ambiguous`
+  (`bundle_verification_failed`), and the sentinel unrecognized. The graph
+  was complete and settled.
+- **First `gc`:** `complete`. It removed exactly the eligible bundle, its
+  attempt cache's payload links and the temporary directory (3814 bytes); the
+  durable receipt equals the printed result.
+- **Retained:**
+  - the protected recovery bundle, which still re-verified exactly while
+    `apply` was still refused (`recovery_required`) and `status` still
+    showed the manual recovery;
+  - its attempt cache, including APT's `lock`;
+  - the corrupt bundle and the sentinel;
+  - all journals, byte-identical.
+- **Unchanged:** the APT cache, dpkg status, `extended_states`, `/etc/apt`,
+  the dpkg lock files, and the installed, automatic and held package lists.
+- **Second `gc`:** `nothing_to_collect`, with the tree byte-identical.
+- **Restore:** after the revert to `pre-m1n` the audit equalled the original
+  baseline exactly, all qualification state was gone, and the domain XML
+  (disk and NVRAM) was unchanged. The builder ended shut off with autostart
+  disabled; `pre-m1n` is kept until CTO closure.
+
 ## GitHub CI
 
 The static gates run as the GitHub Actions workflow
@@ -1566,6 +1592,9 @@ or boots an ISO and never probes hardware.**
 | [#28 (38666440151)](https://github.com/lubarchy/lubarchy/actions/runs/38666440151) | `3b0ec8869a3034c7df38c25c004387bf99750d7b` | push | **success**: repository lint, ShellCheck, live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks), hardware NVIDIA strategy (19 checks), hardware package transaction (17 checks), hardware package staging (19 checks), hardware package apply (14 checks) and hardware package recovery (15 checks; fake host and synthetic dpkg logs only: no real apply or recovery, no runner APT/dpkg mutation by LUBARCHY code, no `/etc/apt` or `/var/lib/lubarchy` write, no reboot, no libvirt, no NVIDIA contact) passed; CI container sources `main` only |
 | [#29 (38666799577)](https://github.com/lubarchy/lubarchy/actions/runs/38666799577) | `2610a1db5f1ec49ffe99e19eedad07bbeea5b592` | push | **success**: all twelve gates passed (documentation commit) |
 | [#30 (38732417272)](https://github.com/lubarchy/lubarchy/actions/runs/38732417272) | `59793b6dcdaddf73946dcdd9a6681ac58b2fc644` | push | **success**: repository lint, ShellCheck, live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks), hardware NVIDIA strategy (19 checks), hardware package transaction (17 checks), hardware package staging (19 checks), hardware package apply (14 checks), hardware package recovery (15 checks) and hardware post-install validation (13 checks; synthetic inventories, synthetic runtime evidence and a fake sysfs/procfs tree only: the runner's hardware, kernel log, packages and services were never read, nothing installed, activated, written, loaded or bound, no reboot, no libvirt, no NVIDIA contact, no physical-hardware claim) passed; CI container sources `main` only |
+| [#31 (38732989639)](https://github.com/lubarchy/lubarchy/actions/runs/38732989639) | `a40f6a9ebeb6506f1acda596a9a6e3074acaecdb` | push | **success**: all thirteen gates passed (documentation commit) |
+| [#32 (38734298541)](https://github.com/lubarchy/lubarchy/actions/runs/38734298541) | `66393f5ef2bb87fcaaf7321581b0509159d08816` | push | **success**: all thirteen gates passed (M1-M closure documentation commit) |
+| [#33 (38816122990)](https://github.com/lubarchy/lubarchy/actions/runs/38816122990) | `1eec088956d73cdc53bf450a76d860cbe4ec7e41` | push | **success**: repository lint, ShellCheck, live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks), hardware NVIDIA strategy (19 checks), hardware package transaction (17 checks), hardware package staging (19 checks), hardware package apply (14 checks), hardware package recovery (15 checks), hardware post-install validation (13 checks) and hardware package state garbage collection (8 checks; fake-host temporary roots only: the runner's `/var/lib/lubarchy`, APT cache, dpkg state and `/etc/apt` were never touched, no apply, recovery or GC against the runner, no deletion of runner files, no libvirt, no reboot, no root needed) passed; CI container sources `main` only |
 
 The fix in `ce2462e` trusts exactly `$GITHUB_WORKSPACE` for the gate step
 through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`; no Git
@@ -1815,6 +1844,48 @@ At publication M1-M was awaiting CTO review; it was subsequently accepted
 (PASS, CTO accepted). The PASS qualifies the validation subsystem; the
 builder's own validation result remains `FAIL` as recorded above. M1-N has
 not started.
+
+**M1-N CI qualification:** the M1-N change was executed on GitHub by workflow
+`Static gates`, run ID
+[38816122990](https://github.com/lubarchy/lubarchy/actions/runs/38816122990)
+(run #33), on implementation commit
+`1eec088956d73cdc53bf450a76d860cbe4ec7e41`. The change comprises:
+- the package-state GC library and the root-only `gc-plan`/`gc`
+  operations;
+- the trusted-deployment `run-gc-plan`/`run-gc` launchers;
+- the protected `gc-plan-v1` and `gc-receipt-v1` schemas;
+- new gate 14 with 8 checks.
+
+All fourteen gates ran and passed: gate 10 stayed at 19, gate 11 at 14,
+gate 12 at 15 and gate 13 at 13; gate 14 had 8. Gate 14 operated only on
+fake-host temporary roots, and never on the runner's `/var/lib/lubarchy`,
+APT cache, dpkg state or `/etc/apt`:
+- no apply, recovery or GC ran against the runner;
+- no runner file was deleted;
+- there was no libvirt, no reboot and no root.
+
+The workflow change was the header comment; gate 14 runs through the
+existing static runner.
+
+**Exact-commit qualification.** The first local run exited 1 only because
+two older mutation targets (L14, K02) still matched the pre-M1-N CLI
+argument check. That was a harness defect, not a product failure. After
+retargeting them (harness only, commit unchanged), the exact-commit run had:
+- 14/14 gates;
+- mutations M1-N 25/25, M1-M 43/43, M1-L 51/51 and M1-K 46/46 (165/165)
+  killed;
+- zero survivors and zero harness errors;
+- aggregate exit 0.
+
+Both records are kept in the external evidence. The real builder GC
+qualification is recorded in the builder GC qualification above.
+
+**Scope of the qualification.** It qualifies the GC subsystem only; it
+does not authorise generic cleanup. Journals, receipts, unknown, corrupt,
+ambiguous or manual-recovery state, the APT cache in general, dpkg state,
+installed packages and APT sources are never GC targets.
+
+M1-N remains awaiting CTO review (not PASS), and M1-O has not started.
 
 ## Clean rebuild comparison
 

@@ -49,7 +49,7 @@ later installation/configuration → later validation.
 | M1-K | Privileged source activation and package apply executor | PASS (CTO accepted) |
 | M1-L | Interrupted package transaction recovery | PASS (CTO accepted) |
 | M1-M | Post-install hardware validation and health | PASS (CTO accepted) |
-| M1-N | Package state retention and safe garbage collection | Implemented locally; awaiting CTO review |
+| M1-N | Package state retention and safe garbage collection | Implemented; CI-qualified (run #33); awaiting CTO review |
 | M1-O | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
@@ -457,8 +457,27 @@ later installation/configuration → later validation.
   packages, change hardware policy or rules, add privilege escalation,
   qualify NVIDIA, or replace real-hardware qualification.
 - M1-N — package state retention and safe garbage collection:
-  **implemented locally; awaiting CTO review** (not PASS, not pushed).
-  Details: [package-garbage-collection.md](package-garbage-collection.md).
+  **implemented and CI-qualified; awaiting CTO review** (not PASS).
+  Implementation commit `1eec088956d73cdc53bf450a76d860cbe4ec7e41`; workflow
+  `Static gates` run #33 ([38816122990](https://github.com/lubarchy/lubarchy/actions/runs/38816122990)): all fourteen gates passed (gate 10: 19, gate 11: 14, gate 12: 15,
+  gate 13: 13, gate 14: 8 checks).
+  - **Local exact-commit qualification:** aggregate exit 0, 165/165
+    mutations killed (M1-N 25, M1-M 43, M1-L 51, M1-K 46). An earlier run
+    exited 1 only because of two stale harness mutation targets (L14,
+    K02); it was not a product failure.
+  - **Real builder GC qualification** under `pre-m1n`:
+    - eligible state was removed;
+    - the protected manual-recovery material survived (still verifiable,
+      apply still blocked), and so did the corrupt material and the
+      unknown sentinel;
+    - the second run was idempotent;
+    - APT, dpkg, source and package state was unchanged;
+    - the restore to baseline was exact.
+
+    `pre-m1n` is kept until CTO closure.
+  - The PASS, once given, qualifies the GC subsystem only; it does not
+    authorise generic cleanup.
+  - Details: [package-garbage-collection.md](package-garbage-collection.md).
   - `hardware/package_gc.py` with `apply-packages.py gc-plan` and `gc` (root
     only, no caller input) classifies every staging bundle and temporary
     staging directory from the apply and recovery journals: protected
@@ -664,7 +683,8 @@ not be treated as decided:
 ## Immediate next action
 
 CTO review of M1-N (package state retention and safe garbage collection;
-local commit only, not yet pushed or CI-qualified). M1-M is PASS (CTO
+published as `1eec088956d73cdc53bf450a76d860cbe4ec7e41`, CI run #33 passed all fourteen
+gates; `pre-m1n` kept until closure). M1-M is PASS (CTO
 accepted; implementation `59793b6dcdaddf73946dcdd9a6681ac58b2fc644`, CI run #30); M1-L is PASS (CTO accepted).
 
 M1-M limitations that remain in force:
