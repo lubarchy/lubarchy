@@ -47,7 +47,7 @@ later installation/configuration → later validation.
 | M1-I | Privileged package apply transaction contract | PASS (CTO accepted) |
 | M1-J | Debian source activation and staged package acquisition | PASS (CTO accepted) |
 | M1-K | Privileged source activation and package apply executor | PASS (CTO accepted) |
-| M1-L | Interrupted package transaction recovery | Implemented locally; awaiting CTO review |
+| M1-L | Interrupted package transaction recovery | Implemented; CI-qualified (run #28); awaiting CTO review |
 | M1-M | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
@@ -367,8 +367,11 @@ later installation/configuration → later validation.
   inventory, rule, plan, package-transaction, source-activation or
   staged-bundle contracts, the resolver, the production rules or the
   production package set (10).
-- M1-L — interrupted package transaction recovery: **implemented locally;
-  awaiting CTO review** (not PASS, not pushed). Details:
+- M1-L — interrupted package transaction recovery: **implemented and
+  CI-qualified; awaiting CTO review** (not PASS). Implementation commit
+  `3b0ec8869a3034c7df38c25c004387bf99750d7b`; workflow `Static gates` run #28
+  ([38666440151](https://github.com/lubarchy/lubarchy/actions/runs/38666440151)): all twelve gates passed (gate 10: 19, gate 11: 14,
+  gate 12: 15 checks). Details:
   [package-recovery.md](package-recovery.md).
   - `hardware/package_recovery.py` and `hardware/apply-packages.py recover`
     classify an interrupted attempt from the real dpkg/APT state. The
@@ -587,8 +590,9 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-L (interrupted package transaction recovery; local commit
-only, not yet pushed or CI-qualified). M1-K is PASS (CTO accepted).
+CTO review of M1-L (interrupted package transaction recovery; published as
+`3b0ec8869a3034c7df38c25c004387bf99750d7b`, CI run #28 passed all twelve gates). M1-K is PASS (CTO
+accepted).
 
 Real interruption scenarios are qualified only on the rollback-protected
 builder VM, which is restored to its original baseline. The security

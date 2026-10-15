@@ -1197,6 +1197,36 @@ The VM is restored from the checkpoint and audited against the original
 baseline. Results are in the evidence bundle of the exact commit. VM package
 success is not physical CPU-microcode or real-hardware qualification.
 
+**Result (exact commit `3b0ec8869a3034c7df38c25c004387bf99750d7b`):**
+scenario 3 was re-run on the builder from the `pre-m1l` checkpoint with
+the final recovery architecture. Recovery ran only from the root-owned
+exact-commit deployment `/root/lubarchy-m1l/<commit>/`.
+- **Interruption:** SIGKILL of only the attempt's process tree during the
+  initramfs-tools trigger; apply then refused with `recovery_required`.
+- **Attribution:** the transaction closure stayed `intel-microcode` and
+  `iucode-tool`. The recovery impact set, proven from the bound dpkg log
+  cursor, was initramfs-tools (activated during
+  `configure intel-microcode:amd64`, half-configured) and man-db
+  (completed, not a target). The authorised targets were initramfs-tools
+  only.
+- **Execution:** `dpkg --configure --no-triggers initramfs-tools`, then a
+  re-inspection showing initramfs-tools trigger-pending on its own
+  `update-initramfs` trigger, then `dpkg --triggers-only initramfs-tools`.
+  Each command's own log delta named only initramfs-tools, and its only
+  handlers were `configure` and then `trigproc` of that package.
+- **Result:** journal `complete`; `dpkg --audit` and `apt-get check`
+  clean; marks unchanged; no holds; the initrd regenerated with the Intel
+  microcode. After a reboot: system running, no failed units, and a
+  repeated `recover` reported `nothing_to_recover`.
+- **Restore:** the VM was reverted to `pre-m1l`, and a complete audit
+  matched the original baseline.
+
+Before that, the same state was measured with manual commands:
+`--configure --no-triggers` alone leaves initramfs-tools trigger-pending,
+so the separately authorised trigger phase is required
+([package-recovery.md](package-recovery.md#trigger-execution-boundary)).
+CI never performs a real mutation: gate 12 uses a fake host.
+
 ## GitHub CI
 
 The static gates run as the GitHub Actions workflow
@@ -1238,6 +1268,8 @@ or boots an ISO and never probes hardware.**
 | [#24 (38539169890)](https://github.com/lubarchy/lubarchy/actions/runs/38539169890) | `0fab8f899a356685fc6b33117953e333e30742ac` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks), hardware NVIDIA strategy (19 checks), hardware package transaction (17 checks) and hardware package staging (19 checks; synthetic and offline: synthetic source trees and payloads, read-only `dpkg-deb --field`, no `apt-get`, no download, no source activation) passed; CI container sources `main` only |
 | [#25 (38539426185)](https://github.com/lubarchy/lubarchy/actions/runs/38539426185) | `bf145e68530f291f8076ba9660d7924685494e01` | push | **success**: all ten gates passed (documentation commit) |
 | [#26 (38560415459)](https://github.com/lubarchy/lubarchy/actions/runs/38560415459) | `bee741485ce2fb6db35d433b8c0102bc59824e9f` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks), hardware NVIDIA strategy (19 checks), hardware package transaction (17 checks), hardware package staging (19 checks) and hardware package apply (14 checks; fake host and synthetic trees only: no real install, source activation, download, `/var/lib/lubarchy` or `/root/lubarchy-m1k` use, reboot or libvirt) passed; CI container sources `main` only |
+| [#27 (38560784304)](https://github.com/lubarchy/lubarchy/actions/runs/38560784304) | `b0480cc43932ae0e873809aaf6ed362730f4fdd7` | push | **success**: all eleven gates passed (documentation commit) |
+| [#28 (38666440151)](https://github.com/lubarchy/lubarchy/actions/runs/38666440151) | `3b0ec8869a3034c7df38c25c004387bf99750d7b` | push | **success**: repository lint, ShellCheck, live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks), hardware NVIDIA strategy (19 checks), hardware package transaction (17 checks), hardware package staging (19 checks), hardware package apply (14 checks) and hardware package recovery (15 checks; fake host and synthetic dpkg logs only: no real apply or recovery, no runner APT/dpkg mutation by LUBARCHY code, no `/etc/apt` or `/var/lib/lubarchy` write, no reboot, no libvirt, no NVIDIA contact) passed; CI container sources `main` only |
 
 The fix in `ce2462e` trusts exactly `$GITHUB_WORKSPACE` for the gate step
 through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`; no Git
@@ -1395,6 +1427,45 @@ root does not authorise mutation, and none occurred:
 The real mutation was qualified only on the rollback-protected builder VM
 (see the builder apply qualification above), which was restored to its
 original baseline. M1-K remains awaiting CTO review (not PASS), and M1-L
+has not started.
+
+**M1-L CI qualification:** the M1-L change was executed on GitHub by workflow
+`Static gates`, run ID
+[38666440151](https://github.com/lubarchy/lubarchy/actions/runs/38666440151)
+(run #28), on implementation commit
+`3b0ec8869a3034c7df38c25c004387bf99750d7b`. The change comprises:
+- the recovery library and the root-only `recover` operation;
+- the recovery-journal schema and the apply journal's pre-apply recovery
+  evidence;
+- the `run-recover` launcher of the trusted deployment tool;
+- new gate 12 with 15 checks.
+
+All twelve gates ran and passed; gate 10 stayed at 19 checks and gate 11 at
+14. CI running as root does not authorise mutation, and none occurred:
+- gate 12 drove recovery through its fake host, fake dpkg and synthetic
+  dpkg logs in a temporary directory;
+- no real apply or recovery ran against the runner, no LUBARCHY code
+  touched the runner's APT/dpkg state, `/etc/apt` or `/var/lib/lubarchy`;
+- no reboot, no libvirt and no NVIDIA contact. The only package-manager
+  activity was the workflow's own installation of the QA tools from Debian
+  `main` in the disposable container.
+
+The final recovery architecture recorded by this qualification:
+- the original transaction closure stays separate from the recovery
+  impact set, and trigger impact must be attributed to the exact
+  transaction from evidence bound before `applying`;
+- the configure phase uses `--no-triggers`, and trigger execution is a
+  separately authorised `--triggers-only` phase;
+- recovery never broadens its authorisation set; unrelated or newly
+  induced trigger work fails closed to manual recovery;
+- there is no generic APT repair and no unrestricted
+  `dpkg --configure -a`;
+- the journals are evidence, not a rollback, and the VM snapshot protects
+  only the qualification environment.
+
+The real recovery was qualified only on the rollback-protected builder VM
+(see the builder recovery qualification above), which was restored to its
+original baseline. M1-L remains awaiting CTO review (not PASS), and M1-M
 has not started.
 
 ## Clean rebuild comparison
