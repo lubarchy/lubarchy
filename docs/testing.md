@@ -1686,7 +1686,10 @@ Firmware policy at publication:
 - independently observable device, driver and interface failures remain
   `FAIL`.
 
-M1-M remains awaiting CTO review (not PASS), and M1-N has not started.
+At publication M1-M was awaiting CTO review; it was subsequently accepted
+(PASS, CTO accepted). The PASS qualifies the validation subsystem; the
+builder's own validation result remains `FAIL` as recorded above. M1-N has
+not started.
 
 ## Clean rebuild comparison
 

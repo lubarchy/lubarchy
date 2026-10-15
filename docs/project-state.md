@@ -48,7 +48,7 @@ later installation/configuration → later validation.
 | M1-J | Debian source activation and staged package acquisition | PASS (CTO accepted) |
 | M1-K | Privileged source activation and package apply executor | PASS (CTO accepted) |
 | M1-L | Interrupted package transaction recovery | PASS (CTO accepted) |
-| M1-M | Post-install hardware validation and health | Implemented; CI-qualified (run #30); awaiting CTO review |
+| M1-M | Post-install hardware validation and health | PASS (CTO accepted) |
 | M1-N | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
@@ -410,11 +410,15 @@ later installation/configuration → later validation.
   during recovery, upgrade, downgrade or remove a package, change a package
   mark, re-unpack half-installed packages, add privilege escalation, or
   support NVIDIA, `contrib`, `non-free` or Backports.
-- M1-M — post-install hardware validation and health: **implemented and
-  CI-qualified; awaiting CTO review** (not PASS). Implementation commit
+- M1-M — post-install hardware validation and health: **PASS** (CTO
+  accepted). PASS qualifies the validation subsystem itself; it does not
+  mean every hardware target or the current builder state passes.
+  Implementation commit
   `59793b6dcdaddf73946dcdd9a6681ac58b2fc644`; workflow `Static gates` run #30
   ([38732417272](https://github.com/lubarchy/lubarchy/actions/runs/38732417272)): all thirteen gates passed (gate 10: 19, gate 11: 14, gate 12: 15,
-  gate 13: 13 checks).
+  gate 13: 13 checks); documentation commit
+  `a40f6a9ebeb6506f1acda596a9a6e3074acaecdb`, run #31
+  ([38732989639](https://github.com/lubarchy/lubarchy/actions/runs/38732989639)).
   - **Local exact-commit qualification:** aggregate exit 0; mutations M1-M
     43/43, M1-L 51/51, M1-K 46/46, zero survivors/errors.
   - **Read-only builder qualification:** no M1-M snapshot, reboot freshness
@@ -636,9 +640,19 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-M (post-install hardware validation and health; published as
-`59793b6dcdaddf73946dcdd9a6681ac58b2fc644`, CI run #30 passed all thirteen gates). M1-L is PASS (CTO
-accepted).
+A CTO brief for M1-N, which has not been defined or started. M1-M is PASS
+(CTO accepted; implementation `59793b6dcdaddf73946dcdd9a6681ac58b2fc644`, CI run #30); M1-L is PASS (CTO accepted).
+
+M1-M limitations that remain in force:
+- the current builder's own validation result is `FAIL`, because
+  `intel-microcode` is absent from the restored baseline while the plan
+  requires it;
+- VM microcode is `LIMITED`, and a VM does not prove physical Wi-Fi,
+  Bluetooth or GPU function;
+- the production firmware requirement policy is empty: known-required
+  firmware failures are `FAIL`, optional or unclassified ones `LIMITED`;
+- NVIDIA remains `NOT_TESTED` (unqualified);
+- real-hardware qualification remains future work.
 
 The security findings stand:
 - APT/dpkg mutation is not atomic, and the journals are evidence, not a
