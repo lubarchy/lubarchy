@@ -1367,6 +1367,35 @@ A reboot then shows the boot binding: the earlier result becomes stale,
 and a revalidation reports continuity. The builder is shut down again. VM
 results are not real-hardware qualification.
 
+**Result (exact commit `59793b6dcdaddf73946dcdd9a6681ac58b2fc644`):** read-only, no snapshot, one
+Polkit `start`, reboot and shutdown over SSH. The unprivileged run used a
+fresh clone in tmpfs `/tmp`; the root run used only the verified root-owned
+exact-commit deployment.
+- **Current builder validation result: `FAIL`, as measured and correct.**
+  The resolved plan requires `intel-microcode`, which is deliberately absent
+  from the restored clean baseline (`package_missing`). This is the validator
+  detecting a real expected-state mismatch. The package was not installed to
+  make the result green; the milestone qualification does not depend on the
+  builder's own validation result being `PASS`.
+- **CPU microcode:** `LIMITED` (`virtualized_cpu`): a VM never proves
+  physical microcode.
+- **Package manager:** `apt-get check` is `LIMITED` without root (it needs
+  the dpkg frontend lock), and clean as root. The kernel log is unavailable
+  without root (`kernel.dmesg_restrict=1`) and readable as root, with no
+  firmware failures.
+- **Devices and system:** virtio-net (present, driver, interface), SATA
+  AHCI (present, driver), root storage (ext4, read-write, attributed, no
+  errors), system `running` and `dpkg --audit` all `PASS`.
+- **Not claimed:** no physical Wi-Fi, Bluetooth or GPU function (the VM has
+  no such targets; every result carries `physical_function_not_exercised`).
+- **Boot binding:** after the reboot the boot-A result was stale with
+  exactly `boot_id_digest` changed (exit 3), revalidation showed continuity
+  `PASS` for both devices, and boot A and boot B results were identical
+  apart from boot identity.
+- **Clean-up:** everything placed on the VM was removed, the home listing and
+  the baseline audit matched exactly, and the builder ended shut off with
+  autostart disabled and 0 snapshots.
+
 ## GitHub CI
 
 The static gates run as the GitHub Actions workflow
@@ -1410,6 +1439,8 @@ or boots an ISO and never probes hardware.**
 | [#26 (38560415459)](https://github.com/lubarchy/lubarchy/actions/runs/38560415459) | `bee741485ce2fb6db35d433b8c0102bc59824e9f` | push | **success**: repository lint, ShellCheck (9 scripts, 0 findings), live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks), hardware NVIDIA strategy (19 checks), hardware package transaction (17 checks), hardware package staging (19 checks) and hardware package apply (14 checks; fake host and synthetic trees only: no real install, source activation, download, `/var/lib/lubarchy` or `/root/lubarchy-m1k` use, reboot or libvirt) passed; CI container sources `main` only |
 | [#27 (38560784304)](https://github.com/lubarchy/lubarchy/actions/runs/38560784304) | `b0480cc43932ae0e873809aaf6ed362730f4fdd7` | push | **success**: all eleven gates passed (documentation commit) |
 | [#28 (38666440151)](https://github.com/lubarchy/lubarchy/actions/runs/38666440151) | `3b0ec8869a3034c7df38c25c004387bf99750d7b` | push | **success**: repository lint, ShellCheck, live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks), hardware NVIDIA strategy (19 checks), hardware package transaction (17 checks), hardware package staging (19 checks), hardware package apply (14 checks) and hardware package recovery (15 checks; fake host and synthetic dpkg logs only: no real apply or recovery, no runner APT/dpkg mutation by LUBARCHY code, no `/etc/apt` or `/var/lib/lubarchy` write, no reboot, no libvirt, no NVIDIA contact) passed; CI container sources `main` only |
+| [#29 (38666799577)](https://github.com/lubarchy/lubarchy/actions/runs/38666799577) | `2610a1db5f1ec49ffe99e19eedad07bbeea5b592` | push | **success**: all twelve gates passed (documentation commit) |
+| [#30 (38732417272)](https://github.com/lubarchy/lubarchy/actions/runs/38732417272) | `59793b6dcdaddf73946dcdd9a6681ac58b2fc644` | push | **success**: repository lint, ShellCheck, live-build configuration, hardware contracts (29 checks), hardware probe (35 checks), hardware resolver (24 checks), hardware firmware (13 checks), hardware NVIDIA strategy (19 checks), hardware package transaction (17 checks), hardware package staging (19 checks), hardware package apply (14 checks), hardware package recovery (15 checks) and hardware post-install validation (13 checks; synthetic inventories, synthetic runtime evidence and a fake sysfs/procfs tree only: the runner's hardware, kernel log, packages and services were never read, nothing installed, activated, written, loaded or bound, no reboot, no libvirt, no NVIDIA contact, no physical-hardware claim) passed; CI container sources `main` only |
 
 The fix in `ce2462e` trusts exactly `$GITHUB_WORKSPACE` for the gate step
 through `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_0`/`GIT_CONFIG_VALUE_0`; no Git
@@ -1607,6 +1638,55 @@ The real recovery was qualified only on the rollback-protected builder VM
 (see the builder recovery qualification above), which was restored to its
 original baseline. M1-L remains awaiting CTO review (not PASS), and M1-M
 has not started.
+
+**M1-M CI qualification:** the M1-M change was executed on GitHub by workflow
+`Static gates`, run ID
+[38732417272](https://github.com/lubarchy/lubarchy/actions/runs/38732417272)
+(run #30), on implementation commit
+`59793b6dcdaddf73946dcdd9a6681ac58b2fc644`. The change comprises:
+- the read-only validator library and CLI;
+- the `lubarchy.hardware.validation-result/v1` schema (protected);
+- new gate 13 with 13 checks.
+
+All thirteen gates ran and passed; gate 10 stayed at 19, gate 11 at 14 and
+gate 12 at 15. CI was synthetic and non-mutating:
+- gate 13 used synthetic inventories, synthetic normalized runtime evidence
+  and a fake sysfs/procfs tree with a fake command runner;
+- it never read the runner's hardware, kernel log, packages or services;
+- nothing was installed, activated, written to `/etc` or
+  `/var/lib/lubarchy`, loaded, bound or unbound;
+- no network device was touched, there was no reboot, no libvirt, no
+  `dmesg` permission change and no NVIDIA contact;
+- no physical-hardware claim was made.
+
+The workflow change was the header comment only. The only package-manager
+activity was the workflow's own installation of the QA tools in the
+disposable container.
+
+The local exact-commit qualification of the same commit had passed before
+publication:
+- the aggregate driver exited 0;
+- 13/13 gates;
+- mutations: M1-M 43/43, M1-L 51/51 and M1-K 46/46 killed, with zero
+  survivors and zero harness errors;
+- the read-only builder qualification (no M1-M snapshot; the reboot
+  freshness test passed; builder shut off afterwards).
+
+The current builder validation result correctly remains `FAIL` because
+`intel-microcode` is absent from the restored baseline. VM microcode stays
+`LIMITED`, and no physical Wi-Fi, Bluetooth or GPU function is claimed.
+
+Firmware policy at publication:
+- the canonical firmware-family mapping remains
+  `tools/hwe/firmware-mappings.json`; the validator's module lists are a
+  derived copy that gate 13 enforces semantically equal (drift fails);
+- the production firmware requirement policy is empty and no requiredness
+  was guessed: attributed unknown and optional firmware failures are
+  `LIMITED`, and only evidence-backed known-required failures are `FAIL`;
+- independently observable device, driver and interface failures remain
+  `FAIL`.
+
+M1-M remains awaiting CTO review (not PASS), and M1-N has not started.
 
 ## Clean rebuild comparison
 

@@ -48,7 +48,7 @@ later installation/configuration → later validation.
 | M1-J | Debian source activation and staged package acquisition | PASS (CTO accepted) |
 | M1-K | Privileged source activation and package apply executor | PASS (CTO accepted) |
 | M1-L | Interrupted package transaction recovery | PASS (CTO accepted) |
-| M1-M | Post-install hardware validation and health | Implemented locally; awaiting CTO review |
+| M1-M | Post-install hardware validation and health | Implemented; CI-qualified (run #30); awaiting CTO review |
 | M1-N | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
@@ -410,9 +410,19 @@ later installation/configuration → later validation.
   during recovery, upgrade, downgrade or remove a package, change a package
   mark, re-unpack half-installed packages, add privilege escalation, or
   support NVIDIA, `contrib`, `non-free` or Backports.
-- M1-M — post-install hardware validation and health: **implemented
-  locally; awaiting CTO review** (not PASS, not pushed). Details:
-  [hardware-validation.md](hardware-validation.md).
+- M1-M — post-install hardware validation and health: **implemented and
+  CI-qualified; awaiting CTO review** (not PASS). Implementation commit
+  `59793b6dcdaddf73946dcdd9a6681ac58b2fc644`; workflow `Static gates` run #30
+  ([38732417272](https://github.com/lubarchy/lubarchy/actions/runs/38732417272)): all thirteen gates passed (gate 10: 19, gate 11: 14, gate 12: 15,
+  gate 13: 13 checks).
+  - **Local exact-commit qualification:** aggregate exit 0; mutations M1-M
+    43/43, M1-L 51/51, M1-K 46/46, zero survivors/errors.
+  - **Read-only builder qualification:** no M1-M snapshot, reboot freshness
+    test passed, builder shut off. The builder's own validation result
+    correctly remains `FAIL` (`intel-microcode` is absent from the restored
+    baseline while the plan requires it); VM microcode is `LIMITED`, and no
+    physical Wi-Fi, Bluetooth or GPU function is claimed.
+  - Details: [hardware-validation.md](hardware-validation.md).
   - `hardware/hardware_validation.py` and `hardware/validate-hardware.py`
     answer whether the qualified plan resulted in a healthy system. A fresh
     probe and the existing resolver give the plan; a source-controlled
@@ -626,8 +636,9 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-M (post-install hardware validation and health; local
-commit only, not yet pushed or CI-qualified). M1-L is PASS (CTO accepted).
+CTO review of M1-M (post-install hardware validation and health; published as
+`59793b6dcdaddf73946dcdd9a6681ac58b2fc644`, CI run #30 passed all thirteen gates). M1-L is PASS (CTO
+accepted).
 
 The security findings stand:
 - APT/dpkg mutation is not atomic, and the journals are evidence, not a
