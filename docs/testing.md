@@ -1885,7 +1885,9 @@ does not authorise generic cleanup. Journals, receipts, unknown, corrupt,
 ambiguous or manual-recovery state, the APT cache in general, dpkg state,
 installed packages and APT sources are never GC targets.
 
-M1-N remains awaiting CTO review (not PASS), and M1-O has not started.
+At publication M1-N was awaiting CTO review; it was subsequently accepted
+(PASS, CTO accepted). The PASS qualifies the package-state GC subsystem
+only. M1-O has not started.
 
 ## Clean rebuild comparison
 

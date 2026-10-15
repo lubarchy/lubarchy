@@ -49,7 +49,7 @@ later installation/configuration → later validation.
 | M1-K | Privileged source activation and package apply executor | PASS (CTO accepted) |
 | M1-L | Interrupted package transaction recovery | PASS (CTO accepted) |
 | M1-M | Post-install hardware validation and health | PASS (CTO accepted) |
-| M1-N | Package state retention and safe garbage collection | Implemented; CI-qualified (run #33); awaiting CTO review |
+| M1-N | Package state retention and safe garbage collection | PASS (CTO accepted) |
 | M1-O | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
@@ -456,11 +456,13 @@ later installation/configuration → later validation.
 - M1-M does **not** install, configure, load or bind anything, repair
   packages, change hardware policy or rules, add privilege escalation,
   qualify NVIDIA, or replace real-hardware qualification.
-- M1-N — package state retention and safe garbage collection:
-  **implemented and CI-qualified; awaiting CTO review** (not PASS).
-  Implementation commit `1eec088956d73cdc53bf450a76d860cbe4ec7e41`; workflow
+- M1-N — package state retention and safe garbage collection: **PASS**
+  (CTO accepted). The PASS qualifies the LUBARCHY package-state GC subsystem
+  only; it is not generic filesystem cleanup. Implementation commit `1eec088956d73cdc53bf450a76d860cbe4ec7e41`; workflow
   `Static gates` run #33 ([38816122990](https://github.com/lubarchy/lubarchy/actions/runs/38816122990)): all fourteen gates passed (gate 10: 19, gate 11: 14, gate 12: 15,
-  gate 13: 13, gate 14: 8 checks).
+  gate 13: 13, gate 14: 8 checks); documentation commit
+  `3ac2961f26590c98b18127ce20c255a3467ca86a`, run #34
+  ([38816686555](https://github.com/lubarchy/lubarchy/actions/runs/38816686555)).
   - **Local exact-commit qualification:** aggregate exit 0, 165/165
     mutations killed (M1-N 25, M1-M 43, M1-L 51, M1-K 46). An earlier run
     exited 1 only because of two stale harness mutation targets (L14,
@@ -682,10 +684,17 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of M1-N (package state retention and safe garbage collection;
-published as `1eec088956d73cdc53bf450a76d860cbe4ec7e41`, CI run #33 passed all fourteen
-gates; `pre-m1n` kept until closure). M1-M is PASS (CTO
-accepted; implementation `59793b6dcdaddf73946dcdd9a6681ac58b2fc644`, CI run #30); M1-L is PASS (CTO accepted).
+A CTO brief for M1-O, which has not been defined or started. M1-N is PASS
+(CTO accepted; implementation `1eec088956d73cdc53bf450a76d860cbe4ec7e41`, CI run #33); M1-M is PASS
+(CTO accepted; implementation `59793b6dcdaddf73946dcdd9a6681ac58b2fc644`, CI run #30); M1-L is PASS (CTO accepted).
+
+M1-N limitations that remain in force:
+- GC covers only proven `eligible_complete` and `eligible_abandoned` payload
+  state under the fixed LUBARCHY roots. It never deletes journals, receipts,
+  unknown, corrupt, ambiguous or unresolved/manual-recovery state, the APT
+  cache in general, dpkg state, installed packages or APT sources.
+- Journal archival and reclaiming apply caches whose bundle is already gone
+  remain future work.
 
 M1-M limitations that remain in force:
 - the current builder's own validation result is `FAIL`, because
