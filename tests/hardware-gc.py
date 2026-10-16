@@ -89,18 +89,94 @@ def rejects(code, fn, *args, **kwargs):
 
 REAL_LSTAT = gc._lstat
 FAKE_APT_UID = 42 if os.geteuid() != 42 else 43
-OVERLAY = {}
+OVERLAY = {}          # (st_dev, st_ino) of a live synthetic object -> observed (uid, gid, mode)
+INODE_ALIAS = {}      # (st_dev, st_ino) of a live object -> inode number it is reported with (forced reuse)
+REAL_RMDIR, REAL_UNLINK, REAL_REMOVE, REAL_RENAME, REAL_REPLACE = os.rmdir, os.unlink, os.remove, os.rename, \
+    os.replace
 
 
 def overlay_lstat(path, dir_fd=None):
     st = REAL_LSTAT(path, dir_fd=dir_fd)
-    o = OVERLAY.get((st.st_dev, st.st_ino))
-    if o is None:
+    key = (st.st_dev, st.st_ino)
+    o, alias = OVERLAY.get(key), INODE_ALIAS.get(key)
+    if o is None and alias is None:
         return st
-    uid, gid, mode = o
     t = list(st)
-    t[0], t[4], t[5] = mode, uid, gid
+    if o is not None:
+        t[0], t[4], t[5] = o[2], o[0], o[1]
+    if alias is not None:
+        t[1] = alias
     return os.stat_result(t)
+
+
+# Object lifetime: an overlay describes one synthetic filesystem OBJECT, not an inode number. It
+# ends exactly when that object's last link is destroyed -- by the gate or by GC itself -- so a
+# later object that the filesystem allocates with the same (device, inode) never inherits it.
+# (A numeric inode is routinely reused immediately after rmdir/unlink on some filesystems.)
+
+def _ending(path, dir_fd):
+    try:
+        st = os.lstat(path, dir_fd=dir_fd)
+    except OSError:
+        return None
+    return (st.st_dev, st.st_ino) if stat.S_ISDIR(st.st_mode) or st.st_nlink <= 1 else None
+
+
+def _forget(key):
+    if key is not None:
+        OVERLAY.pop(key, None)
+        INODE_ALIAS.pop(key, None)
+
+
+def tracked_rmdir(path, *, dir_fd=None):
+    key = _ending(path, dir_fd)
+    REAL_RMDIR(path, dir_fd=dir_fd)
+    _forget(key)
+
+
+def tracked_unlink(path, *, dir_fd=None):
+    key = _ending(path, dir_fd)
+    REAL_UNLINK(path, dir_fd=dir_fd)
+    _forget(key)
+
+
+def tracked_rename(real):
+    def rename(src, dst, *, src_dir_fd=None, dst_dir_fd=None):
+        key = _ending(dst, dst_dir_fd)
+        try:
+            same = os.lstat(src, dir_fd=src_dir_fd)[1:3] == os.lstat(dst, dir_fd=dst_dir_fd)[1:3]
+        except OSError:
+            same = False
+        real(src, dst, src_dir_fd=src_dir_fd, dst_dir_fd=dst_dir_fd)
+        if not same:
+            _forget(key)                       # the replaced destination object no longer exists
+    return rename
+
+
+TRACKED = {"rmdir": tracked_rmdir, "unlink": tracked_unlink, "remove": tracked_unlink,
+           "rename": tracked_rename(REAL_RENAME), "replace": tracked_rename(REAL_REPLACE)}
+REAL_OS = {"rmdir": REAL_RMDIR, "unlink": REAL_UNLINK, "remove": REAL_REMOVE, "rename": REAL_RENAME,
+           "replace": REAL_REPLACE}
+
+
+def replace_partial(p, reuse_identity=False):
+    """Destroy partial/ and create a new root-owned 0700 directory in its place. With
+    reuse_identity the new object is reported with the destroyed object's inode number (its
+    device, inode and type then equal the verified identity), deterministically modelling a
+    filesystem that reuses the inode immediately."""
+    old = os.lstat(p)
+    os.rmdir(p)
+    expect((old.st_dev, old.st_ino) not in OVERLAY, "overlay outlived its object")
+    os.mkdir(p, 0o700)
+    new = os.lstat(p)
+    if reuse_identity:
+        INODE_ALIAS[(new.st_dev, new.st_ino)] = old.st_ino
+    seen = gc._lstat(p)
+    expect(seen.st_uid == new.st_uid == os.geteuid() and seen.st_gid == new.st_gid and
+           stat.S_IMODE(seen.st_mode) == 0o700, "replacement partial/ is not observed root-owned 0700")
+    if reuse_identity:
+        expect((seen.st_dev, seen.st_ino, stat.S_IFMT(seen.st_mode)) ==
+               (old.st_dev, old.st_ino, stat.S_IFMT(old.st_mode)), "forced identity reuse not modelled")
 
 
 def own(path, uid, gid, perm):
@@ -611,7 +687,13 @@ def apt_sandbox_partial_contract():                                             
     expect((st.st_uid, st.st_gid, stat.S_IMODE(st.st_mode)) == (FAKE_APT_UID, s.h.owner_gid, 0o700) and
            gc.apt_sandbox_uid(s.h) == FAKE_APT_UID, "model is not the measured _apt:root 0700 shape")
     expect(cls(s, s.base_bundle) == ("eligible_complete", "complete_validated"), "real-shaped bundle not eligible")
+    key = (os.lstat(part).st_dev, os.lstat(part).st_ino)
+    expect(key in OVERLAY, "APT ownership not modelled")
     r = gc.collect_garbage(s.h)
+    expect(key not in OVERLAY, "the overlay of the partial/ GC removed outlived its object")
+    os.mkdir(part, 0o700)                          # a new object at the same path (the inode may be reused)
+    expect(gc._lstat(part).st_uid == os.geteuid(), "a new object inherited the removed object's ownership")
+    os.rmdir(part)
     expect(r["result"] == "complete" and not os.path.exists(part) and not os.path.exists(s.staging(s.base_bundle))
            and os.listdir(cache) == [], f"real-shaped bundle not reclaimed: {r['result']} {os.listdir(cache)}")
     expect(gc.collect_garbage(s.h)["result"] == "nothing_to_collect", "not idempotent")
@@ -650,10 +732,11 @@ def apt_sandbox_partial_contract():                                             
         own(p, FAKE_APT_UID, s.h.owner_gid, 0o700)
     retained("regular-file partial", file_partial)
 
-    def replaced(s, c, p):                         # a new inode: APT's ownership does not carry over
-        os.rmdir(p)
-        os.mkdir(p, 0o700)
+    def replaced(s, c, p):                         # APT's ownership never carries over to a new object
+        replace_partial(p)
     retained("replaced (root-owned) partial after APT ran", replaced)
+    retained("replaced (root-owned) partial after APT ran, same inode identity",
+             lambda s, c, p: replace_partial(p, reuse_identity=True))
 
     def mount_crossing(s, c, p):
         st = os.lstat(p)
@@ -716,7 +799,7 @@ def apt_sandbox_partial_contract():                                             
     n += 1
 
     def root_after_apt(s, c, p):
-        OVERLAY.pop((os.lstat(p).st_dev, os.lstat(p).st_ino))
+        _forget((os.lstat(p).st_dev, os.lstat(p).st_ino))      # APT's chown never happened
     retained("root-owned partial although APT ran", root_after_apt)
     # 13: the sandbox identity comes only from the host's own root-owned /etc/passwd
     for label, lines in (("no _apt", ["root:x:0:0::/root:/bin/bash"]),
@@ -769,7 +852,9 @@ def apt_sandbox_partial_races_fail_closed():                                    
             ("group change", lambda s, p: own(p, FAKE_APT_UID, s.h.owner_gid + 1, 0o700), "unsafe_object"),
             ("mode change", lambda s, p: own(p, FAKE_APT_UID, s.h.owner_gid, 0o755), "unsafe_object"),
             ("contents appear", lambda s, p: pathlib.Path(p, "x.deb").write_bytes(b"x"), "apply_cache_unexpected"),
-            ("replaced", lambda s, p: (os.rmdir(p), os.mkdir(p, 0o700)), "unsafe_object")):
+            ("replaced", lambda s, p: replace_partial(p), "unsafe_object"),
+            ("replaced, same inode identity", lambda s, p: replace_partial(p, reuse_identity=True),
+             "unsafe_object")):
         s = State("sbx-race-" + label.replace(" ", "-"))
         part = os.path.join(s.journal_dir(s.base_attempt), pa.APPLY_CACHE, gc.CACHE_PARTIAL)
         real = gc.compute_plan
@@ -1001,6 +1086,8 @@ def main():
         with tempfile.TemporaryDirectory(prefix="lubarchy-gate14-") as tmp:
             gate11.TMP = gate10.TMP = os.path.realpath(tmp)
             gc._lstat = overlay_lstat
+            for name, fn in TRACKED.items():
+                setattr(os, name, fn)
             for fn in CHECKS:
                 try:
                     detail = fn()
@@ -1011,6 +1098,8 @@ def main():
                 print(f"ok: {fn.__name__}" + (f": {detail}" if detail else ""))
     finally:
         gc._lstat = REAL_LSTAT
+        for name, fn in REAL_OS.items():
+            setattr(os, name, fn)
         os.umask(old)
     if failures:
         print(f"FAIL: hardware package state GC ({failures} of {len(CHECKS)} checks failed)", file=sys.stderr)
