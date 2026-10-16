@@ -65,7 +65,7 @@ A clean rebuild must succeed from the same commit.
 | --- | --- |
 | Repository lint | `tests/repo-lint.sh` (M0-I) |
 | shellcheck | Every tracked shell script, via `tests/run-static.sh` (M0-I) |
-| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I); hardware contracts added in M1-A; hardware probe added in M1-B; hardware resolver added in M1-C; hardware firmware added in M1-E; hardware NVIDIA strategy added in M1-G; hardware package transaction added in M1-I; hardware package staging (M1-J), package apply (M1-K), package recovery (M1-L), post-install validation (M1-M) and package state garbage collection (M1-N) added since |
+| Static gate runner | `tests/run-static.sh`: repository lint, ShellCheck, live-build configuration (M0-I); hardware contracts added in M1-A; hardware probe added in M1-B; hardware resolver added in M1-C; hardware firmware added in M1-E; hardware NVIDIA strategy added in M1-G; hardware package transaction added in M1-I; hardware package staging (M1-J), package apply (M1-K), package recovery (M1-L), post-install validation (M1-M), package state garbage collection (M1-N) and hardware enablement orchestration (M1-O) added since |
 | GitHub CI | `.github/workflows/m0-static.yml` runs `tests/run-static.sh` on GitHub Actions (green since M0-J) |
 | `live-build` configuration validation | `tests/live-build-config.sh` (M0-E) |
 | ISO build | Manual, from the committed configuration (M0-F) |
@@ -1624,6 +1624,190 @@ verified (189 files, no non-root, writable or symlinked entries).
   baseline exactly, all qualification state was gone, and the domain XML
   (disk and NVRAM) was unchanged. The builder ended shut off with autostart
   disabled; `pre-m1n` is kept until CTO closure.
+
+## M1 hardware enablement orchestration gate
+
+`tests/hardware-orchestration.py` (gate 15 of `tests/run-static.sh`, since
+M1-O) has 21 checks.
+
+It drives `hardware/hardware_orchestration.py`, `manage-hardware.py` and the
+trusted-deployment launcher on the gate-12 fake host (a temporary root). The
+**real** apply executor, bounded recovery, validator and GC run against:
+- a fake package manager;
+- a synthetic runtime collector whose boot identity the gate controls (a
+  test-harness "reboot" only changes that identity).
+
+Process death is simulated by an exception nothing can catch, so journals
+stay where a SIGKILL leaves them. The gate never touches the runner's
+`/var/lib`, `/run`, APT, dpkg, hardware or boot state, needs no root and never
+reboots.
+
+It proves:
+- **Contract:** the journal schema is Draft 2020-12, meta-valid, closed,
+  bounded, free of time and identity fields, and hash-protected (here and in
+  gate 10's table).
+- **Convergence:** a satisfied plan reaches validation with no APT, dpkg or
+  apply attempt (`complete`, exit 0). A second run is identical,
+  digest-chained and rewrites nothing. Artifacts are canonical, bound by
+  digest and 0700/0600.
+- **Lifecycle:**
+  1. A missing package goes through the existing apply executor (one APT
+     run, attempt and transaction bound).
+  2. Same-boot validation ends `reboot_required` with no GC and no reboot.
+     The same boot stays `reboot_required`.
+  3. After the harness reboot: revalidation against the pre-reboot result
+     (continuity checks present), post-reboot PASS, `complete`, then M1-N
+     GC (receipt bound).
+  4. A third run is idempotent (`nothing_to_collect`).
+- **VM:** microcode stays `LIMITED/virtualized_cpu`; the outcome is
+  `validation_limited` (exit 2), never `complete`. The contract rejects
+  LIMITED-as-complete.
+- **FAIL:** a critical driver failure gives `validation_failed` (exit 1), no
+  GC and the bundle retained. PASS stays PASS.
+- **Precedence:**
+  - a same-boot critical FAIL is `validation_failed`, not `reboot_required`:
+    - no `awaiting_reboot`, no GC, no reboot;
+    - the validator's artifact is byte-exact, with its same-boot evidence
+      kept;
+    - `status` reports the failure as primary and no pending reboot;
+  - once the failure is corrected on the same boot, a fresh run is
+    `reboot_required`;
+  - a post-reboot FAIL is `validation_failed`;
+  - five contradictory journals (`reboot_required` over FAIL,
+    `validation_failed` without FAIL, an actionable reboot flag on a failed
+    run, `complete` with FAIL, GC after `validation_failed`) and an
+    awaiting-reboot continuation derived from a failed run all fail closed.
+- **Corrected M1-N integration:** gate 15 uses gate 14's APT ownership
+  model. The fake APT run leaves the attempt's `partial/` as `_apt:root`,
+  mode `0700`, empty, through the object-lifetime overlay and a root-owned
+  fake `/etc/passwd`.
+  - M1-N classifies the bundle `eligible_complete`, and would retain it
+    without APT's ownership.
+  - No GC runs before reboot validation.
+  - The post-reboot M1-N GC reclaims the bundle, cache links and
+    `partial/`, keeping the journal; the next run is `nothing_to_collect`.
+  - A candidate M1-N refuses is retained without affecting the outcome.
+- **Fresh planning:** a removed device gives new inventory and plan digests;
+  the old plan stays historical. A change between planning and validation
+  gives `stale`.
+- **Recovery first:**
+  - a kill inside APT is recovered (exact dpkg configure) before anything
+    else, with no second apply;
+  - a no-mutation interruption is abandoned and then freshly replanned and
+    applied once;
+  - a recovery claim contradicted by its journal gives
+    `failed/recovery_unverified`;
+  - manual recovery gives exit 9, no apply or GC, and is not re-attempted;
+  - a failed recovery is never retried automatically, and continues after
+    an operator recovery;
+  - unreadable package journals block.
+- **Crash/resume:**
+  - a crash before apply leads to exactly one apply;
+  - a crash after a complete apply is discovered from the apply journal,
+    with no second APT run;
+  - an external interrupted low-level apply after a finished run is still
+    recovered first;
+  - an apply "success" without, or contradicted by, its durable journal
+    gives `failed/apply_unverified`;
+  - an APT failure gives `failed/apply_failed`, with recovery first next
+    time;
+  - a held package lock gives `package_lock_busy`;
+  - drift gives `stale` without APT.
+- **Locks:** a second reconcile is busy (exit 8, nothing written). During
+  apply both locks are held, in the order orchestration then package; the
+  coordinator never takes the package lock itself.
+- **Persistent state:** each of the following fails closed with exit 10,
+  nothing mutated or rewritten, and `status` reporting the reason:
+  - a malformed, schema-invalid or non-canonical journal;
+  - an altered or missing artifact;
+  - a group- or other-writable run, root or journal;
+  - a symlinked root or journal;
+  - unexpected entries;
+  - an ambiguous sequence;
+  - a rewritten predecessor.
+
+  A foreign owner is rejected. Crash debris is preserved. On ENOSPC at
+  `applying` the run stops before the apply executor runs.
+- **Caller authority:**
+  - 17 caller argv forms are rejected (exit 64); non-root exits 77;
+  - the operations take only the host;
+  - a hostile environment has no effect;
+  - the coordinator uses no environ, subprocess, shell, argparse or
+    package-manager argv;
+  - the launcher runs only the verified entrypoint, with
+    `env -i python3 -I -B`.
+- **Status:** no lock, no directory, no write (byte-identical root). It
+  reports the outcome, apply identity, pending reboot, boot change,
+  currentness and recovery need.
+- **Privacy:** no raw boot ID, MAC, IP, home path, timestamp, hostname,
+  serial or user name in any persisted file.
+- **GC:**
+  - a GC exception or failed deletion is recorded separately; the hardware
+    outcome is kept; exit 6;
+  - unresolved package state at GC time skips GC;
+  - only `gc.collect_garbage` deletes.
+- **Scope:** no reboot, shutdown, systemd unit, timer, socket, D-Bus or
+  daemon; NVIDIA stays inactive; no MOK or Secure Boot code.
+
+### M1-O mutation suite
+
+Each mutation is committed in a throwaway clone, and the full
+`tests/run-static.sh` must fail. The 34 mutations:
+- **Recovery:** skip recovery before apply; continue after manual recovery;
+  skip the failed-recovery block; trust an unverified recovery result;
+  trust the orchestration phase instead of the package journals.
+- **Apply:** trust apply's return without its journal; duplicate the apply
+  on resume; omit the apply identity binding.
+- **Planning and validation:**
+  - reuse a stale plan; validate the planning inventory;
+  - reuse the stale validation; omit the validation-result binding;
+  - treat LIMITED as PASS; mark a same-boot validation as post-reboot;
+  - automatically reboot.
+- **GC:** GC before reboot validation; GC after a critical FAIL; GC with
+  unresolved package state; report complete after a GC failure; record a GC
+  failure as success.
+- **Boundaries:**
+  - accept a caller package; accept a caller path;
+  - inherit a hostile environment; shell execution;
+  - skip the orchestration lock;
+  - overwrite a corrupt journal; ignore a wrong owner or mode;
+  - persist the raw boot ID;
+  - a mutating `status`; non-durable journal writes.
+- **Precedence and corrected M1-N:** reboot outranks a critical FAIL; a
+  failed validation becomes an awaiting-reboot continuation; the actionable
+  reboot flag is taken from the raw validation evidence; M1-N regresses to
+  the root-owned `partial/` assumption (gate 15 kills this on its own).
+
+The corrected baseline is re-run on the same commit: M1-N correction (17),
+M1-N (25), M1-M (43), M1-L (51) and M1-K (46), 182 in total, giving 216 with
+M1-O.
+
+### Builder orchestration qualification (M1-O, builder only)
+
+The real end-to-end lifecycle is qualified only on the builder under a fresh
+rollback checkpoint `pre-m1o`:
+- disk and UEFI NVRAM;
+- the builder shut off;
+- created with an individual Polkit approval after read-only checks.
+
+The restored baseline lacks `intel-microcode` while the plan requires it.
+From the root-owned exact-commit deployment:
+1. `run-hwe-status`: no orchestration state.
+2. `run-hwe-reconcile`: recovery check, fresh probe and plan, the existing
+   apply executor installs exactly the qualified closure, then validation.
+   The coordinator does not reboot (the boot ID is unchanged).
+3. The harness reboots the VM externally. That reboot is test behaviour, not
+   product behaviour.
+4. `run-hwe-reconcile`: the boot change is proven, there is revalidation
+   with continuity, no second apply, and VM microcode stays LIMITED.
+5. `run-hwe-reconcile` again: idempotence. The post-reboot run (step 4) is
+   expected to reclaim the real bundle through the corrected M1-N, despite
+   APT's real `_apt:root 0700` `partial/`; the third run is then
+   `nothing_to_collect`.
+6. Package, source, mark and hold diffs, plus orchestration state, are
+   captured as evidence.
+7. The VM is reverted to `pre-m1o`, booted and audited against the baseline,
+   then shut down. The checkpoint is kept until publication closure.
 
 ## GitHub CI
 

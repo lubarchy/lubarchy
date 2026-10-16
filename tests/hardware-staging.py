@@ -64,6 +64,7 @@ PROTECTED_SCHEMAS = {
     "gc-plan-v1.schema.json": "14b69baafe39a926687655601491e2b46c2e9c1ec1e4e0e402b24109e0b243af",
     "gc-receipt-v1.schema.json": "39864e1b93ea67beff9782e3e32a31064bab092d0ddfbb26598a9c734d4bb421",
     "recovery-journal-v1.schema.json": "e675420f8bcbd5617347d49c83014c2f51aa9dc8dd477a55fb8f7e449eebef9e",
+    "orchestration-journal-v1.schema.json": "cd6df17ba0446aa6cb968d1c19b5dc97fe87eca39d132746c964512d039b09d6",
 }
 KEYRING_SHA = "506b815cbb32d9b6066b4a2aa524071e071761e7e7f68c3ac74f3061ba852017"   # debian-archive-keyring 2025.1
 ACT_DIGEST = "sha256:" + "a" * 64

@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lubarchy:hardware:orchestration-journal:v1",
+  "title": "LUBARCHY hardware-enablement orchestration journal v1",
+  "description": "Durable journal of one hardware-enablement reconcile run (M1-O). It records which qualified primitive ran, by identity and digest, and the honest orchestration outcome. It is evidence, never package truth: the apply, recovery, validation and GC subsystems stay authoritative for their own state. Runs form one linear chain (sequence, previous run digest). It contains no timestamps, raw boot IDs, logs, command output, serial numbers, MAC addresses, hostnames, user names or IP addresses.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "run_id", "sequence", "previous", "awaiting_reboot", "phase", "phases", "terminal", "outcome",
+               "reason", "reboot_required", "boot", "bindings", "package", "validation", "maintenance", "artifacts"],
+  "properties": {
+    "schema": {"const": "lubarchy.hardware.orchestration-journal/v1"},
+    "run_id": {"$ref": "#/$defs/id"},
+    "sequence": {"type": "integer", "minimum": 1, "maximum": 1000000000},
+    "previous": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "object", "additionalProperties": false,
+         "required": ["run_id", "sequence", "journal_digest", "phase", "outcome"],
+         "properties": {"run_id": {"$ref": "#/$defs/id"},
+                        "sequence": {"type": "integer", "minimum": 1, "maximum": 1000000000},
+                        "journal_digest": {"$ref": "#/$defs/digest"},
+                        "phase": {"$ref": "#/$defs/phase"},
+                        "outcome": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/outcome"}]}}}
+      ]
+    },
+    "awaiting_reboot": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "object", "additionalProperties": false, "required": ["run_id", "boot_id_digest", "validation_digest"],
+         "properties": {"run_id": {"$ref": "#/$defs/id"}, "boot_id_digest": {"$ref": "#/$defs/digest"},
+                        "validation_digest": {"$ref": "#/$defs/digest"}}}
+      ]
+    },
+    "phase": {"$ref": "#/$defs/phase"},
+    "phases": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"$ref": "#/$defs/phase"}},
+    "terminal": {"type": "boolean"},
+    "outcome": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/outcome"}]},
+    "reason": {
+      "oneOf": [
+        {"type": "null"},
+        {"enum": ["converged", "validation_limited", "validation_failed", "reboot_pending", "boot_unchanged",
+                  "manual_recovery_required", "recovery_failed", "recovery_unverified", "package_journal_unreadable",
+                  "plan_invalid", "plan_conflict", "plan_policy_review", "transaction_rejected", "apply_failed",
+                  "apply_unverified", "package_lock_busy", "package_state_changed", "stale_transaction",
+                  "inventory_changed", "probe_failed", "observation_failed", "validation_error", "internal_failure"]}
+      ]
+    },
+    "reboot_required": {"type": "boolean"},
+    "boot": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "object", "additionalProperties": false,
+         "required": ["boot_id_digest", "previous_boot_id_digest", "boot_changed"],
+         "properties": {"boot_id_digest": {"$ref": "#/$defs/digest"},
+                        "previous_boot_id_digest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]},
+                        "boot_changed": {"oneOf": [{"type": "null"}, {"type": "boolean"}]}}}
+      ]
+    },
+    "bindings": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "object", "additionalProperties": false,
+         "required": ["inventory_digest", "rule_set_digest", "plan_digest", "plan_status"],
+         "properties": {"inventory_digest": {"$ref": "#/$defs/digest"},
+                        "rule_set_digest": {"$ref": "#/$defs/digest"},
+                        "plan_digest": {"$ref": "#/$defs/digest"},
+                        "plan_status": {"enum": ["resolved", "partial", "conflict", "invalid"]}}}
+      ]
+    },
+    "package": {
+      "type": "object", "additionalProperties": false,
+      "required": ["preflight", "recovery", "decision", "transaction_digest", "apply", "current_transaction"],
+      "properties": {
+        "preflight": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "object", "additionalProperties": false,
+             "required": ["readable", "unresolved_attempts", "nonterminal_recoveries", "blocked"],
+             "properties": {"readable": {"type": "boolean"},
+                            "unresolved_attempts": {"type": "integer", "minimum": 0, "maximum": 4096},
+                            "nonterminal_recoveries": {"type": "integer", "minimum": 0, "maximum": 4096},
+                            "blocked": {"enum": ["none", "manual_recovery_required", "recovery_failed"]}}}
+          ]
+        },
+        "recovery": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "object", "additionalProperties": false,
+             "required": ["result", "recovery_id", "attempt_id", "journal_digest"],
+             "properties": {"result": {"enum": ["nothing_to_recover", "complete", "abandoned",
+                                                "manual_recovery_required", "failed"]},
+                            "recovery_id": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/id"}]},
+                            "attempt_id": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/id"}]},
+                            "journal_digest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]}}}
+          ]
+        },
+        "decision": {"oneOf": [{"type": "null"}, {"enum": ["no_change", "apply"]}]},
+        "transaction_digest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]},
+        "apply": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "object", "additionalProperties": false,
+             "required": ["attempt_id", "result", "phase", "transaction_digest", "journal_digest"],
+             "properties": {"attempt_id": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/id"}]},
+                            "result": {"enum": ["complete", "nothing_to_apply", "failed", "unverified"]},
+                            "phase": {"oneOf": [{"type": "null"},
+                                                {"enum": ["prepared", "locked", "source_activated",
+                                                          "metadata_refreshed", "transaction_revalidated",
+                                                          "bundle_staged", "bundle_verified", "applying", "applied",
+                                                          "validated", "complete", "failed"]}]},
+                            "transaction_digest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]},
+                            "journal_digest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]}}}
+          ]
+        },
+        "current_transaction": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "object", "additionalProperties": false, "required": ["attempt_id", "transaction_digest"],
+             "properties": {"attempt_id": {"$ref": "#/$defs/id"}, "transaction_digest": {"$ref": "#/$defs/digest"}}}
+          ]
+        }
+      }
+    },
+    "validation": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "object", "additionalProperties": false,
+         "required": ["result_digest", "status", "mode", "boot_relation", "previous_result_digest", "continuity",
+                      "critical_failures", "reboot_required"],
+         "properties": {"result_digest": {"$ref": "#/$defs/digest"},
+                        "status": {"enum": ["PASS", "FAIL", "LIMITED", "NOT_TESTED"]},
+                        "mode": {"enum": ["current", "revalidation"]},
+                        "boot_relation": {"enum": ["post_reboot", "same_boot", "not_applicable"]},
+                        "previous_result_digest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]},
+                        "continuity": {"enum": ["not_applicable", "checked", "profile_changed"]},
+                        "critical_failures": {"type": "integer", "minimum": 0, "maximum": 4096},
+                        "reboot_required": {"type": "boolean"}}}
+      ]
+    },
+    "maintenance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["gc", "skipped", "receipt_id", "receipt_digest", "plan_digest"],
+      "properties": {
+        "gc": {"enum": ["not_run", "nothing_to_collect", "complete", "partial", "failed"]},
+        "skipped": {"oneOf": [{"type": "null"},
+                              {"enum": ["outcome_not_eligible", "package_state_unresolved"]}]},
+        "receipt_id": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/id"}]},
+        "receipt_digest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]},
+        "plan_digest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]}
+      }
+    },
+    "artifacts": {
+      "type": "object", "additionalProperties": false, "required": ["inventory", "plan", "validation"],
+      "properties": {
+        "inventory": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]},
+        "plan": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]},
+        "validation": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]}
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "phase": {"enum": ["started", "preflight", "recovering", "recovered", "planned", "applying", "applied",
+                       "validated", "collecting", "finished"]},
+    "outcome": {"enum": ["complete", "reboot_required", "validation_limited", "validation_failed",
+                         "manual_recovery_required", "policy_blocked", "stale", "failed"]}
+  }
+}

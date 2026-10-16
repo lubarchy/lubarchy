@@ -50,7 +50,8 @@ later installation/configuration → later validation.
 | M1-L | Interrupted package transaction recovery | PASS (CTO accepted) |
 | M1-M | Post-install hardware validation and health | PASS (CTO accepted) |
 | M1-N | Package state retention and safe garbage collection | PASS (CTO re-accepted) / CLOSED after the APT sandbox `partial/` correction |
-| M1-O | Hardware enablement orchestration and persistent state | Local candidate; publication on hold pending the M1-N correction |
+| M1-O | Hardware enablement orchestration and persistent state | Implemented locally (rebuilt on the corrected M1-N baseline); awaiting CTO review |
+| M1-P | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
   `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
@@ -557,9 +558,38 @@ later installation/configuration → later validation.
   - Gate 14 models the measured ownership (10 checks). The real
     qualification ran on the builder under `pre-m1n-fix`, which is retained
     until the CTO authorises its cleanup.
-- M1-O (hardware enablement orchestration) exists as a local candidate on
-  a separate branch; its publication remains on hold now that the M1-N
-  correction is closed. M1-P has not started.
+- M1-O — hardware enablement orchestration and persistent state:
+  **implemented locally; awaiting CTO review** (not PASS, not pushed). Rebuilt
+  on the corrected M1-N baseline (`8b77e24`); an earlier unpublished
+  candidate was superseded and is kept only as historical evidence.
+  Details: [hardware-orchestration.md](hardware-orchestration.md).
+  - `hardware/hardware_orchestration.py` with `manage-hardware.py status`
+    and `reconcile` (root only, no caller input) composes the qualified
+    primitives: package recovery first (M1-L), fresh probe and production
+    plan, a read-only package precheck, the existing apply executor only when
+    a package change is required (M1-K), validation (M1-M), and GC (M1-N)
+    only after a terminal non-critical validation.
+  - Validation outcomes follow a strict precedence: `validation_failed`,
+    then `reboot_required`, then `validation_limited`, then `complete`. A
+    critical FAIL is never hidden behind a reboot request, and a failed run
+    never becomes a reboot continuation.
+  - Same-boot validation without a critical FAIL ends `reboot_required`
+    (exit 5); the coordinator never reboots. The next run proves a boot change and revalidates against
+    the pending result (continuity) before any terminal outcome. LIMITED is
+    never promoted; GC failure is reported separately.
+  - One durable, digest-chained run journal
+    (`lubarchy.hardware.orchestration-journal/v1`) plus the canonical
+    inventory, plan and validation result per run under the fixed root
+    `/var/lib/lubarchy/hardware-orchestration/`. Corrupt or unsafe state
+    fails closed and is preserved. Lock order: orchestration lock, then the
+    package transaction lock.
+  - Gate 15 (`tests/hardware-orchestration.py`) is synthetic. Real
+    end-to-end reconciliation is qualified only on the builder under the
+    `pre-m1o` rollback checkpoint.
+- M1-O does **not** add a systemd unit, timer, daemon, installer UI,
+  automatic reboot, NVIDIA support, Secure Boot/MOK or a privilege
+  mechanism, and does not start M1-P.
+- M1-P has not been defined or started.
 
 ## M0 — Minimal reproducible ISO (closed)
 
@@ -744,10 +774,11 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO direction on `pre-m1n-fix` cleanup and on resuming the paused M1-O
-candidate. M1-N is PASS (CTO re-accepted) / CLOSED after the APT sandbox
-`partial/` correction (product `dfd82cb`, harness fix `9e7ad19`, CI runs #37
-and #38; original implementation `1eec088956d73cdc53bf450a76d860cbe4ec7e41`, CI run #33). M1-O publication remains on hold. M1-M is PASS
+CTO review of the rebuilt M1-O (hardware enablement orchestration and
+persistent state; local commit only, not pushed). M1-N is PASS (CTO
+re-accepted) / CLOSED after the APT sandbox `partial/` correction (product
+`dfd82cb`, harness fix `9e7ad19`, CI runs #37 and #38; original implementation
+`1eec088956d73cdc53bf450a76d860cbe4ec7e41`, CI run #33). M1-M is PASS
 (CTO accepted; implementation `59793b6dcdaddf73946dcdd9a6681ac58b2fc644`, CI run #30); M1-L is PASS (CTO accepted).
 
 M1-N limitations that remain in force:
@@ -776,15 +807,23 @@ The security findings stand:
 - Validation is read-only; VM observations are not physical-hardware
   claims.
 
+M1-O limitations that remain in force:
+- the coordinator is an API only: no installer, service or diagnostics
+  integration invokes it yet, and privilege supply remains future work;
+- a VM qualifies the orchestration lifecycle, not physical microcode, radio
+  or GPU function;
+- orchestration history is retained indefinitely; a retention policy is
+  future work.
+
 Open work:
-- installer/service orchestration and persistence;
+- installer/service integration that invokes the coordinator;
 - Secure Boot/MOK;
 - the NVIDIA ADR;
 - hybrid/multi-GPU;
 - user-facing diagnostics;
 - real-hardware qualification.
 
-M1-O publication is on hold; M1-P has not started.
+M1-P has not been defined or started.
 
 ## PASS rule
 

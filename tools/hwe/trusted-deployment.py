@@ -7,6 +7,8 @@
     trusted-deployment.py run-recover --root DIR --commit SHA --tree SHA
     trusted-deployment.py run-gc-plan --root DIR --commit SHA --tree SHA
     trusted-deployment.py run-gc      --root DIR --commit SHA --tree SHA
+    trusted-deployment.py run-hwe-status    --root DIR --commit SHA --tree SHA
+    trusted-deployment.py run-hwe-reconcile --root DIR --commit SHA --tree SHA
 
 A privileged process must never execute LUBARCHY code from a tree an
 unprivileged user can write. For qualification, root creates an ephemeral
@@ -42,6 +44,10 @@ run-apply / run-recover / run-gc-plan / run-gc
            `recover`, `gc-plan` or `gc`)
            with an empty environment, `python3 -I -B` (no bytecode written
            into the deployment) and cwd /.
+run-hwe-status / run-hwe-reconcile
+           the same verification and launch for the M1-O coordinator
+           entrypoint of tree/ (`hardware/manage-hardware.py status` or
+           `reconcile`).
 """
 
 import hashlib
@@ -56,8 +62,13 @@ GIT = "/usr/bin/git"
 ENV = "/usr/bin/env"
 PYTHON = "/usr/bin/python3"
 ENTRYPOINT = "hardware/apply-packages.py"
+ORCHESTRATOR_ENTRYPOINT = "hardware/manage-hardware.py"
+# privileged operation -> (entrypoint inside tree/, its single argument)
+OPERATIONS = {"apply": (ENTRYPOINT, "apply"), "recover": (ENTRYPOINT, "recover"), "gc-plan": (ENTRYPOINT, "gc-plan"),
+              "gc": (ENTRYPOINT, "gc"), "hwe-status": (ORCHESTRATOR_ENTRYPOINT, "status"),
+              "hwe-reconcile": (ORCHESTRATOR_ENTRYPOINT, "reconcile")}
 EXECUTOR_MODULES = ("package_apply", "package_staging", "package_transaction", "source_activation", "resolver",
-                    "probe")
+                    "probe", "package_recovery", "package_gc", "hardware_validation", "hardware_orchestration")
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 LS_TREE = re.compile(r"^(100644|100755) blob ([0-9a-f]{40})\t(\S(?:.*\S)?)$")
 GIT_ENV = {"PATH": "/usr/bin:/bin", "LC_ALL": "C", "HOME": "/nonexistent", "GIT_CONFIG_NOSYSTEM": "1",
@@ -196,17 +207,19 @@ def verify(root, commit, tree_sha, owner_uid=0, stop="/"):
     evidence = verify_tree(root, manifest, owner_uid, stop)
     verify_git(root, commit, tree_sha, manifest_text, owner_uid)
     evidence.update(commit=commit, tree=tree_sha, deployment=root, owner_uid=owner_uid,
-                    entrypoint=os.path.join(root, "tree", ENTRYPOINT))
+                    entrypoint=os.path.join(root, "tree", ENTRYPOINT),
+                    orchestrator_entrypoint=os.path.join(root, "tree", ORCHESTRATOR_ENTRYPOINT))
     return evidence
 
 
 def privileged_argv(root, operation="apply"):
     """The privileged launch: empty environment, isolated interpreter, the
     deployment's entrypoint. Never a path outside the verified tree."""
-    if operation not in ("apply", "recover", "gc-plan", "gc"):
+    if operation not in OPERATIONS:
         _fail("unknown privileged operation")
-    entry = os.path.join(os.path.normpath(root), "tree", ENTRYPOINT)
-    return [ENV, "-i", PYTHON, "-I", "-B", entry, operation]
+    entrypoint, argument = OPERATIONS[operation]
+    entry = os.path.join(os.path.normpath(root), "tree", entrypoint)
+    return [ENV, "-i", PYTHON, "-I", "-B", entry, argument]
 
 
 IMPORT_PROBE = (
@@ -247,7 +260,8 @@ def check_imports(root, hostile):
 
 
 def main(argv):
-    cmds = {"verify": 6, "imports": 8, "run-apply": 6, "run-recover": 6, "run-gc-plan": 6, "run-gc": 6}
+    cmds = {"verify": 6, "imports": 8, "run-apply": 6, "run-recover": 6, "run-gc-plan": 6, "run-gc": 6,
+            "run-hwe-status": 6, "run-hwe-reconcile": 6}
     if len(argv) < 1 or argv[0] not in cmds or len(argv) != cmds[argv[0]] + 1:
         sys.stderr.write(__doc__)
         return 64
@@ -264,9 +278,12 @@ def main(argv):
             print(json.dumps(check_imports(opts["--root"], opts["--hostile"]), indent=2, sort_keys=True))
             return 0
         if os.geteuid() != 0:
-            _fail("run-apply/run-recover/run-gc-plan/run-gc must be started as root")
-        launch = privileged_argv(opts["--root"], argv[0][len("run-"):])
-        if launch[5] != evidence["entrypoint"]:
+            _fail("run-* operations must be started as root")
+        operation = argv[0][len("run-"):]
+        launch = privileged_argv(opts["--root"], operation)
+        verified = evidence.get("orchestrator_entrypoint") if OPERATIONS[operation][0] == ORCHESTRATOR_ENTRYPOINT \
+            else evidence["entrypoint"]
+        if launch[5] != verified:
             _fail("launch path is not the verified entrypoint")
         os.chdir("/")
         os.execv(launch[0], launch)

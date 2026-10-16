@@ -161,6 +161,15 @@ proven obsolete by the apply and recovery journals (complete or no-mutation
 attempts only), under the same transaction lock, identity-checked and
 without following links; journals and anything unknown, corrupt or needed
 for recovery are kept ([package-garbage-collection.md](package-garbage-collection.md)).
+Since M1-O, `manage-hardware.py reconcile` is the production coordinator that
+composes these primitives: recovery first, fresh probe and plan, the apply
+executor only when a package change is required, validation, a persisted
+`reboot_required` (it never reboots), resume after reboot with continuity,
+and conservative GC. It keeps one durable, digest-chained run journal per
+reconcile under `/var/lib/lubarchy/hardware-orchestration/`, holds its own
+lock ahead of the package lock and never acts as a second resolver,
+transaction engine, recovery engine, validator or collector
+([hardware-orchestration.md](hardware-orchestration.md)).
 The supplier of privilege (installer/system service) and real-hardware
 qualification are later work. See
 [package-transactions.md](package-transactions.md),

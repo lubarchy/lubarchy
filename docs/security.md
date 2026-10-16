@@ -222,6 +222,29 @@ implemented.**
   - Recovery shares the transaction lock, never removes native dpkg locks,
     runs root only from the trusted deployment, and writes a durable
     recovery journal that gates later applies.
+- Hardware-enablement orchestration (M1-O). Details:
+  [hardware-orchestration.md](hardware-orchestration.md).
+  - One root-only operation (`reconcile`) plus a read-only `status`; no
+    caller package, device, path, plan, identity, APT option, environment,
+    reboot or force input. The coordinator builds no package-manager argv,
+    deletes nothing itself, spawns no process and never reboots.
+  - A critical validation FAIL always outranks a reboot request
+    (`validation_failed`, no reboot continuation, no GC), so a reboot is
+    never presented as the remedy for a failing system.
+  - Recovery always precedes a new apply; manual or failed recovery blocks
+    mutation; the apply, recovery and GC results are trusted only from their
+    own durable journals/receipts, re-read from disk. Its own journal is
+    evidence, never package truth.
+  - Fixed persistent root (root-owned, not group/other writable, no symlink,
+    no mount crossing); corrupt, ambiguous or unsafe state fails closed
+    before any mutation and is preserved, never overwritten or deleted.
+    Durable atomic journal writes precede every mutating step.
+  - Lock order: orchestration lock, then the package transaction lock
+    (taken only inside the primitives). The orchestration lock serializes
+    runs; it is not a security boundary against root.
+  - No raw boot IDs, timestamps, logs or personal identifiers are persisted.
+    Qualification launches it only from the trusted exact-commit deployment
+    (`run-hwe-reconcile`/`run-hwe-status`); no new privilege mechanism.
 - Package state garbage collection (M1-N). Details:
   [package-garbage-collection.md](package-garbage-collection.md).
   - Only fixed LUBARCHY roots; no caller path, ID, age, size, force or plan.

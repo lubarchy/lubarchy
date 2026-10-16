@@ -905,6 +905,11 @@ contract is in [package-transactions.md](package-transactions.md).
   reclaimed conservatively by `apply-packages.py gc`; everything a pending,
   failed or manual recovery could need is retained
   ([package-garbage-collection.md](package-garbage-collection.md)).
+- Since M1-O, `manage-hardware.py reconcile` runs the whole lifecycle as one
+  resumable operation: recovery first, fresh probe and plan, the apply
+  executor only when a change is required, validation, `reboot_required`
+  persisted (never an automatic reboot), post-reboot continuity, then
+  conservative GC ([hardware-orchestration.md](hardware-orchestration.md)).
 - Since M1-M the result is validated separately and read-only
   ([hardware-validation.md](hardware-validation.md)). Each plan target is
   checked for presence (same identity), a bound kernel driver (one of the
