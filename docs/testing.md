@@ -1809,6 +1809,40 @@ From the root-owned exact-commit deployment:
 7. The VM is reverted to `pre-m1o`, booted and audited against the baseline,
    then shut down. The checkpoint is kept until publication closure.
 
+**M1-O qualification (rebuilt candidate).**
+- **Implementation:** `4fc443d0540be51028f24e5569fbaaa5fdf60d97`, on the
+  corrected M1-N closure `8b77e24`. The earlier unpublished candidate
+  `a27c392` is kept only as local historical evidence and was not reused as
+  acceptance evidence.
+- **CI:** `Static gates` run #40 ([38980191190](https://github.com/lubarchy/lubarchy/actions/runs/38980191190)) on the
+  exact SHA passed 15/15 gates (gate 10: 19, gate 11: 14, gate 12: 15,
+  gate 13: 13, gate 14: 10, gate 15: 21 checks).
+- **Exact-commit qualification:** aggregate exit 0. 216/216 mutations were
+  killed: M1-O 34/34, plus the corrected baseline 182/182 (M1-N correction
+  17, M1-N 25, M1-M 43, M1-L 51, M1-K 46). There were 0 survivors, 0 harness
+  errors and 0 bad baselines.
+- **Validation precedence:** `validation_failed` > `reboot_required` >
+  `validation_limited` > `complete`. It is qualified by gate 15 and
+  mutations O31, O32 and O34, because the builder was deliberately not
+  damaged to produce a real critical FAIL.
+- **Builder:**
+  1. Run 1: one apply (`intel-microcode` direct, `iucode-tool` dependency)
+     ended `reboot_required`. The product did not reboot (same boot-ID
+     digest).
+  2. The harness rebooted the builder externally.
+  3. Run 2: revalidation against the pre-reboot result (continuity checks
+     PASS), no duplicate apply or recovery, `validation_limited`. The
+     corrected M1-N GC reclaimed the real bundle (12,905,139 bytes; payload
+     links and the APT-owned `_apt:root 0700` `partial/` removed; APT's
+     `lock` and the journal kept).
+  4. Run 3: idempotent, `nothing_to_collect`.
+  5. VM microcode was `LIMITED/virtualized_cpu` in every run. Packages,
+     marks, holds, sources and APT history did not drift after the apply.
+  6. The restore to `pre-m1o` was exact. `pre-m1o` is retained pending CTO
+     closure.
+
+M1-O is awaiting CTO closure; M1-P has not started.
+
 ## GitHub CI
 
 The static gates run as the GitHub Actions workflow

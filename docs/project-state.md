@@ -50,7 +50,7 @@ later installation/configuration → later validation.
 | M1-L | Interrupted package transaction recovery | PASS (CTO accepted) |
 | M1-M | Post-install hardware validation and health | PASS (CTO accepted) |
 | M1-N | Package state retention and safe garbage collection | PASS (CTO re-accepted) / CLOSED after the APT sandbox `partial/` correction |
-| M1-O | Hardware enablement orchestration and persistent state | Implemented locally (rebuilt on the corrected M1-N baseline); awaiting CTO review |
+| M1-O | Hardware enablement orchestration and persistent state | Published and CI-qualified (rebuilt on the corrected M1-N baseline); awaiting CTO closure |
 | M1-P | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
@@ -559,7 +559,7 @@ later installation/configuration → later validation.
     qualification ran on the builder under `pre-m1n-fix`, which is retained
     until the CTO authorises its cleanup.
 - M1-O — hardware enablement orchestration and persistent state:
-  **implemented locally; awaiting CTO review** (not PASS, not pushed). Rebuilt
+  **published and CI-qualified; awaiting CTO closure** (not closed). Rebuilt
   on the corrected M1-N baseline (`8b77e24`); an earlier unpublished
   candidate was superseded and is kept only as historical evidence.
   Details: [hardware-orchestration.md](hardware-orchestration.md).
@@ -586,6 +586,34 @@ later installation/configuration → later validation.
   - Gate 15 (`tests/hardware-orchestration.py`) is synthetic. Real
     end-to-end reconciliation is qualified only on the builder under the
     `pre-m1o` rollback checkpoint.
+  - **Published:** implementation `4fc443d0540be51028f24e5569fbaaa5fdf60d97`,
+    parent `8b77e24` (the corrected M1-N closure). The earlier unpublished
+    candidate `a27c392` is kept only as local historical evidence.
+  - **CI:** `Static gates` run #40
+    ([38980191190](https://github.com/lubarchy/lubarchy/actions/runs/38980191190)) on `4fc443d` passed 15/15 gates (gate 10:
+    19, gate 11: 14, gate 12: 15, gate 13: 13, gate 14: 10, gate 15: 21
+    checks).
+  - **Local exact-commit qualification:** aggregate exit 0. 216/216
+    mutations were killed: M1-O 34/34, plus the corrected baseline 182/182
+    (M1-N correction 17, M1-N 25, M1-M 43, M1-L 51, M1-K 46). There were
+    zero survivors and zero harness errors.
+  - **Validation precedence:** `validation_failed` > `reboot_required` >
+    `validation_limited` > `complete`.
+  - **Real builder lifecycle** under `pre-m1o`:
+    1. The first reconcile did one apply (`intel-microcode` direct,
+       `iucode-tool` dependency) and ended `reboot_required`. The product
+       did not reboot: the boot identity was unchanged.
+    2. The qualification harness then rebooted the builder externally.
+    3. The post-reboot reconcile did a continuity revalidation, with no
+       duplicate apply or recovery, and ended `validation_limited`. The
+       corrected M1-N GC reclaimed the real bundle (12,905,139 bytes)
+       despite APT's real `_apt:root 0700` `partial/`.
+    4. A third run was idempotent (`nothing_to_collect`).
+    5. VM microcode stayed `LIMITED/virtualized_cpu`.
+    6. The restore to baseline was exact.
+
+    `pre-m1o` is retained pending CTO closure; the builder is shut off with
+    autostart disabled.
 - M1-O does **not** add a systemd unit, timer, daemon, installer UI,
   automatic reboot, NVIDIA support, Secure Boot/MOK or a privilege
   mechanism, and does not start M1-P.
@@ -774,8 +802,9 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of the rebuilt M1-O (hardware enablement orchestration and
-persistent state; local commit only, not pushed). M1-N is PASS (CTO
+CTO closure of M1-O (hardware enablement orchestration and persistent
+state; implementation `4fc443d`, CI run #40). M1-P has not started. M1-N is
+PASS (CTO
 re-accepted) / CLOSED after the APT sandbox `partial/` correction (product
 `dfd82cb`, harness fix `9e7ad19`, CI runs #37 and #38; original implementation
 `1eec088956d73cdc53bf450a76d860cbe4ec7e41`, CI run #33). M1-M is PASS
