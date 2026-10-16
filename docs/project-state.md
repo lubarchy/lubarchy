@@ -49,7 +49,7 @@ later installation/configuration → later validation.
 | M1-K | Privileged source activation and package apply executor | PASS (CTO accepted) |
 | M1-L | Interrupted package transaction recovery | PASS (CTO accepted) |
 | M1-M | Post-install hardware validation and health | PASS (CTO accepted) |
-| M1-N | Package state retention and safe garbage collection | PASS (CTO accepted); corrective qualification reopened (APT sandbox `partial/`), local candidate awaiting CTO review |
+| M1-N | Package state retention and safe garbage collection | PASS (CTO accepted); APT sandbox `partial/` correction published and CI-qualified, awaiting CTO re-acceptance |
 | M1-O | Hardware enablement orchestration and persistent state | Local candidate; publication on hold pending the M1-N correction |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
@@ -500,7 +500,40 @@ later installation/configuration → later validation.
 - M1-N does **not** delete journals or receipts, use time-based cleanup,
   touch APT/dpkg/source state, add a privilege mechanism, or start M1-O.
 - M1-N correction — APT sandbox ownership of the attempt cache `partial/`:
-  **local corrective candidate; awaiting CTO review** (not pushed).
+  **published and CI-qualified; awaiting CTO re-acceptance** (not closed).
+  - **Product correction:** `dfd82cb0fecf3f8464f54377f1bd32acf2f4bbc5`.
+    - Its first CI run, `Static gates` run #36
+      ([38888081993](https://github.com/lubarchy/lubarchy/actions/runs/38888081993)), failed only gate 14.
+    - **Cause:** a synthetic inode-reuse defect in the gate's ownership
+      overlay. On the runner's filesystem a re-created `partial/` reused
+      the freed inode number and inherited the removed object's `_apt`
+      overlay. No product failure was found.
+  - **Test-only harness fix:** `9e7ad19a17cfecd7a583735286b8b4a2a79a5916`.
+    - The overlay now ends with its object's lifetime.
+    - Deterministic same-inode-identity cases were added; under a forced
+      reuse simulator the old harness reproduces run #36 exactly.
+    - Only `tests/hardware-gc.py` changed; `hardware/package_gc.py` is
+      byte-identical to `dfd82cb`.
+    - CI: `Static gates` run #37 ([38896919894](https://github.com/lubarchy/lubarchy/actions/runs/38896919894)) passed
+      14/14 gates (gate 10: 19, gate 11: 14, gate 12: 15, gate 13: 13,
+      gate 14: 10 checks).
+  - **Exact-commit qualification** of `9e7ad19` (the same 182 mutations
+    were also run on `dfd82cb`): aggregate exit 0; 182/182 mutations
+    killed (correction 17, M1-N 25, M1-M 43, M1-L 51, M1-K 46), zero
+    survivors or harness errors.
+  - **Real builder qualification** (of `dfd82cb`; product bytes unchanged
+    since) under `pre-m1n-fix`:
+    1. A real apply produced the APT-created `partial/`
+       (`_apt:root`, mode `0700`, empty).
+    2. The completed bundle became `eligible_complete`.
+    3. Real GC reclaimed 12,905,139 bytes (bundle, cache payload links,
+       `partial/`). The apply journal and APT's cache `lock` were retained
+       and the receipt was exact.
+    4. A second GC was `nothing_to_collect`.
+    5. APT, dpkg, source, package, mark and hold state was unchanged by GC.
+    6. The restore to baseline was exact.
+
+    `pre-m1n-fix` is retained pending CTO closure.
   - **Defect:** real-builder evidence from the M1-O qualification showed
     that APT 3.0.3 changes `<attempt>/apply-cache/partial/` to its sandbox
     user (`_apt:root`, mode `0700`). The original M1-N treated that as
@@ -701,8 +734,9 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO review of the M1-N corrective qualification (APT sandbox `partial/`
-ownership; local commit only, not pushed). M1-O publication is on hold. M1-N
+CTO re-acceptance of the published M1-N correction (APT sandbox `partial/`
+ownership; product `dfd82cb`, harness fix `9e7ad19`, CI run #37). M1-O
+publication remains on hold. M1-N
 is PASS (CTO accepted; implementation `1eec088956d73cdc53bf450a76d860cbe4ec7e41`, CI run #33); M1-M is PASS
 (CTO accepted; implementation `59793b6dcdaddf73946dcdd9a6681ac58b2fc644`, CI run #30); M1-L is PASS (CTO accepted).
 

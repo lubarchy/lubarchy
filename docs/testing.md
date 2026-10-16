@@ -1543,6 +1543,34 @@ The M1-N correction adds 17 mutations:
 They are run together with the existing 25 M1-N mutations (two of whose
 targets moved to the new `_lstat` read) and the M1-M, M1-L and M1-K suites.
 
+**Inode-reuse harness defect.** `Static gates` run #36
+([38888081993](https://github.com/lubarchy/lubarchy/actions/runs/38888081993)) failed gate 14 on the product correction
+`dfd82cb`, in the two "replaced `partial/`" cases only.
+- **Cause:** the overlay was keyed by (device, inode) and outlived its
+  object. The runner's filesystem gave the re-created directory the freed
+  inode number, so the new root-owned replacement inherited the removed
+  object's `_apt` overlay.
+- **Not a product failure:** a real replacement is root-owned and is
+  rejected.
+
+The test-only fix `9e7ad19` changes only `tests/hardware-gc.py`:
+- **Object lifetime:** the overlay now lives exactly as long as its object.
+  `os.rmdir`, `os.unlink`/`os.remove` and `os.rename`/`os.replace` are
+  wrapped during the gate, so an overlay ends when the object's last link
+  is destroyed, whoever destroys it.
+- **One helper:** `replace_partial()` replaces `partial/` and asserts the
+  replacement is observed root-owned `0700`.
+- **Forced reuse:** a deterministic same-inode-identity model adds variants
+  of both replacement cases.
+- **GC's own removal:** the accepted-shape case also asserts that GC's
+  removal of `partial/` ends its overlay.
+
+Under a forced inode-reuse simulator the old harness reproduces the run-#36
+failures exactly and the fixed harness passes. Run #37
+([38896919894](https://github.com/lubarchy/lubarchy/actions/runs/38896919894)) passed 14/14 gates with gate 14 at 10
+checks. The real-builder qualification of `dfd82cb` remains authoritative,
+because `hardware/package_gc.py` is byte-identical.
+
 ### Builder GC qualification (M1-N, builder only)
 
 Real deletion is qualified only on the builder under a fresh rollback
