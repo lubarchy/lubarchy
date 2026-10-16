@@ -1965,7 +1965,28 @@ installed packages and APT sources are never GC targets.
 
 At publication M1-N was awaiting CTO review; it was subsequently accepted
 (PASS, CTO accepted). The PASS qualifies the package-state GC subsystem
-only. M1-O has not started.
+only. M1-O had not started at that point.
+
+M1-N was later reopened for the APT sandbox `partial/` correction and
+re-closed: **PASS (CTO re-accepted) / CLOSED**. The chain is:
+- product correction `dfd82cb`; run #36
+  ([38888081993](https://github.com/lubarchy/lubarchy/actions/runs/38888081993)) failed gate 14 because of the synthetic
+  inode-reuse overlay defect, a harness failure and not a product failure;
+- test-only harness fix `9e7ad19`; run #37
+  ([38896919894](https://github.com/lubarchy/lubarchy/actions/runs/38896919894)) passed 14/14 gates;
+- qualification docs `cfd6d0a`; run #38
+  ([38897405669](https://github.com/lubarchy/lubarchy/actions/runs/38897405669)) passed 14/14 gates, gate 14 at 10 checks.
+
+Exact-commit qualification killed 182/182 mutations. The real builder
+evidence (for `dfd82cb`, whose `package_gc.py` is byte-identical in later
+commits):
+- an APT-created `_apt:root` `0700` `partial/`;
+- 12,905,139 bytes reclaimed;
+- an idempotent second GC;
+- an exact restore.
+
+The APT sandbox is not weakened. M1-O remains on publication hold, and M1-P
+has not started.
 
 ## Clean rebuild comparison
 

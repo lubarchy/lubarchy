@@ -49,7 +49,7 @@ later installation/configuration → later validation.
 | M1-K | Privileged source activation and package apply executor | PASS (CTO accepted) |
 | M1-L | Interrupted package transaction recovery | PASS (CTO accepted) |
 | M1-M | Post-install hardware validation and health | PASS (CTO accepted) |
-| M1-N | Package state retention and safe garbage collection | PASS (CTO accepted); APT sandbox `partial/` correction published and CI-qualified, awaiting CTO re-acceptance |
+| M1-N | Package state retention and safe garbage collection | PASS (CTO re-accepted) / CLOSED after the APT sandbox `partial/` correction |
 | M1-O | Hardware enablement orchestration and persistent state | Local candidate; publication on hold pending the M1-N correction |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
@@ -500,7 +500,16 @@ later installation/configuration → later validation.
 - M1-N does **not** delete journals or receipts, use time-based cleanup,
   touch APT/dpkg/source state, add a privilege mechanism, or start M1-O.
 - M1-N correction — APT sandbox ownership of the attempt cache `partial/`:
-  **published and CI-qualified; awaiting CTO re-acceptance** (not closed).
+  **PASS (CTO re-accepted) / CLOSED.**
+  - **Scope:** M1-N remains narrowly scoped. The only accepted non-root
+    ownership exception is the exact `<attempt>/apply-cache/partial/`,
+    under the qualified APT sandbox contract (`_apt` from the root-owned
+    `/etc/passwd`, group root, mode `0700`, empty, APT started, re-checked
+    before removal). Every other GC object remains root-only, and Debian's
+    APT sandbox is not weakened or overridden.
+  - **Chain:** product correction `dfd82cb`, test-only harness fix
+    `9e7ad19`, qualification docs `cfd6d0a` (`Static gates` run #38,
+    [38897405669](https://github.com/lubarchy/lubarchy/actions/runs/38897405669): 14/14 gates, gate 14 at 10 checks).
   - **Product correction:** `dfd82cb0fecf3f8464f54377f1bd32acf2f4bbc5`.
     - Its first CI run, `Static gates` run #36
       ([38888081993](https://github.com/lubarchy/lubarchy/actions/runs/38888081993)), failed only gate 14.
@@ -545,11 +554,12 @@ later installation/configuration → later validation.
     started. It is re-checked before removal.
   - Debian's APT sandbox is kept, and every other object remains root-only.
     Details: [package-garbage-collection.md](package-garbage-collection.md).
-  - Gate 14 now models the measured ownership (10 checks). Real
-    qualification runs on the builder under `pre-m1n-fix`.
+  - Gate 14 models the measured ownership (10 checks). The real
+    qualification ran on the builder under `pre-m1n-fix`, which is retained
+    until the CTO authorises its cleanup.
 - M1-O (hardware enablement orchestration) exists as a local candidate on
-  a separate branch; its publication is on hold pending this correction.
-  M1-P has not started.
+  a separate branch; its publication remains on hold now that the M1-N
+  correction is closed. M1-P has not started.
 
 ## M0 — Minimal reproducible ISO (closed)
 
@@ -734,10 +744,10 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO re-acceptance of the published M1-N correction (APT sandbox `partial/`
-ownership; product `dfd82cb`, harness fix `9e7ad19`, CI run #37). M1-O
-publication remains on hold. M1-N
-is PASS (CTO accepted; implementation `1eec088956d73cdc53bf450a76d860cbe4ec7e41`, CI run #33); M1-M is PASS
+CTO direction on `pre-m1n-fix` cleanup and on resuming the paused M1-O
+candidate. M1-N is PASS (CTO re-accepted) / CLOSED after the APT sandbox
+`partial/` correction (product `dfd82cb`, harness fix `9e7ad19`, CI runs #37
+and #38; original implementation `1eec088956d73cdc53bf450a76d860cbe4ec7e41`, CI run #33). M1-O publication remains on hold. M1-M is PASS
 (CTO accepted; implementation `59793b6dcdaddf73946dcdd9a6681ac58b2fc644`, CI run #30); M1-L is PASS (CTO accepted).
 
 M1-N limitations that remain in force:
