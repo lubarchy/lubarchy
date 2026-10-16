@@ -1838,10 +1838,12 @@ From the root-owned exact-commit deployment:
   4. Run 3: idempotent, `nothing_to_collect`.
   5. VM microcode was `LIMITED/virtualized_cpu` in every run. Packages,
      marks, holds, sources and APT history did not drift after the apply.
-  6. The restore to `pre-m1o` was exact. `pre-m1o` is retained pending CTO
-     closure.
+  6. The restore to `pre-m1o` was exact. `pre-m1o` is retained only for
+     post-closure cleanup.
 
-M1-O is awaiting CTO closure; M1-P has not started.
+The qualification docs `03be7dc` passed `Static gates` run #41
+([38980651256](https://github.com/lubarchy/lubarchy/actions/runs/38980651256)), 15/15 gates. M1-O is **PASS (CTO accepted)
+/ CLOSED**; M1-P has not started.
 
 ## GitHub CI
 

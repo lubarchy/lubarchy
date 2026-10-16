@@ -7,7 +7,7 @@ operation:
 > converge the current machine toward its current source-controlled
 > qualified hardware plan, or stop safely with a precise state.
 
-**Status:** published and CI-qualified (implementation `4fc443d`, `Static gates` run #40); awaiting CTO closure.
+**Status:** PASS (CTO accepted) / CLOSED (implementation `4fc443d`, `Static gates` run #40; qualification docs `03be7dc`, run #41).
 
 | Piece | Location |
 | --- | --- |

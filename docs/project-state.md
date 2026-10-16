@@ -50,7 +50,7 @@ later installation/configuration → later validation.
 | M1-L | Interrupted package transaction recovery | PASS (CTO accepted) |
 | M1-M | Post-install hardware validation and health | PASS (CTO accepted) |
 | M1-N | Package state retention and safe garbage collection | PASS (CTO re-accepted) / CLOSED after the APT sandbox `partial/` correction |
-| M1-O | Hardware enablement orchestration and persistent state | Published and CI-qualified (rebuilt on the corrected M1-N baseline); awaiting CTO closure |
+| M1-O | Hardware enablement orchestration and persistent state | PASS (CTO accepted) / CLOSED |
 | M1-P | Not defined | Not started |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
@@ -559,7 +559,10 @@ later installation/configuration → later validation.
     qualification ran on the builder under `pre-m1n-fix`, which is retained
     until the CTO authorises its cleanup.
 - M1-O — hardware enablement orchestration and persistent state:
-  **published and CI-qualified; awaiting CTO closure** (not closed). Rebuilt
+  **PASS (CTO accepted) / CLOSED.** Qualification docs `03be7dc`
+  (`Static gates` run #41, [38980651256](https://github.com/lubarchy/lubarchy/actions/runs/38980651256): 15/15 gates).
+  The qualification snapshot `pre-m1o` is retained only for a separate
+  post-closure cleanup; it is not an open technical blocker. Rebuilt
   on the corrected M1-N baseline (`8b77e24`); an earlier unpublished
   candidate was superseded and is kept only as historical evidence.
   Details: [hardware-orchestration.md](hardware-orchestration.md).
@@ -612,8 +615,8 @@ later installation/configuration → later validation.
     5. VM microcode stayed `LIMITED/virtualized_cpu`.
     6. The restore to baseline was exact.
 
-    `pre-m1o` is retained pending CTO closure; the builder is shut off with
-    autostart disabled.
+    `pre-m1o` is retained only for post-closure cleanup; the builder is shut
+    off with autostart disabled.
 - M1-O does **not** add a systemd unit, timer, daemon, installer UI,
   automatic reboot, NVIDIA support, Secure Boot/MOK or a privilege
   mechanism, and does not start M1-P.
@@ -802,8 +805,10 @@ not be treated as decided:
 
 ## Immediate next action
 
-CTO closure of M1-O (hardware enablement orchestration and persistent
-state; implementation `4fc443d`, CI run #40). M1-P has not started. M1-N is
+A CTO brief for M1-P, which has not been defined or started. M1-O is PASS
+(CTO accepted) / CLOSED (implementation `4fc443d`, CI run #40; qualification
+docs `03be7dc`, CI run #41). The `pre-m1o` qualification snapshot awaits a
+separate post-closure cleanup. M1-N is
 PASS (CTO
 re-accepted) / CLOSED after the APT sandbox `partial/` correction (product
 `dfd82cb`, harness fix `9e7ad19`, CI runs #37 and #38; original implementation
