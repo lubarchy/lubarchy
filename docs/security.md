@@ -235,6 +235,17 @@ implemented.**
     no-follow, non-recursive deletion. Symlinks, special files, foreign
     owners, group/other-writable objects, mount crossings and unexplained
     hard links are never deleted.
+  - APT sandbox exception (M1-N correction). Debian's APT sandbox is kept
+    (no `APT::Sandbox::User` override). The only non-root object GC accepts
+    is the exact `<attempt>/apply-cache/partial/`:
+    - owner `_apt` (resolved only from the root-owned `/etc/passwd`;
+      unresolvable or ambiguous means retain), group root, mode `0700`,
+      empty;
+    - a real directory on the same filesystem;
+    - only in the cache of an attempt whose APT run started;
+    - re-checked immediately before its non-recursive removal.
+
+    Every other GC filesystem object remains root-only.
   - A durable receipt precedes the first deletion; a crash or partial
     failure is never reported as success; disk-full fails closed.
 - Post-install hardware validation (M1-M). Details:

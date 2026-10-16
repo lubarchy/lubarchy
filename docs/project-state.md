@@ -49,8 +49,8 @@ later installation/configuration → later validation.
 | M1-K | Privileged source activation and package apply executor | PASS (CTO accepted) |
 | M1-L | Interrupted package transaction recovery | PASS (CTO accepted) |
 | M1-M | Post-install hardware validation and health | PASS (CTO accepted) |
-| M1-N | Package state retention and safe garbage collection | PASS (CTO accepted) |
-| M1-O | Not defined | Not started |
+| M1-N | Package state retention and safe garbage collection | PASS (CTO accepted); corrective qualification reopened (APT sandbox `partial/`), local candidate awaiting CTO review |
+| M1-O | Hardware enablement orchestration and persistent state | Local candidate; publication on hold pending the M1-N correction |
 
 - M1-A — hardware contracts: **PASS** (CTO accepted). Implementation commit
   `91c54072cffe8ca84855904cc85ad7ffd7abac73`, qualified on GitHub Actions
@@ -499,7 +499,24 @@ later installation/configuration → later validation.
     only on the builder under the `pre-m1n` rollback checkpoint.
 - M1-N does **not** delete journals or receipts, use time-based cleanup,
   touch APT/dpkg/source state, add a privilege mechanism, or start M1-O.
-- M1-O has not started and waits for a CTO brief.
+- M1-N correction — APT sandbox ownership of the attempt cache `partial/`:
+  **local corrective candidate; awaiting CTO review** (not pushed).
+  - **Defect:** real-builder evidence from the M1-O qualification showed
+    that APT 3.0.3 changes `<attempt>/apply-cache/partial/` to its sandbox
+    user (`_apt:root`, mode `0700`). The original M1-N treated that as
+    `unsafe_object`, so a really applied bundle could never be reclaimed.
+    This failed safe but was functionally wrong.
+  - **Correction:** the only non-root object GC accepts is that exact empty
+    directory. It requires `_apt` resolved from the root-owned
+    `/etc/passwd`, group root and mode `0700`, and an attempt whose APT run
+    started. It is re-checked before removal.
+  - Debian's APT sandbox is kept, and every other object remains root-only.
+    Details: [package-garbage-collection.md](package-garbage-collection.md).
+  - Gate 14 now models the measured ownership (10 checks). Real
+    qualification runs on the builder under `pre-m1n-fix`.
+- M1-O (hardware enablement orchestration) exists as a local candidate on
+  a separate branch; its publication is on hold pending this correction.
+  M1-P has not started.
 
 ## M0 — Minimal reproducible ISO (closed)
 
@@ -684,8 +701,9 @@ not be treated as decided:
 
 ## Immediate next action
 
-A CTO brief for M1-O, which has not been defined or started. M1-N is PASS
-(CTO accepted; implementation `1eec088956d73cdc53bf450a76d860cbe4ec7e41`, CI run #33); M1-M is PASS
+CTO review of the M1-N corrective qualification (APT sandbox `partial/`
+ownership; local commit only, not pushed). M1-O publication is on hold. M1-N
+is PASS (CTO accepted; implementation `1eec088956d73cdc53bf450a76d860cbe4ec7e41`, CI run #33); M1-M is PASS
 (CTO accepted; implementation `59793b6dcdaddf73946dcdd9a6681ac58b2fc644`, CI run #30); M1-L is PASS (CTO accepted).
 
 M1-N limitations that remain in force:
@@ -722,7 +740,7 @@ Open work:
 - user-facing diagnostics;
 - real-hardware qualification.
 
-M1-O has not started and waits for a CTO brief.
+M1-O publication is on hold; M1-P has not started.
 
 ## PASS rule
 

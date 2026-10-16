@@ -89,6 +89,15 @@ STRENGTH = {"protected_active": 0, "protected_recovery": 1, "protected_unknown":
             "eligible_complete": 4, "eligible_abandoned": 5}
 CACHE_LOCK = "lock"                 # APT's own lock file in the attempt cache: never deleted
 CACHE_PARTIAL = "partial"
+# APT sandbox (Debian 13 / APT 3.0 default, never overridden by LUBARCHY): before acquiring, APT
+# changes its archive cache's `partial/` to the sandbox user and mode 0700. This exact directory
+# is the only object GC accepts with a non-root owner (owner _apt, group root, mode 0700, empty),
+# and only in the cache of an attempt whose APT run started. The user is resolved from the host's
+# own root-owned /etc/passwd, never guessed and never caller input.
+APT_SANDBOX_USER = "_apt"
+PASSWD = "etc/passwd"
+PARTIAL_MODE = 0o700
+SYSTEM_UID_MAX = 999
 
 
 class GCError(pa.ApplyError):
@@ -199,6 +208,70 @@ def _ident(st):
     return (st.st_dev, st.st_ino, stat.S_IFMT(st.st_mode), st.st_size if stat.S_ISREG(st.st_mode) else 0)
 
 
+def _lstat(path, dir_fd=None):
+    """The single metadata read of every object GC inspects (never follows links)."""
+    return os.lstat(path, dir_fd=dir_fd)
+
+
+def apt_sandbox_uid(host):
+    """UID of the APT sandbox user from the host root's /etc/passwd, or None when it cannot
+    be resolved unambiguously (missing, duplicated, aliased, not a system user, unsafe file)."""
+    path = os.path.join(host.root, PASSWD)
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    except OSError:
+        return None
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or st.st_uid != host.owner_uid or st.st_mode & 0o022 or st.st_size > 1 << 20:
+            return None
+        data = b""
+        while True:
+            chunk = os.read(fd, 1 << 16)
+            if not chunk:
+                break
+            data += chunk
+    finally:
+        os.close(fd)
+    try:
+        lines = data.decode("utf-8").splitlines()
+    except UnicodeDecodeError:
+        return None
+    uids = {}
+    for line in lines:
+        f = line.split(":")
+        if len(f) != 7 or not f[2].isdigit():
+            return None
+        uids.setdefault(f[0], []).append(int(f[2]))
+    found = uids.get(APT_SANDBOX_USER, [])
+    if len(found) != 1:
+        return None
+    uid = found[0]
+    if not 0 < uid <= SYSTEM_UID_MAX or uid == host.owner_uid or \
+            sum(1 for v in uids.values() for u in v if u == uid) != 1:
+        return None
+    return uid
+
+
+def partial_owner(host, attempt):
+    """The exact (uid, gid) an attempt cache's `partial/` must have: the APT sandbox user once
+    APT ran, root while it never did; None when the sandbox user is unresolvable."""
+    if not attempt["apply_started"]:
+        return host.owner_uid, host.owner_gid
+    uid = apt_sandbox_uid(host)
+    return None if uid is None else (uid, host.owner_gid)
+
+
+def _check_partial(st, dev, want):
+    """The APT sandbox exception: a real directory on the same filesystem, exactly the expected
+    owner and group, mode exactly 0700. Anything else is unsafe."""
+    if stat.S_ISLNK(st.st_mode) or not stat.S_ISDIR(st.st_mode) or st.st_dev != dev:
+        raise Unsafe("unsafe_object")
+    if want is None or (st.st_uid, st.st_gid) != want or stat.S_IMODE(st.st_mode) != PARTIAL_MODE:
+        raise Unsafe("unsafe_object")
+    return (st.st_uid, st.st_gid, stat.S_IMODE(st.st_mode))
+
+
 def _check_obj(st, dev, host, kind):
     if stat.S_ISLNK(st.st_mode):
         raise Unsafe("unsafe_object")
@@ -214,7 +287,7 @@ def inspect_bundle(host, sroot, sdev, name, refs, graph):
     """Verify an eligible bundle and every apply cache linking it. Returns the
     identity map to compare against at deletion time; raises Unsafe."""
     path = os.path.join(sroot, name)
-    _check_obj(os.lstat(path), sdev, host, "dir")
+    _check_obj(_lstat(path), sdev, host, "dir")
     try:
         manifest, _results = ps.verify_bundle(path, host.inspector(),
                                               expected={"transaction_digest": "sha256:" + name})
@@ -224,18 +297,18 @@ def inspect_bundle(host, sroot, sdev, name, refs, graph):
         want = graph["attempts"][att]["digests"]["bundle_digest"]
         if want is not None and want != manifest["bundle_digest"]:
             raise Unsafe("binding_mismatch")
-    ident = {"bundle": _ident(os.lstat(path))}
-    mst = os.lstat(os.path.join(path, ps.MANIFEST))
+    ident = {"bundle": _ident(_lstat(path))}
+    mst = _lstat(os.path.join(path, ps.MANIFEST))
     _check_obj(mst, sdev, host, "file")
     if mst.st_nlink != 1:
         raise Unsafe("hard_link_ambiguity")
     ident["manifest"] = _ident(mst)
-    ast = os.lstat(os.path.join(path, ps.PAYLOAD_DIR))
+    ast = _lstat(os.path.join(path, ps.PAYLOAD_DIR))
     _check_obj(ast, sdev, host, "dir")
     ident["archives"] = _ident(ast)
     payloads, links = {}, {}
     for p in manifest["payloads"]:
-        pst = os.lstat(os.path.join(path, ps.PAYLOAD_DIR, p["filename"]))
+        pst = _lstat(os.path.join(path, ps.PAYLOAD_DIR, p["filename"]))
         _check_obj(pst, sdev, host, "file")
         payloads[p["filename"]] = pst
         links[(pst.st_dev, pst.st_ino)] = 1
@@ -245,13 +318,13 @@ def inspect_bundle(host, sroot, sdev, name, refs, graph):
     for att in sorted(refs):
         cpath = os.path.join(jroot, att, pa.APPLY_CACHE)
         try:
-            cst = os.lstat(cpath)
+            cst = _lstat(cpath)
         except FileNotFoundError:
             continue
         _check_obj(cst, sdev, host, "dir")
-        entries = {}
+        entries, partial = {}, None
         for e in _listdir(cpath):
-            est = os.lstat(os.path.join(cpath, e))
+            est = _lstat(os.path.join(cpath, e))
             if e in payloads:
                 _check_obj(est, sdev, host, "file")
                 if (est.st_dev, est.st_ino) != (payloads[e].st_dev, payloads[e].st_ino):
@@ -261,13 +334,13 @@ def inspect_bundle(host, sroot, sdev, name, refs, graph):
             elif e == CACHE_LOCK:
                 _check_obj(est, sdev, host, "file")
             elif e == CACHE_PARTIAL:
-                _check_obj(est, sdev, host, "dir")
+                partial = _check_partial(est, sdev, partial_owner(host, graph["attempts"][att]))
                 if _listdir(os.path.join(cpath, e)):
                     raise Unsafe("apply_cache_unexpected")
                 entries[e] = _ident(est)
             else:
                 raise Unsafe("apply_cache_unexpected")
-        caches[att] = {"dir": _ident(cst), "entries": entries}
+        caches[att] = {"dir": _ident(cst), "entries": entries, "partial": partial}
     for f, s in payloads.items():
         if s.st_nlink != links[(s.st_dev, s.st_ino)]:
             raise Unsafe("hard_link_ambiguity")              # a link outside the known attempt caches
@@ -279,12 +352,12 @@ def inspect_bundle(host, sroot, sdev, name, refs, graph):
 
 def inspect_temporary(host, sroot, sdev, name):
     path = os.path.join(sroot, name)
-    tst = os.lstat(path)
+    tst = _lstat(path)
     _check_obj(tst, sdev, host, "dir")
     ident = {"dir": _ident(tst), "files": {}, "archives": None}
     nbytes = 0
     for e in _listdir(path):
-        est = os.lstat(os.path.join(path, e))
+        est = _lstat(os.path.join(path, e))
         if e == ps.MANIFEST:
             _check_obj(est, sdev, host, "file")
             if est.st_nlink != 1:
@@ -295,7 +368,7 @@ def inspect_temporary(host, sroot, sdev, name):
             _check_obj(est, sdev, host, "dir")
             ident["archives"] = {"dir": _ident(est), "files": {}}
             for f in _listdir(os.path.join(path, e)):
-                fst = os.lstat(os.path.join(path, e, f))
+                fst = _lstat(os.path.join(path, e, f))
                 _check_obj(fst, sdev, host, "file")
                 if fst.st_nlink != 1:
                     raise Unsafe("hard_link_ambiguity")
@@ -420,9 +493,24 @@ def _open_at(dfd, name, want):
 
 
 def _expect_entry(dfd, name, want):
-    st = os.stat(name, dir_fd=dfd, follow_symlinks=False)
+    st = _lstat(name, dir_fd=dfd)
     if _ident(st) != want:
         raise Unsafe("unsafe_object")
+    return st
+
+
+def _expect_partial(cfd, ident, meta):
+    """Immediately before its rmdir: the same directory, still exactly the verified owner,
+    group and mode (re-read, not remembered), and still empty."""
+    st = _expect_entry(cfd, CACHE_PARTIAL, ident)
+    if meta is None or (st.st_uid, st.st_gid, stat.S_IMODE(st.st_mode)) != meta:
+        raise Unsafe("unsafe_object")
+    pfd = _open_at(cfd, CACHE_PARTIAL, ident)
+    try:
+        if os.listdir(pfd):
+            raise Unsafe("apply_cache_unexpected")
+    finally:
+        os.close(pfd)
 
 
 def _exact_listing(dfd, names):
@@ -461,7 +549,10 @@ def delete_bundle(host, name, ident):
             if sorted(set(present) - {CACHE_LOCK}) != sorted(c["entries"]):
                 raise Unsafe("apply_cache_unexpected")
             for e, want in c["entries"].items():
-                _expect_entry(cfd, e, want)
+                if e == CACHE_PARTIAL:
+                    _expect_partial(cfd, want, c["partial"])
+                else:
+                    _expect_entry(cfd, e, want)
             cfds[att] = cfd
         # every identity re-proven: remove payload links from the caches, then the bundle
         for att, cfd in cfds.items():

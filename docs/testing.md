@@ -1398,8 +1398,8 @@ exact-commit deployment.
 
 ## M1 hardware package state GC gate
 
-`tests/hardware-gc.py` (gate 14 of `tests/run-static.sh`, since M1-N) has 8
-checks.
+`tests/hardware-gc.py` (gate 14 of `tests/run-static.sh`, since M1-N) has 10
+checks (8 since M1-N, plus 2 from the M1-N APT sandbox correction).
 
 It drives `hardware/package_gc.py`, `apply-packages.py gc-plan`/`gc` and the
 trusted-deployment launcher against package state created by the **real**
@@ -1473,6 +1473,41 @@ It proves:
     in the module, and no APT cache, dpkg or source path;
   - deletion is descriptor-relative; journals are never deleted.
 
+**APT sandbox model (M1-N correction).** Real APT changes the attempt
+cache's `partial/` to `_apt:root`, mode `0700`, as measured on the builder.
+An unprivileged gate cannot `chown`, so the gate does two things:
+- it overlays exactly that observed ownership on the inodes of the
+  `partial/` directories of attempts whose APT ran, keyed by
+  (device, inode), on GC's single metadata read (`package_gc._lstat`); a
+  replaced directory loses it;
+- it writes a root-owned `etc/passwd` naming `_apt` into the fake root.
+
+The two added checks prove:
+- **Accepted:** the exact shape is accepted, a real-shaped complete bundle
+  is eligible and reclaimed together with its `partial/`, and a second run
+  is idempotent.
+- **Retained** (43 cases):
+  - a foreign UID; `_apt` with the wrong group; seven wrong modes;
+  - a non-empty or nested `partial/`;
+  - a symlink, even one with the sandbox owner; a FIFO or regular-file
+    `partial/`; a replaced `partial/`;
+  - a mount crossing;
+  - the sandbox UID, or a foreign UID, on the lock file, cache directory,
+    cache payload, bundle directory, manifest or archives, and on a
+    temporary directory;
+  - a root-owned `partial/` in a cache APT used;
+  - `_apt` where APT never ran;
+  - a missing, duplicate, aliased, root, non-system or other `_apt` entry;
+    a malformed `/etc/passwd`; a group- or other-writable `/etc/passwd`; a
+    symlinked or missing `/etc/passwd`.
+- **Root-owned `partial/`** is accepted only for an attempt that never ran
+  APT.
+- **Fixed inputs:** the environment cannot change the sandbox identity, and
+  the expectations are fixed source constants.
+- **Rechecked before deletion:** an owner, group or mode change, contents
+  appearing, or a replacement of `partial/` after classification gives a
+  `failed` receipt before any unlink, with the bundle intact.
+
 ### M1-N mutation suite
 
 Each mutation is committed in a throwaway clone, and the full
@@ -1492,6 +1527,21 @@ Each mutation is committed in a throwaway clone, and the full
 
 The M1-M (43), M1-L (51) and M1-K (46) mutations are re-run on the same
 commit.
+
+The M1-N correction adds 17 mutations:
+- **Ownership:** accept any UID; accept any non-root owner; ignore the
+  group; ignore the mode; permit `_apt` ownership anywhere; disable the APT
+  sandbox expectation; accept the sandbox owner where APT never ran.
+- **Contents and type:** accept a non-empty `partial/`; accept a symlink
+  `partial/`.
+- **Recheck before deletion:** skip the owner recheck; skip the listing
+  recheck; skip the identity recheck.
+- **Sandbox identity:** hard-code a fallback UID; read the sandbox user from
+  the environment; ignore duplicate or aliased UIDs; trust an unsafe
+  `/etc/passwd`; follow a symlinked `/etc/passwd`.
+
+They are run together with the existing 25 M1-N mutations (two of whose
+targets moved to the new `_lstat` read) and the M1-M, M1-L and M1-K suites.
 
 ### Builder GC qualification (M1-N, builder only)
 

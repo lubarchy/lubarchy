@@ -25,6 +25,7 @@ import os  # noqa: E402
 import pathlib  # noqa: E402
 import re  # noqa: E402
 import shutil  # noqa: E402
+import stat  # noqa: E402
 import tempfile  # noqa: E402
 
 TESTS = pathlib.Path(__file__).resolve().parent
@@ -80,6 +81,51 @@ def rejects(code, fn, *args, **kwargs):
 
 
 # ---------------------------------------------------------------------------
+# APT sandbox model. Real APT (Debian 13, APT 3.0) changes the attempt cache's `partial/` to its
+# sandbox user `_apt`, group root, mode 0700, before acquiring (measured on the builder). An
+# unprivileged gate cannot chown, so the observed ownership of exactly those inodes is overlaid on
+# GC's single metadata read (gc._lstat). The overlay is keyed by (device, inode): a replaced
+# directory loses it, exactly as a real replacement would lose APT's ownership.
+
+REAL_LSTAT = gc._lstat
+FAKE_APT_UID = 42 if os.geteuid() != 42 else 43
+OVERLAY = {}
+
+
+def overlay_lstat(path, dir_fd=None):
+    st = REAL_LSTAT(path, dir_fd=dir_fd)
+    o = OVERLAY.get((st.st_dev, st.st_ino))
+    if o is None:
+        return st
+    uid, gid, mode = o
+    t = list(st)
+    t[0], t[4], t[5] = mode, uid, gid
+    return os.stat_result(t)
+
+
+def own(path, uid, gid, perm):
+    """Overlay an observed owner/group/permission on one existing object (type bits kept)."""
+    st = os.lstat(path)
+    OVERLAY[(st.st_dev, st.st_ino)] = (uid, gid, stat.S_IFMT(st.st_mode) | perm)
+
+
+def write_passwd(host, lines=None):
+    if lines is None:
+        lines = ["root:x:0:0:root:/root:/bin/bash", f"_apt:x:{FAKE_APT_UID}:65534::/nonexistent:/usr/sbin/nologin",
+                 "builder:x:1000:1000:Builder,,,:/home/builder:/bin/bash"]
+    path = os.path.join(host.root, gc.PASSWD)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    pathlib.Path(path).write_text("".join(f"{x}\n" for x in lines))
+    os.chmod(path, 0o644)
+
+
+def apt_ran(host, attempt):
+    """What APT does to the attempt cache it ran with: partial/ becomes _apt:root, 0700."""
+    own(os.path.join(host.root, pa.JOURNAL_DIR, attempt, pa.APPLY_CACHE, gc.CACHE_PARTIAL), FAKE_APT_UID,
+        host.owner_gid, 0o700)
+
+
+# ---------------------------------------------------------------------------
 # Synthetic package state built by the real executor, then varied
 
 class State:
@@ -87,8 +133,10 @@ class State:
 
     def __init__(self, name):
         self.h = gate11.FakeHost("gc-" + name)
+        write_passwd(self.h)
         doc = pa.apply_current_plan(self.h)
         expect(doc["result"] == "complete", "base apply did not complete")
+        apt_ran(self.h, doc["attempt_id"])
         self.template = doc
         self.base_attempt = doc["attempt_id"]
         self.base_bundle = doc["digests"]["transaction_digest"][7:]
@@ -154,6 +202,8 @@ class State:
             os.mkdir(os.path.join(c, "partial"), 0o700)
             pathlib.Path(c, "lock").write_text("")
             os.chmod(os.path.join(c, "lock"), 0o640)
+            if d["apply_started"]:
+                apt_ran(self.h, att)
         return att
 
     def add_recovery(self, attempt, outcome):
@@ -535,6 +585,215 @@ def gc_deletes_exactly_the_eligible_state():                                    
 
 
 @check
+def apt_sandbox_partial_contract():                                             # M1-N correction 1-14
+    """Only the exact APT sandbox shape of `<attempt>/apply-cache/partial/` is accepted with a
+    non-root owner: _apt (resolved from the host's /etc/passwd), group root, mode 0700, empty, and
+    only in the cache of an attempt whose APT run started. Nothing else gains non-root ownership."""
+    n = 0
+
+    def base():
+        s = State(f"sbx-{n}")
+        cache = os.path.join(s.journal_dir(s.base_attempt), pa.APPLY_CACHE)
+        return s, cache, os.path.join(cache, gc.CACHE_PARTIAL)
+
+    def retained(label, mutate, reason="unsafe_object"):
+        nonlocal n
+        s, cache, part = base()
+        mutate(s, cache, part)
+        got = cls(s, s.base_bundle)
+        expect(got == ("invalid_or_ambiguous", reason), f"{label}: {got}")
+        r = gc.collect_garbage(s.h)
+        expect(r["result"] == "nothing_to_collect" and os.path.isdir(s.staging(s.base_bundle)), f"{label}: deleted")
+        n += 1
+    # 1-2: the exact real APT shape is accepted and a real-shaped complete bundle is reclaimed
+    s, cache, part = base()
+    st = gc._lstat(part)
+    expect((st.st_uid, st.st_gid, stat.S_IMODE(st.st_mode)) == (FAKE_APT_UID, s.h.owner_gid, 0o700) and
+           gc.apt_sandbox_uid(s.h) == FAKE_APT_UID, "model is not the measured _apt:root 0700 shape")
+    expect(cls(s, s.base_bundle) == ("eligible_complete", "complete_validated"), "real-shaped bundle not eligible")
+    r = gc.collect_garbage(s.h)
+    expect(r["result"] == "complete" and not os.path.exists(part) and not os.path.exists(s.staging(s.base_bundle))
+           and os.listdir(cache) == [], f"real-shaped bundle not reclaimed: {r['result']} {os.listdir(cache)}")
+    expect(gc.collect_garbage(s.h)["result"] == "nothing_to_collect", "not idempotent")
+    n += 1
+    # 3-7: wrong owner, group, mode, contents or type of partial/
+    retained("foreign uid", lambda s, c, p: own(p, FAKE_APT_UID + 4000, s.h.owner_gid, 0o700))
+    retained("_apt, wrong group", lambda s, c, p: own(p, FAKE_APT_UID, s.h.owner_gid + 1, 0o700))
+    for perm in (0o750, 0o755, 0o770, 0o1700, 0o2700, 0o600, 0o711):
+        retained(f"_apt, mode {oct(perm)}", lambda s, c, p, perm=perm: own(p, FAKE_APT_UID, s.h.owner_gid, perm))
+
+    def non_empty(s, c, p):
+        pathlib.Path(p, "intel-microcode_1_amd64.deb.FAILED").write_bytes(b"x")
+    retained("_apt, non-empty", non_empty, "apply_cache_unexpected")
+
+    def nested(s, c, p):
+        os.mkdir(os.path.join(p, "partial"), 0o700)
+    retained("_apt, nested directory", nested, "apply_cache_unexpected")
+
+    def symlinked(s, c, p):
+        os.rmdir(p)
+        empty = os.path.join(s.h.root, "empty")
+        os.mkdir(empty, 0o700)
+        os.symlink(empty, p)
+        own(p, FAKE_APT_UID, s.h.owner_gid, 0o700)        # even with the sandbox owner on the link itself
+    retained("symlink partial", symlinked)
+
+    def fifo(s, c, p):
+        os.rmdir(p)
+        os.mkfifo(p, 0o700)
+        own(p, FAKE_APT_UID, s.h.owner_gid, 0o700)
+    retained("FIFO partial", fifo)
+
+    def file_partial(s, c, p):
+        os.rmdir(p)
+        pathlib.Path(p).write_text("")
+        own(p, FAKE_APT_UID, s.h.owner_gid, 0o700)
+    retained("regular-file partial", file_partial)
+
+    def replaced(s, c, p):                         # a new inode: APT's ownership does not carry over
+        os.rmdir(p)
+        os.mkdir(p, 0o700)
+    retained("replaced (root-owned) partial after APT ran", replaced)
+
+    def mount_crossing(s, c, p):
+        st = os.lstat(p)
+
+        def other_dev(path, dir_fd=None):
+            x = overlay_lstat(path, dir_fd=dir_fd)
+            if (x.st_ino, stat.S_IFMT(x.st_mode)) == (st.st_ino, stat.S_IFDIR):
+                t = list(x)
+                t[2] = x.st_dev + 1
+                return os.stat_result(t)
+            return x
+        gc._lstat = other_dev
+
+    s, cache, part = base()
+    mount_crossing(s, cache, part)
+    try:
+        got = cls(s, s.base_bundle)
+    finally:
+        gc._lstat = overlay_lstat
+    expect(got == ("invalid_or_ambiguous", "unsafe_object"), f"mount-crossing partial: {got}")
+    n += 1
+    # 8-9: the sandbox owner anywhere else, or any other non-root cache/bundle object
+    for label, where in (("lock", lambda s, c: os.path.join(c, gc.CACHE_LOCK)), ("cache dir", lambda s, c: c),
+                         ("cache payload", lambda s, c: os.path.join(c, sorted(e for e in os.listdir(c)
+                                                                               if e.endswith(".deb"))[0])),
+                         ("bundle dir", lambda s, c: s.staging(s.base_bundle)),
+                         ("manifest", lambda s, c: s.staging(s.base_bundle, ps.MANIFEST)),
+                         ("archives", lambda s, c: s.staging(s.base_bundle, ps.PAYLOAD_DIR))):
+        for uid in (FAKE_APT_UID, FAKE_APT_UID + 4000):
+            def mut(s, c, p, where=where, uid=uid):
+                target = where(s, c)
+                if label == "lock" and not os.path.exists(target):
+                    pathlib.Path(target).write_text("")
+                    os.chmod(target, 0o640)
+                st = os.lstat(target)
+                own(target, uid, s.h.owner_gid, stat.S_IMODE(st.st_mode))
+            retained(f"uid {uid} on {label}", mut)
+    s2 = State(f"sbx-{n}-temp")
+    t = s2.add_temporary()
+    own(s2.staging(t, ps.PAYLOAD_DIR), FAKE_APT_UID, s2.h.owner_gid, 0o700)
+    expect(cls(s2, t) == ("invalid_or_ambiguous", "unsafe_object"), "_apt-owned temporary accepted")
+    n += 1
+    for kind in ("file", "dir"):
+        fake = os.stat_result(((stat.S_IFDIR if kind == "dir" else stat.S_IFREG) | 0o700, 1, 1, 1, FAKE_APT_UID,
+                               s2.h.owner_gid, 0, 0, 0, 0))
+        try:
+            gc._check_obj(fake, 1, s2.h, kind)
+            raise Failure(f"_check_obj accepted the sandbox owner for a {kind}")
+        except gc.Unsafe:
+            pass
+    # 12: a root-owned partial/ is the legitimate shape only while APT never ran
+    s3 = State(f"sbx-{n}-noapt")
+    x = s3.clone_bundle()
+    att = s3.add_attempt("failed_before", x)
+    part = os.path.join(s3.journal_dir(att), pa.APPLY_CACHE, gc.CACHE_PARTIAL)
+    expect(gc._lstat(part).st_uid == s3.h.owner_uid, "no-APT partial not root-owned")
+    expect(cls(s3, x) == ("eligible_abandoned", "failed_before_apply"), f"no-APT partial {cls(s3, x)}")
+    own(part, FAKE_APT_UID, s3.h.owner_gid, 0o700)
+    expect(cls(s3, x) == ("invalid_or_ambiguous", "unsafe_object"), "_apt partial accepted where APT never ran")
+    n += 1
+
+    def root_after_apt(s, c, p):
+        OVERLAY.pop((os.lstat(p).st_dev, os.lstat(p).st_ino))
+    retained("root-owned partial although APT ran", root_after_apt)
+    # 13: the sandbox identity comes only from the host's own root-owned /etc/passwd
+    for label, lines in (("no _apt", ["root:x:0:0::/root:/bin/bash"]),
+                         ("duplicate _apt", [f"_apt:x:{FAKE_APT_UID}:65534::/:/x", "_apt:x:102:65534::/:/x"]),
+                         ("_apt uid 0", ["_apt:x:0:65534::/:/x"]),
+                         ("_apt non-system uid", [f"_apt:x:{FAKE_APT_UID + 4000}:65534::/:/x"]),
+                         ("_apt aliased uid", [f"_apt:x:{FAKE_APT_UID}:65534::/:/x", f"evil:x:{FAKE_APT_UID}:0::/:/x"]),
+                         ("malformed passwd", [f"_apt:x:{FAKE_APT_UID}"]),
+                         ("other _apt uid", ["_apt:x:{}:65534::/:/x".format(FAKE_APT_UID + 1)])):
+        retained(f"passwd: {label}", lambda s, c, p, lines=lines: write_passwd(s.h, lines))
+
+    def passwd_unsafe(mode):
+        def m(s, c, p):
+            os.chmod(os.path.join(s.h.root, gc.PASSWD), mode)
+        return m
+    retained("group-writable passwd", passwd_unsafe(0o664))
+    retained("other-writable passwd", passwd_unsafe(0o646))
+
+    def passwd_symlink(s, c, p):
+        real = os.path.join(s.h.root, "passwd.real")
+        os.rename(os.path.join(s.h.root, gc.PASSWD), real)
+        os.symlink(real, os.path.join(s.h.root, gc.PASSWD))
+    retained("symlinked passwd", passwd_symlink)
+    retained("missing passwd", lambda s, c, p: os.unlink(os.path.join(s.h.root, gc.PASSWD)))
+    saved = dict(os.environ)
+    os.environ.update({"APT_SANDBOX_USER": "evil", "LUBARCHY_APT_UID": str(FAKE_APT_UID + 1)})
+    try:
+        s4, cache4, part4 = base()
+        expect(cls(s4, s4.base_bundle) == ("eligible_complete", "complete_validated") and
+               gc.apt_sandbox_uid(s4.h) == FAKE_APT_UID, "environment changed the sandbox identity")
+    finally:
+        os.environ.clear()
+        os.environ.update(saved)
+    import inspect
+    expect(list(inspect.signature(gc.apt_sandbox_uid).parameters) == ["host"] and
+           list(inspect.signature(gc.collect_garbage).parameters) == ["host"] and
+           gc.APT_SANDBOX_USER == "_apt" and gc.PASSWD == "etc/passwd" and gc.PARTIAL_MODE == 0o700,
+           "sandbox expectations are not fixed source constants")
+    return f"exact _apt:root/0700/empty partial accepted and reclaimed (idempotent); {n} wrong owner/group/mode/" \
+           "content/type/replacement/mount, sandbox owner elsewhere, root partial after APT, and unresolvable/" \
+           "ambiguous/unsafe passwd cases retained; root partial accepted only where APT never ran; environment " \
+           "has no effect"
+
+
+@check
+def apt_sandbox_partial_races_fail_closed():                                    # M1-N correction 10-11
+    out = []
+    for label, mutate, reason in (
+            ("owner change", lambda s, p: own(p, FAKE_APT_UID + 4000, s.h.owner_gid, 0o700), "unsafe_object"),
+            ("group change", lambda s, p: own(p, FAKE_APT_UID, s.h.owner_gid + 1, 0o700), "unsafe_object"),
+            ("mode change", lambda s, p: own(p, FAKE_APT_UID, s.h.owner_gid, 0o755), "unsafe_object"),
+            ("contents appear", lambda s, p: pathlib.Path(p, "x.deb").write_bytes(b"x"), "apply_cache_unexpected"),
+            ("replaced", lambda s, p: (os.rmdir(p), os.mkdir(p, 0o700)), "unsafe_object")):
+        s = State("sbx-race-" + label.replace(" ", "-"))
+        part = os.path.join(s.journal_dir(s.base_attempt), pa.APPLY_CACHE, gc.CACHE_PARTIAL)
+        real = gc.compute_plan
+
+        def planned_then_changed(host, mutate=mutate, s=s, part=part):
+            result = real(host)
+            mutate(s, part)
+            return result
+        gc.compute_plan = planned_then_changed
+        try:
+            r = gc.collect_garbage(s.h)
+        finally:
+            gc.compute_plan = real
+        expect(r["result"] == "failed" and r["failed"] and r["failed"][0]["reason"] == reason and not r["removed"],
+               f"{label}: {r['result']} {r['failed']}")
+        expect(os.path.isdir(s.staging(s.base_bundle)) and os.path.lexists(part), f"{label}: something deleted")
+        ps.verify_bundle(s.staging(s.base_bundle), s.h.inspector(),
+                         expected={"transaction_digest": "sha256:" + s.base_bundle})
+        out.append(label)
+    return f"partial/ {', '.join(out)} after classification -> durable failed receipt before any unlink; " \
+           "bundle intact"
+
+
+@check
 def races_and_partial_failures_fail_closed():                                    # 34-38, 47
     cases = []
 
@@ -741,6 +1000,7 @@ def main():
     try:
         with tempfile.TemporaryDirectory(prefix="lubarchy-gate14-") as tmp:
             gate11.TMP = gate10.TMP = os.path.realpath(tmp)
+            gc._lstat = overlay_lstat
             for fn in CHECKS:
                 try:
                     detail = fn()
@@ -750,6 +1010,7 @@ def main():
                     continue
                 print(f"ok: {fn.__name__}" + (f": {detail}" if detail else ""))
     finally:
+        gc._lstat = REAL_LSTAT
         os.umask(old)
     if failures:
         print(f"FAIL: hardware package state GC ({failures} of {len(CHECKS)} checks failed)", file=sys.stderr)

@@ -106,12 +106,60 @@ either.
 - the manifest's bundle digest must equal every referencing journal's
   `bundle_digest`;
 - each referencing attempt's `apply-cache` may contain only that bundle's
-  payloads (the same inode), APT's `lock` and an empty `partial/`;
+  payloads (the same inode), APT's `lock` and an empty `partial/` of the
+  exact APT sandbox shape (below);
 - each payload's link count must equal 1 plus the number of attempt caches
   linking it; any other link is `hard_link_ambiguity`;
 - every object must be a real directory or regular file (no symlink,
   FIFO, device or socket), owned by root, not group/other writable, and on
-  the same device as the root (no mount crossing).
+  the same device as the root (no mount crossing). The single exception is
+  the APT sandbox `partial/` directory below.
+
+**APT sandbox `partial/` (M1-N correction).** APT acquires through its
+sandbox. Before acquiring, it changes its archive cache's `partial/`
+directory to the sandbox user. On Debian 13 (APT 3.0.3) this is the system
+user `_apt`, with group root and mode `0700`; the builder measured this for
+a real LUBARCHY apply. The original M1-N treated that legitimate state as
+`unsafe_object`, so no really applied bundle could ever be collected.
+
+LUBARCHY keeps Debian's normal APT sandbox. It sets no
+`APT::Sandbox::User`, disables nothing and adds no APT configuration.
+Instead, GC accepts exactly one non-root object:
+- **Path:** exactly `<attempt>/apply-cache/partial/`, a real directory (no
+  symlink, FIFO, socket, device or regular file) on the same filesystem.
+- **Owner, group, mode:** exactly the `_apt` user, group root, mode exactly
+  `0700`.
+- **Contents:** empty when classified, and again immediately before its
+  non-recursive `rmdir`.
+- **Lifecycle:** only in the cache of an attempt whose APT run started
+  (`apply_started`). Where APT never ran, the executor's own root-owned
+  `0700` `partial/` is the only accepted shape. A root-owned `partial/` in
+  a cache APT used is retained, and so is an `_apt` one where APT never
+  ran.
+- **Sandbox identity:** the `_apt` UID is read only from the host's own
+  `/etc/passwd`, which must be a root-owned, not group/other-writable
+  regular file opened without following links.
+  - It must contain exactly one `_apt` entry.
+  - The UID must be a system UID (1–999), not root's, and used by no other
+    entry.
+  - Otherwise the identity is unresolvable and the candidate is retained.
+
+  No UID is guessed or defaulted, and neither the caller nor the
+  environment can supply one.
+- **Recheck before removal:** owner, group, mode, identity and emptiness are
+  re-read immediately before removal. A change after classification aborts
+  before any unlink, with a `failed` receipt.
+
+All other GC-owned objects keep the root-ownership requirement unchanged:
+- the bundle, its manifest and archives;
+- payloads and cache payload links;
+- the apply-cache directory itself;
+- APT's `lock`;
+- temporary staging directories.
+
+Unknown ownership or configuration fails closed. The parent apply cache,
+the transaction-lock requirement, the terminal and eligible lifecycle, and
+every identity, listing and race check are unchanged.
 
 **Temporary directory.** It must match `.staging-[a-z0-9_]{8}` exactly, be
 owned by root and not group/other writable, and contain only `archives/`
