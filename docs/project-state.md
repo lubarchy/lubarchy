@@ -808,8 +808,9 @@ not be treated as decided:
 
 A CTO brief for M1-P, which has not been defined or started. M1-O is PASS
 (CTO accepted) / CLOSED (implementation `4fc443d`, CI run #40; qualification
-docs `03be7dc`, CI run #41). The `pre-m1o` qualification snapshot awaits a
-separate post-closure cleanup. M1-N is
+docs `03be7dc`, CI run #41). The `pre-m1o` qualification snapshot was
+retained through M1-O closure and then deleted cleanly; the builder has no
+qualification snapshots. M1-N is
 PASS (CTO
 re-accepted) / CLOSED after the APT sandbox `partial/` correction (product
 `dfd82cb`, harness fix `9e7ad19`, CI runs #37 and #38; original implementation
