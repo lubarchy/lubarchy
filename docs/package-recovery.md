@@ -5,7 +5,7 @@ attempts (M1-K) that were interrupted or never completed validation.
 Recovery never means "something failed, so run `apt-get -f install`". It
 first proves what state the system is in.
 
-**Status:** implemented locally; awaiting CTO review.
+**Status:** PASS (CTO accepted) / CLOSED (M1-L).
 
 | Piece | Location |
 | --- | --- |

@@ -4,7 +4,7 @@ M1-K is the first LUBARCHY code that mutates the package manager. The
 privileged operation is **apply the current qualified hardware plan**, never
 "install package X".
 
-**Status:** implemented locally; awaiting CTO review. The real mutation is
+**Status:** PASS (CTO accepted) / CLOSED (M1-K). The real mutation is
 authorised only on the rollback-protected `lubarchy-builder` qualification
 VM, which is restored to its original baseline afterwards. See
 [testing.md](testing.md#builder-apply-qualification-m1-k-builder-only).

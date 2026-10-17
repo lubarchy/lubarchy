@@ -4,7 +4,8 @@ M1-N reclaims LUBARCHY-owned package payload state that is **proven**
 obsolete, without destroying evidence needed for apply recovery, manual
 recovery, validation or audit. It is not generic filesystem cleanup.
 
-**Status:** implemented locally; awaiting CTO review.
+**Status:** PASS (CTO re-accepted) / CLOSED (M1-N, after the APT sandbox
+`partial/` correction).
 
 | Piece | Location |
 | --- | --- |

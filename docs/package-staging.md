@@ -5,7 +5,7 @@ M1-J prepares the trusted inputs for a future privileged package mutation:
   installed system;
 - a staged payload bundle bound exactly to one qualified package transaction.
 
-**Status:** implemented locally; awaiting CTO review. Nothing here activates a
+**Status:** PASS (CTO accepted) / CLOSED (M1-J). Nothing here activates a
 source, installs a package or changes a package mark. There is no activate
 or apply operation.
 

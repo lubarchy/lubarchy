@@ -477,7 +477,7 @@ later installation/configuration → later validation.
     - APT, dpkg, source and package state was unchanged;
     - the restore to baseline was exact.
 
-    `pre-m1n` is kept until CTO closure.
+    `pre-m1n` was kept until CTO closure and has since been deleted.
   - The PASS, once given, qualifies the GC subsystem only; it does not
     authorise generic cleanup.
   - Details: [package-garbage-collection.md](package-garbage-collection.md).
@@ -543,7 +543,8 @@ later installation/configuration → later validation.
     5. APT, dpkg, source, package, mark and hold state was unchanged by GC.
     6. The restore to baseline was exact.
 
-    `pre-m1n-fix` is retained pending CTO closure.
+    `pre-m1n-fix` was retained until CTO closure and was then deleted
+    cleanly.
   - **Defect:** real-builder evidence from the M1-O qualification showed
     that APT 3.0.3 changes `<attempt>/apply-cache/partial/` to its sandbox
     user (`_apt:root`, mode `0700`). The original M1-N treated that as
@@ -556,13 +557,13 @@ later installation/configuration → later validation.
   - Debian's APT sandbox is kept, and every other object remains root-only.
     Details: [package-garbage-collection.md](package-garbage-collection.md).
   - Gate 14 models the measured ownership (10 checks). The real
-    qualification ran on the builder under `pre-m1n-fix`, which is retained
-    until the CTO authorises its cleanup.
+    qualification ran on the builder under `pre-m1n-fix`, which was deleted
+    cleanly after M1-N closure.
 - M1-O — hardware enablement orchestration and persistent state:
   **PASS (CTO accepted) / CLOSED.** Qualification docs `03be7dc`
   (`Static gates` run #41, [38980651256](https://github.com/lubarchy/lubarchy/actions/runs/38980651256): 15/15 gates).
-  The qualification snapshot `pre-m1o` is retained only for a separate
-  post-closure cleanup; it is not an open technical blocker. Rebuilt
+  The qualification snapshot `pre-m1o` was deleted cleanly in a separate
+  post-closure cleanup; the builder has no qualification snapshots. Rebuilt
   on the corrected M1-N baseline (`8b77e24`); an earlier unpublished
   candidate was superseded and is kept only as historical evidence.
   Details: [hardware-orchestration.md](hardware-orchestration.md).
@@ -615,8 +616,8 @@ later installation/configuration → later validation.
     5. VM microcode stayed `LIMITED/virtualized_cpu`.
     6. The restore to baseline was exact.
 
-    `pre-m1o` is retained only for post-closure cleanup; the builder is shut
-    off with autostart disabled.
+    `pre-m1o` was kept until closure and then deleted cleanly; the builder
+    is shut off with autostart disabled.
 - M1-O does **not** add a systemd unit, timer, daemon, installer UI,
   automatic reboot, NVIDIA support, Secure Boot/MOK or a privilege
   mechanism, and does not start M1-P.

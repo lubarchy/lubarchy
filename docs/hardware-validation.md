@@ -9,7 +9,7 @@ Package installation success is not hardware health. Validation compares
 the running system with what the existing plan implies, and says exactly
 what it could and could not observe.
 
-**Status:** implemented locally; awaiting CTO review.
+**Status:** PASS (CTO accepted) / CLOSED (M1-M).
 
 | Piece | Location |
 | --- | --- |

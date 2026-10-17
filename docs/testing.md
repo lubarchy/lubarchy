@@ -1623,7 +1623,7 @@ verified (189 files, no non-root, writable or symlinked entries).
 - **Restore:** after the revert to `pre-m1n` the audit equalled the original
   baseline exactly, all qualification state was gone, and the domain XML
   (disk and NVRAM) was unchanged. The builder ended shut off with autostart
-  disabled; `pre-m1n` is kept until CTO closure.
+  disabled; `pre-m1n` was kept until CTO closure (and later deleted).
 
 ## M1 hardware enablement orchestration gate
 
@@ -1838,8 +1838,8 @@ From the root-owned exact-commit deployment:
   4. Run 3: idempotent, `nothing_to_collect`.
   5. VM microcode was `LIMITED/virtualized_cpu` in every run. Packages,
      marks, holds, sources and APT history did not drift after the apply.
-  6. The restore to `pre-m1o` was exact. `pre-m1o` is retained only for
-     post-closure cleanup.
+  6. The restore to `pre-m1o` was exact. `pre-m1o` was kept until closure
+     and then deleted cleanly.
 
 The qualification docs `03be7dc` passed `Static gates` run #41
 ([38980651256](https://github.com/lubarchy/lubarchy/actions/runs/38980651256)), 15/15 gates. M1-O is **PASS (CTO accepted)
@@ -2023,9 +2023,10 @@ never read the runner's `/etc/apt` or hardware, never activated a source and
 never installed a package. Packages were installed only in the existing QA
 dependency step. The package names are identical to run #22; the mirror's
 `libcurl3t64-gnutls` moved from `deb13u5` to `deb13u7`, and the workflow
-itself changed only in its header comment. M1-J remains awaiting CTO review
-(not PASS). No system source or package mutation was performed, staging
-remains pre-apply only, and M1-K has not started.
+itself changed only in its header comment. At publication M1-J was awaiting
+CTO review (not PASS); it was subsequently accepted (PASS, CTO accepted). No
+system source or package mutation was performed, staging remained pre-apply
+only, and M1-K had not started at that point.
 
 **M1-K CI qualification:** the M1-K change was executed on GitHub by workflow
 `Static gates`, run ID
@@ -2049,8 +2050,9 @@ root does not authorise mutation, and none occurred:
 
 The real mutation was qualified only on the rollback-protected builder VM
 (see the builder apply qualification above), which was restored to its
-original baseline. M1-K remains awaiting CTO review (not PASS), and M1-L
-has not started.
+original baseline. At publication M1-K was awaiting CTO review (not PASS),
+and M1-L had not started; M1-K was subsequently accepted (PASS, CTO
+accepted).
 
 **M1-L CI qualification:** the M1-L change was executed on GitHub by workflow
 `Static gates`, run ID
@@ -2088,8 +2090,9 @@ The final recovery architecture recorded by this qualification:
 
 The real recovery was qualified only on the rollback-protected builder VM
 (see the builder recovery qualification above), which was restored to its
-original baseline. M1-L remains awaiting CTO review (not PASS), and M1-M
-has not started.
+original baseline. At publication M1-L was awaiting CTO review (not PASS),
+and M1-M had not started; M1-L was subsequently accepted (PASS, CTO
+accepted).
 
 **M1-M CI qualification:** the M1-M change was executed on GitHub by workflow
 `Static gates`, run ID
@@ -2140,8 +2143,8 @@ Firmware policy at publication:
 
 At publication M1-M was awaiting CTO review; it was subsequently accepted
 (PASS, CTO accepted). The PASS qualifies the validation subsystem; the
-builder's own validation result remains `FAIL` as recorded above. M1-N has
-not started.
+builder's own validation result remains `FAIL` as recorded above. M1-N had
+not started at that point.
 
 **M1-N CI qualification:** the M1-N change was executed on GitHub by workflow
 `Static gates`, run ID
@@ -2205,8 +2208,9 @@ commits):
 - an idempotent second GC;
 - an exact restore.
 
-The APT sandbox is not weakened. M1-O remains on publication hold, and M1-P
-has not started.
+The APT sandbox is not weakened. At that point M1-O was on publication
+hold; it was later rebuilt on this baseline and closed (see the M1-O
+qualification above). M1-P has not started.
 
 ## Clean rebuild comparison
 

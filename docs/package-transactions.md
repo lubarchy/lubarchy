@@ -1,9 +1,11 @@
 # Package Transactions
 
-Status: **M1-I contract.** LUBARCHY can compile and verify an install-only
-package transaction. Nothing applies it: there is no privileged executor yet,
-and no package is installed, upgraded, removed or configured by any LUBARCHY
-code.
+Status: **M1-I contract — PASS (CTO accepted) / CLOSED.** LUBARCHY can
+compile and verify an install-only package transaction. At M1-I nothing
+applied it. Since M1-K the root-only apply executor is the only component that
+applies a freshly recompiled transaction ([package-apply.md](package-apply.md));
+the M1-I compiler itself still installs, upgrades, removes and configures
+nothing.
 
 ## Pipeline and authority
 

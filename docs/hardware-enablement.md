@@ -24,10 +24,21 @@ and the containment of NVIDIA's repository is tested with an inactive
 candidate APT policy (M1-H, see
 [NVIDIA repository containment](#nvidia-repository-containment-m1-h)).
 From M1-I a plan can be compiled into an install-only package transaction
-(see [Package transactions](#package-transactions-m1-i)); nothing applies it.
-**Packages in a plan are proposals only: nothing installs, enables a source
-or configures anything yet.** Further firmware families, installation,
-configuration and validation are later M1 work.
+(see [Package transactions](#package-transactions-m1-i)). Later milestones
+extend this:
+- since M1-K, a root-only executor activates only the LUBARCHY-owned Debian
+  source and installs exactly the current qualified plan's transaction
+  ([package-apply.md](package-apply.md));
+- M1-L recovers interrupted transactions;
+- M1-M validates the result read-only;
+- M1-N garbage-collects proven-obsolete payload state;
+- M1-O coordinates the lifecycle through one `reconcile` operation.
+
+All of these are PASS / CLOSED. **A plan alone is still only a proposal:
+packages are installed only through that executor, never by caller choice.**
+Further firmware families, configuration, NVIDIA, Secure Boot/MOK,
+installer/service integration and real-hardware qualification remain later
+M1 work.
 
 ## Goal
 
